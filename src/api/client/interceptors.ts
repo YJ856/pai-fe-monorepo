@@ -1,0 +1,135 @@
+/**
+ * Axios 인터셉터 설정
+ *
+ * 주요 기능:
+ * 1. 요청 인터셉터
+ *    - JWT Access Token 자동 추가 (Authorization 헤더)
+ *    - 프로필 ID 자동 추가 (X-Profile-Id 헤더)
+ *
+ * 2. 응답 인터셉터
+ *    - 401 Unauthorized 시 자동 토큰 갱신
+ *    - 토큰 갱신 실패 시 로그아웃 처리
+ *
+ * 3. AsyncStorage 기반 토큰 관리
+ *    - Access Token, Refresh Token 영구 저장
+ *    - 앱 재시작 시에도 로그인 유지
+ */
+
+import { AxiosInstance, AxiosError, InternalAxiosRequestConfig } from 'axios';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import {
+  userServiceClient,
+  insightServiceClient,
+  quizServiceClient,
+  conversationServiceClient,
+  mediaServiceClient
+} from './axios';
+
+// AsyncStorage 키
+const TOKEN_KEY = '@pai:access_token';
+const REFRESH_TOKEN_KEY = '@pai:refresh_token';
+const PROFILE_ID_KEY = '@pai:selected_profile_id';
+
+/**
+ * 토큰 관리 유틸리티
+ * React Native AsyncStorage 사용
+ */
+export const tokenManager = {
+  getAccessToken: async () => await AsyncStorage.getItem(TOKEN_KEY),
+  setAccessToken: async (token: string) => await AsyncStorage.setItem(TOKEN_KEY, token),
+
+  getRefreshToken: async () => await AsyncStorage.getItem(REFRESH_TOKEN_KEY),
+  setRefreshToken: async (token: string) => await AsyncStorage.setItem(REFRESH_TOKEN_KEY, token),
+
+  getProfileId: async () => await AsyncStorage.getItem(PROFILE_ID_KEY),
+  setProfileId: async (profileId: string) => await AsyncStorage.setItem(PROFILE_ID_KEY, profileId),
+
+  clearTokens: async () => {
+    await AsyncStorage.multiRemove([TOKEN_KEY, REFRESH_TOKEN_KEY, PROFILE_ID_KEY]);
+  },
+};
+
+/**
+ * 요청 인터셉터
+ * 모든 API 요청에 토큰과 프로필 ID 자동 추가
+ */
+const requestInterceptor = async (config: InternalAxiosRequestConfig) => {
+  const accessToken = await tokenManager.getAccessToken();
+  const profileId = await tokenManager.getProfileId();
+
+  if (accessToken) {
+    config.headers.Authorization = `Bearer ${accessToken}`;
+  }
+
+  if (profileId) {
+    config.headers['X-Profile-Id'] = profileId;
+  }
+
+  return config;
+};
+
+/**
+ * 응답 인터셉터
+ * 401 에러 발생 시 토큰 자동 갱신 시도
+ */
+const setupResponseInterceptor = (client: AxiosInstance) => {
+  client.interceptors.response.use(
+    (response) => response,
+    async (error: AxiosError) => {
+      const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
+
+      // 401 에러이고 아직 재시도하지 않은 경우
+      if (error.response?.status === 401 && !originalRequest._retry) {
+        originalRequest._retry = true;
+
+        try {
+          const refreshToken = await tokenManager.getRefreshToken();
+          if (!refreshToken) {
+            throw new Error('No refresh token available');
+          }
+
+          // pai-service-user의 /api/auth/refresh 호출
+          const response = await userServiceClient.post('/api/auth/refresh', {
+            refreshToken,
+          });
+
+          const { accessToken, refreshToken: newRefreshToken } = response.data.data;
+
+          // 새 토큰 저장
+          await tokenManager.setAccessToken(accessToken);
+          await tokenManager.setRefreshToken(newRefreshToken);
+
+          // 원래 요청에 새 토큰 추가 후 재시도
+          originalRequest.headers.Authorization = `Bearer ${accessToken}`;
+          return client(originalRequest);
+        } catch (refreshError) {
+          // 토큰 갱신 실패 시 로그아웃 처리
+          await tokenManager.clearTokens();
+          // TODO: NavigationService를 통해 Login 화면으로 이동
+          return Promise.reject(refreshError);
+        }
+      }
+
+      return Promise.reject(error);
+    }
+  );
+};
+
+/**
+ * 모든 axios 클라이언트에 인터셉터 적용
+ * App.tsx에서 앱 시작 시 한 번만 호출
+ */
+export function setupInterceptors() {
+  const clients = [
+    userServiceClient,
+    insightServiceClient,
+    quizServiceClient,
+    conversationServiceClient,
+    mediaServiceClient,
+  ];
+
+  clients.forEach((client) => {
+    client.interceptors.request.use(requestInterceptor);
+    setupResponseInterceptor(client);
+  });
+}
