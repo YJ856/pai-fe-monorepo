@@ -5,12 +5,12 @@
 
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import ProfileSelectScreen from '../../screens/profiles/Select';
-import ProfileCreateScreen from '../../screens/profiles/Create';
+import ProfileSelectScreen from '../../screens/profiles/ProfileSelect';
+import ProfileCreateScreen from '../../screens/profiles/ProfileCreate';
 
 export type ProfileStackParamList = {
-  Select: undefined;
-  Create: { profileType: 'parent' | 'child' };
+  ProfileSelect: undefined;
+  ProfileCreate: undefined;
 };
 
 const Stack = createNativeStackNavigator<ProfileStackParamList>();
@@ -18,8 +18,8 @@ const Stack = createNativeStackNavigator<ProfileStackParamList>();
 export function ProfileNavigator() {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="Select" component={ProfileSelectScreen} />
-      <Stack.Screen name="Create" component={ProfileCreateScreen} />
+      <Stack.Screen name="ProfileSelect" component={ProfileSelectScreen} />
+      <Stack.Screen name="ProfileCreate" component={ProfileCreateScreen} />
     </Stack.Navigator>
   );
 }

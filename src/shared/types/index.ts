@@ -22,6 +22,10 @@ export interface Profile {
   id: string;
   profileType: ProfileType;
   name: string;
+  birthdate: string;
+  gender: Gender;
+  avatar: string; // 이모지
+  pin?: string; // 부모 프로필용
   avatarUrl?: string;
 }
 

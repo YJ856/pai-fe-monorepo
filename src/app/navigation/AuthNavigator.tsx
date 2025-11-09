@@ -1,16 +1,14 @@
 /**
  * 인증 관련 네비게이터
- * - 로그인/회원가입 화면
+ * - 로그인/회원가입 화면 (통합)
  */
 
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import LoginScreen from '../../screens/auth/Login';
-import SignupScreen from '../../screens/auth/Signup';
 
 export type AuthStackParamList = {
   Login: undefined;
-  Signup: undefined;
 };
 
 const Stack = createNativeStackNavigator<AuthStackParamList>();
@@ -19,7 +17,6 @@ export function AuthNavigator() {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="Login" component={LoginScreen} />
-      <Stack.Screen name="Signup" component={SignupScreen} />
     </Stack.Navigator>
   );
 }

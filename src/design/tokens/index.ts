@@ -20,18 +20,39 @@
  */
 
 export const colors = {
-  // Primary 색상
+  // Primary 색상 (Auth - Navy to Blue gradient)
   primary: {
     50: '#E3F2FD',
     100: '#BBDEFB',
     200: '#90CAF9',
     300: '#64B5F6',
     400: '#42A5F5',
-    500: '#2196F3', // 기본
+    500: '#2196F3',
     600: '#1E88E5',
     700: '#1976D2',
     800: '#1565C0',
-    900: '#0D47A1',
+    900: '#1e3a8a', // 네이비 (로그인)
+  },
+
+  // Auth gradient colors
+  auth: {
+    from: '#1e3a8a', // 네이비
+    to: '#3b82f6',   // 블루
+  },
+
+  // Parent mode colors (Blue gradient)
+  parent: {
+    from: '#5B9BD5',
+    to: '#667BC6',
+    light: '#4A8BC2',
+  },
+
+  // Child mode colors (Pink/Coral gradient)
+  child: {
+    from: '#FF6B9D',
+    to: '#FFA06B',
+    bg1: '#FFE5E0',
+    bg2: '#FFF0ED',
   },
 
   // Secondary 색상
@@ -41,7 +62,7 @@ export const colors = {
     200: '#F48FB1',
     300: '#F06292',
     400: '#EC407A',
-    500: '#E91E63', // 기본
+    500: '#E91E63',
     600: '#D81B60',
     700: '#C2185B',
     800: '#AD1457',
@@ -53,6 +74,7 @@ export const colors = {
     primary: '#FFFFFF',
     secondary: '#F5F5F5',
     tertiary: '#EEEEEE',
+    gray: '#E5E7EB',
   },
 
   // 텍스트 색상

@@ -1,6 +1,22 @@
-# PAI Frontend Monorepo (React Native)
+# PAI Frontend (React Native + Expo)
 
-부모-자녀 상호작용 AI 앱 프론트엔드
+부모-자녀 상호작용 AI 앱 프론트엔드 (Expo CLI 기반)
+
+## 빠른 시작
+
+```bash
+# 의존성 설치
+npm install
+
+# 개발 서버 시작
+npm start
+
+# iOS 시뮬레이터
+npm run ios
+
+# Android 에뮬레이터
+npm run android
+```
 
 ## 프로젝트 구조
 
