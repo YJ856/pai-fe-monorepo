@@ -19,6 +19,8 @@ import {
   TouchableOpacity,
   FlatList,
   Modal,
+  ImageBackground,
+  Image,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Lock, Plus } from 'lucide-react-native';
@@ -133,19 +135,23 @@ export default function ProfileSelectScreen() {
   };
 
   return (
-    <View style={styles.container}>
-      <LinearGradient
-        colors={[colors.auth.from, colors.auth.to]}
-        style={styles.background}
-      >
+    <ImageBackground
+      source={require('../../../assets/images/background.png')}
+      style={styles.container}
+      resizeMode="cover"
+    >
+      <View style={styles.background}>
         <View style={styles.content}>
           {/* Header */}
           <View style={styles.header}>
             <View style={styles.logoContainer}>
-              <View style={styles.mascotPlaceholder} />
+              <Image
+                source={require('../../../assets/images/mascot.png')}
+                style={styles.mascot}
+              />
             </View>
-            <Text style={styles.title}>PAI</Text>
-            <Text style={styles.subtitle}>프로필을 선택하세요</Text>
+            <Text style={styles.title}>누구세요?</Text>
+            <Text style={styles.subtitle}>프로필을 선택해주세요</Text>
           </View>
 
           {/* Profiles Grid */}
@@ -220,8 +226,8 @@ export default function ProfileSelectScreen() {
             </View>
           </View>
         </Modal>
-      </LinearGradient>
-    </View>
+      </View>
+    </ImageBackground>
   );
 }
 
@@ -246,11 +252,9 @@ const styles = StyleSheet.create({
   logoContainer: {
     marginBottom: spacing.sm,
   },
-  mascotPlaceholder: {
-    width: 80,
-    height: 80,
-    backgroundColor: 'rgba(255, 255, 255, 0.3)',
-    borderRadius: borderRadius.full,
+  mascot: {
+    width: 96,
+    height: 96,
   },
   title: {
     ...typography.h1,

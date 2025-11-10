@@ -18,6 +18,8 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
+  ImageBackground,
+  Image,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { ArrowLeft } from 'lucide-react-native';
@@ -70,23 +72,29 @@ export default function ProfileCreateScreen() {
   };
 
   return (
-    <View style={styles.container}>
-      <LinearGradient
-        colors={[colors.auth.from, colors.auth.to]}
-        style={styles.background}
+    <ImageBackground
+      source={require('../../../assets/images/background.png')}
+      style={styles.container}
+      resizeMode="cover"
+    >
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
       >
-        <ScrollView
-          style={styles.scrollView}
-          contentContainerStyle={styles.content}
-          showsVerticalScrollIndicator={false}
-        >
-          {/* Header */}
-          <View style={styles.header}>
-            <TouchableOpacity onPress={handleCancel} style={styles.backButton}>
-              <ArrowLeft size={24} color={colors.text.inverse} />
-            </TouchableOpacity>
+        {/* Header */}
+        <View style={styles.header}>
+          <TouchableOpacity onPress={handleCancel} style={styles.backButton}>
+            <ArrowLeft size={24} color={colors.text.inverse} />
+          </TouchableOpacity>
+          <View style={styles.headerTitleContainer}>
+            <Image
+              source={require('../../../assets/images/mascot.png')}
+              style={styles.mascot}
+            />
             <Text style={styles.title}>프로필 생성</Text>
           </View>
+        </View>
 
           {/* Card */}
           <View style={styles.card}>
@@ -249,16 +257,12 @@ export default function ProfileCreateScreen() {
             </View>
           </View>
         </ScrollView>
-      </LinearGradient>
-    </View>
+    </ImageBackground>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
-  },
-  background: {
     flex: 1,
   },
   scrollView: {
@@ -275,6 +279,16 @@ const styles = StyleSheet.create({
   },
   backButton: {
     marginRight: spacing.md,
+  },
+  headerTitleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  mascot: {
+    width: 48,
+    height: 48,
+    marginRight: spacing.sm,
   },
   title: {
     ...typography.h2,

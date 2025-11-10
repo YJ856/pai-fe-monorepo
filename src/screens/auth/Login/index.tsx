@@ -18,7 +18,7 @@
  */
 
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ImageBackground, TouchableOpacity, Image } from 'react-native';
+import { View, Text, StyleSheet, ImageBackground, TouchableOpacity, Image, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { ScreenContainer } from '../../../design/layouts/ScreenContainer';
 import { Input } from '../../../design/components/Input';
@@ -74,17 +74,27 @@ export default function LoginScreen() {
   };
 
   return (
-    <View style={styles.container}>
-      <LinearGradient
-        colors={[colors.auth.from, colors.auth.to]}
-        style={styles.background}
+    <ImageBackground
+      source={require('../../../assets/images/background.png')}
+      style={styles.container}
+      resizeMode="cover"
+    >
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={styles.keyboardView}
       >
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
+        >
         <View style={styles.content}>
           {/* Header */}
           <View style={styles.header}>
             <View style={styles.logoContainer}>
-              {/* TODO: Replace with actual mascot image */}
-              <View style={styles.mascotPlaceholder} />
+              <Image
+                source={require('../../../assets/images/mascot.png')}
+                style={styles.mascot}
+              />
             </View>
             <Text style={styles.title}>PAI</Text>
             <Text style={styles.subtitle}>Parent-Child AI Interaction</Text>
@@ -179,14 +189,22 @@ export default function LoginScreen() {
             )}
           </View>
         </View>
-      </LinearGradient>
-    </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </ImageBackground>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  keyboardView: {
+    flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
+    justifyContent: 'center',
   },
   background: {
     flex: 1,
@@ -205,11 +223,9 @@ const styles = StyleSheet.create({
   logoContainer: {
     marginBottom: spacing.sm,
   },
-  mascotPlaceholder: {
+  mascot: {
     width: 96,
     height: 96,
-    backgroundColor: 'rgba(255, 255, 255, 0.3)',
-    borderRadius: borderRadius.full,
   },
   title: {
     ...typography.h1,

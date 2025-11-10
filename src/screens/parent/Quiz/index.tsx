@@ -1,80 +1,437 @@
 /**
- * 부모 퀴즈 화면 (탭 컨테이너)
+ * 부모 퀴즈 관리 화면
  *
  * 주요 기능:
- * - 탭 전환 (오늘/지난/예정)
- * - 탭별 컴포넌트 렌더링
+ * - 탭 전환 (오늘의 퀴즈/지난 퀴즈/예정된 퀴즈)
+ * - 퀴즈 생성, 수정, 삭제
+ * - 자녀별 풀이 현황 확인
+ * - 보상 지급
+ * - 플로팅 퀴즈 추가 버튼
  *
- * 탭 구성:
- * - TodayTab: 오늘의 퀴즈
- * - PastTab: 지난 퀴즈 (무한 스크롤)
- * - ScheduledTab: 예정된 퀴즈
+ * 디자인:
+ * - 블루 그라데이션 배경 (from-blue-50 to-indigo-50)
+ * - 둥근 탭 버튼, 활성 탭 블루 그라데이션
+ * - 퀴즈 카드: 회색 배경, 풀이 현황 표시
+ * - 플로팅 액션 버튼: 그라데이션 원형
  */
 
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  ScrollView,
+  Modal,
+} from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { ArrowLeft } from 'lucide-react-native';
-import { Tab } from '../../../design/components/Tab';
-import { colors, spacing, typography } from '../../../design/tokens';
-import TodayTab from './_tabs/TodayTab';
-import PastTab from './_tabs/PastTab';
-import ScheduledTab from './_tabs/ScheduledTab';
+import { CheckCircle, XCircle, Gift, Plus, Edit, Trash2 } from 'lucide-react-native';
+import { spacing, typography, borderRadius, shadows } from '../../../design/tokens';
+import { Button } from '../../../design/components/Button';
 
-type TabKey = 'today' | 'past' | 'scheduled';
+interface Quiz {
+  id: string;
+  question: string;
+  answer: string;
+  hint?: string;
+  reward?: string;
+  author: string;
+  date: Date;
+}
+
+interface ChildSolution {
+  childId: string;
+  childName: string;
+  childAvatar: string;
+  solved: boolean;
+  rewardGiven?: boolean;
+}
+
+const CHILDREN = [
+  { id: '3', name: '지우', avatar: '👧' },
+  { id: '4', name: '민준', avatar: '👦' },
+];
+
+const PARENTS = [
+  { name: '엄마', avatar: '👩' },
+  { name: '아빠', avatar: '👨' },
+];
+
+const getParentAvatar = (authorName: string) => {
+  const parent = PARENTS.find((p) => p.name === authorName);
+  return parent?.avatar || '👤';
+};
+
+const MOCK_TODAY_QUIZZES: Quiz[] = [
+  {
+    id: '1',
+    question: '공룡은 왜 멸종했을까?',
+    answer: '운석충돌',
+    hint: '하늘에서 큰 돌덩어리가 떨어졌어요',
+    reward: '스티커 3개 🌟',
+    author: '엄마',
+    date: new Date(),
+  },
+  {
+    id: '2',
+    question: '바다에서 가장 큰 동물은?',
+    answer: '고래',
+    hint: '아주 아주 크고 물을 뿜어요',
+    reward: '스티커 2개 ⭐',
+    author: '아빠',
+    date: new Date(),
+  },
+];
+
+const MOCK_PAST_QUIZZES: Quiz[] = [
+  {
+    id: '3',
+    question: '태양계에서 가장 큰 행성은?',
+    answer: '목성',
+    reward: '스티커 5개 🌟',
+    author: '엄마',
+    date: new Date(Date.now() - 86400000),
+  },
+  {
+    id: '4',
+    question: '나비는 무엇을 먹을까?',
+    answer: '꿀',
+    reward: '스티커 3개 ⭐',
+    author: '아빠',
+    date: new Date(Date.now() - 86400000),
+  },
+];
+
+const MOCK_SCHEDULED_QUIZZES: Quiz[] = [
+  {
+    id: '5',
+    question: '구름은 무엇으로 만들어질까?',
+    answer: '물방울',
+    hint: '하늘에 떠있는 물이에요',
+    reward: '스티커 4개 🌟',
+    author: '엄마',
+    date: new Date(Date.now() + 86400000),
+  },
+];
+
+type TabKey = 'today' | 'history' | 'scheduled';
 
 export default function ParentQuizScreen() {
   const [activeTab, setActiveTab] = useState<TabKey>('today');
+  const [selectedQuiz, setSelectedQuiz] = useState<Quiz | null>(null);
+  const [showDetailModal, setShowDetailModal] = useState(false);
 
-  const tabs = [
-    { key: 'today', label: '오늘' },
-    { key: 'past', label: '지난 퀴즈' },
-    { key: 'scheduled', label: '예정' },
-  ];
+  const getChildSolutions = (quizId: string): ChildSolution[] => {
+    // Mock data - in real app, would fetch from database
+    const solutions: Record<string, ChildSolution[]> = {
+      '1': [
+        { childId: '3', childName: '지우', childAvatar: '👧', solved: true, rewardGiven: false },
+        { childId: '4', childName: '민준', childAvatar: '👦', solved: false },
+      ],
+      '2': [
+        { childId: '3', childName: '지우', childAvatar: '👧', solved: false },
+        { childId: '4', childName: '민준', childAvatar: '👦', solved: true, rewardGiven: false },
+      ],
+      '3': [
+        { childId: '3', childName: '지우', childAvatar: '👧', solved: true, rewardGiven: true },
+        { childId: '4', childName: '민준', childAvatar: '👦', solved: true, rewardGiven: true },
+      ],
+      '4': [
+        { childId: '3', childName: '지우', childAvatar: '👧', solved: true, rewardGiven: true },
+        { childId: '4', childName: '민준', childAvatar: '👦', solved: false },
+      ],
+    };
+    return (
+      solutions[quizId] ||
+      CHILDREN.map((child) => ({
+        childId: child.id,
+        childName: child.name,
+        childAvatar: child.avatar,
+        solved: false,
+      }))
+    );
+  };
 
-  const renderTabContent = () => {
-    switch (activeTab) {
-      case 'today':
-        return <TodayTab />;
-      case 'past':
-        return <PastTab />;
-      case 'scheduled':
-        return <ScheduledTab />;
-      default:
-        return null;
-    }
+  const groupQuizzesByDate = (quizzes: Quiz[]) => {
+    const grouped: Record<string, Quiz[]> = {};
+    quizzes.forEach((quiz) => {
+      const dateKey = quiz.date.toLocaleDateString('ko-KR');
+      if (!grouped[dateKey]) {
+        grouped[dateKey] = [];
+      }
+      grouped[dateKey].push(quiz);
+    });
+    return grouped;
+  };
+
+  const pastQuizzesByDate = groupQuizzesByDate(MOCK_PAST_QUIZZES);
+  const scheduledQuizzesByDate = groupQuizzesByDate(MOCK_SCHEDULED_QUIZZES);
+
+  const renderQuizCard = (quiz: Quiz, showActions: boolean = false) => {
+    const solutions = getChildSolutions(quiz.id);
+
+    return (
+      <TouchableOpacity
+        key={quiz.id}
+        style={styles.quizCard}
+        onPress={() => {
+          if (activeTab === 'history') {
+            setSelectedQuiz(quiz);
+            setShowDetailModal(true);
+          }
+        }}
+        activeOpacity={0.7}
+      >
+        <Text style={styles.quizQuestion}>{quiz.question}</Text>
+
+        <View style={styles.quizDetails}>
+          <Text style={styles.quizDetail}>
+            <Text style={styles.quizDetailLabel}>정답:</Text> {quiz.answer}
+          </Text>
+          {quiz.hint && (
+            <Text style={styles.quizDetail}>
+              <Text style={styles.quizDetailLabel}>힌트:</Text> {quiz.hint}
+            </Text>
+          )}
+          {quiz.reward && (
+            <Text style={styles.quizDetail}>
+              <Text style={styles.quizDetailLabel}>보상:</Text> {quiz.reward}
+            </Text>
+          )}
+        </View>
+
+        {/* Author Badge */}
+        <View style={styles.authorBadgeContainer}>
+          <View style={styles.authorBadge}>
+            <Text style={styles.authorEmoji}>{getParentAvatar(quiz.author)}</Text>
+            <Text style={styles.authorName}>{quiz.author}</Text>
+          </View>
+        </View>
+
+        {/* Today Tab: Show Solutions */}
+        {activeTab === 'today' && (
+          <View style={styles.solutionsContainer}>
+            <Text style={styles.solutionsTitle}>풀이 현황</Text>
+            <View style={styles.solutionsGrid}>
+              {solutions.map((solution) => (
+                <View
+                  key={solution.childId}
+                  style={[
+                    styles.solutionCard,
+                    solution.solved ? styles.solutionCardSolved : styles.solutionCardPending,
+                  ]}
+                >
+                  <View style={styles.solutionInfo}>
+                    <Text style={styles.solutionAvatar}>{solution.childAvatar}</Text>
+                    <Text style={styles.solutionName}>{solution.childName}</Text>
+                  </View>
+                  {solution.solved ? (
+                    <CheckCircle size={20} color="#10B981" />
+                  ) : (
+                    <XCircle size={20} color="#9CA3AF" />
+                  )}
+                </View>
+              ))}
+            </View>
+          </View>
+        )}
+
+        {/* Scheduled Tab: Show Actions */}
+        {showActions && (
+          <View style={styles.actionsContainer}>
+            <TouchableOpacity style={styles.actionButton} activeOpacity={0.7}>
+              <Edit size={16} color="#5B9BD5" />
+              <Text style={styles.actionButtonText}>수정</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={[styles.actionButton, styles.deleteButton]} activeOpacity={0.7}>
+              <Trash2 size={16} color="#EF4444" />
+              <Text style={[styles.actionButtonText, styles.deleteButtonText]}>삭제</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+      </TouchableOpacity>
+    );
   };
 
   return (
-    <View style={styles.container}>
-      <LinearGradient
-        colors={[colors.parent.from, colors.parent.to]}
-        style={styles.background}
-      >
-        {/* Header */}
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => console.log('Back')}>
-            <ArrowLeft size={24} color={colors.text.inverse} />
+    <LinearGradient colors={['#EFF6FF', '#E0E7FF']} style={styles.container}>
+      {/* Tabs */}
+      <View style={styles.tabsContainer}>
+        <View style={styles.tabsList}>
+          <TouchableOpacity
+            style={styles.tabTrigger}
+            onPress={() => setActiveTab('today')}
+            activeOpacity={0.8}
+          >
+            {activeTab === 'today' ? (
+              <LinearGradient
+                colors={['#5B9BD5', '#667BC6']}
+                style={styles.tabTriggerActive}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+              >
+                <Text style={styles.tabTextActive}>오늘의 퀴즈</Text>
+              </LinearGradient>
+            ) : (
+              <Text style={styles.tabText}>오늘의 퀴즈</Text>
+            )}
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>퀴즈 관리</Text>
-          <View style={{ width: 24 }} />
+          <TouchableOpacity
+            style={styles.tabTrigger}
+            onPress={() => setActiveTab('history')}
+            activeOpacity={0.8}
+          >
+            {activeTab === 'history' ? (
+              <LinearGradient
+                colors={['#5B9BD5', '#667BC6']}
+                style={styles.tabTriggerActive}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+              >
+                <Text style={styles.tabTextActive}>지난 퀴즈</Text>
+              </LinearGradient>
+            ) : (
+              <Text style={styles.tabText}>지난 퀴즈</Text>
+            )}
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.tabTrigger}
+            onPress={() => setActiveTab('scheduled')}
+            activeOpacity={0.8}
+          >
+            {activeTab === 'scheduled' ? (
+              <LinearGradient
+                colors={['#5B9BD5', '#667BC6']}
+                style={styles.tabTriggerActive}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+              >
+                <Text style={styles.tabTextActive}>예정된 퀴즈</Text>
+              </LinearGradient>
+            ) : (
+              <Text style={styles.tabText}>예정된 퀴즈</Text>
+            )}
+          </TouchableOpacity>
         </View>
+      </View>
 
-        {/* Tabs */}
-        <View style={styles.tabContainer}>
-          <Tab
-            tabs={tabs}
-            activeTab={activeTab}
-            onTabChange={(key) => setActiveTab(key as TabKey)}
-            variant="scrollable"
-            gradient={colors.parent}
-          />
-        </View>
+      {/* Content */}
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        {activeTab === 'today' && MOCK_TODAY_QUIZZES.map((quiz) => renderQuizCard(quiz, false))}
 
-        {/* Content */}
-        <View style={styles.content}>{renderTabContent()}</View>
-      </LinearGradient>
-    </View>
+        {activeTab === 'history' &&
+          Object.entries(pastQuizzesByDate).map(([date, quizzes]) => (
+            <View key={date} style={styles.dateGroup}>
+              <Text style={styles.dateLabel}>{date}</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                <View style={styles.horizontalCards}>
+                  {quizzes.map((quiz) => (
+                    <View key={quiz.id} style={styles.horizontalCard}>
+                      {renderQuizCard(quiz, false)}
+                    </View>
+                  ))}
+                </View>
+              </ScrollView>
+            </View>
+          ))}
+
+        {activeTab === 'scheduled' &&
+          Object.entries(scheduledQuizzesByDate).map(([date, quizzes]) => (
+            <View key={date} style={styles.dateGroup}>
+              <Text style={styles.dateLabel}>{date}</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                <View style={styles.horizontalCards}>
+                  {quizzes.map((quiz) => (
+                    <View key={quiz.id} style={styles.horizontalCard}>
+                      {renderQuizCard(quiz, true)}
+                    </View>
+                  ))}
+                </View>
+              </ScrollView>
+            </View>
+          ))}
+      </ScrollView>
+
+      {/* Floating Add Button */}
+      <TouchableOpacity
+        style={styles.floatingButton}
+        activeOpacity={0.9}
+        onPress={() => console.log('Add quiz')}
+      >
+        <LinearGradient
+          colors={['#5B9BD5', '#667BC6']}
+          style={styles.floatingButtonGradient}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
+        >
+          <Plus size={32} color="#FFFFFF" />
+        </LinearGradient>
+      </TouchableOpacity>
+
+      {/* Detail Modal */}
+      {selectedQuiz && (
+        <Modal
+          visible={showDetailModal}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setShowDetailModal(false)}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContent}>
+              <Text style={styles.modalTitle}>퀴즈 풀이 기록</Text>
+              <Text style={styles.modalQuestion}>{selectedQuiz.question}</Text>
+
+              <View style={styles.modalSolutions}>
+                {getChildSolutions(selectedQuiz.id).map((solution) => (
+                  <View
+                    key={solution.childId}
+                    style={[
+                      styles.modalSolutionCard,
+                      solution.solved
+                        ? styles.modalSolutionCardSolved
+                        : styles.modalSolutionCardPending,
+                    ]}
+                  >
+                    <View style={styles.modalSolutionHeader}>
+                      <View style={styles.modalSolutionInfo}>
+                        <Text style={styles.modalSolutionAvatar}>{solution.childAvatar}</Text>
+                        <Text style={styles.modalSolutionName}>{solution.childName}</Text>
+                      </View>
+                      {solution.solved ? (
+                        <CheckCircle size={20} color="#10B981" />
+                      ) : (
+                        <XCircle size={20} color="#9CA3AF" />
+                      )}
+                    </View>
+                    {solution.solved && selectedQuiz.reward && (
+                      <Button
+                        variant={solution.rewardGiven ? 'outline' : 'primary'}
+                        onPress={() => console.log('Give reward')}
+                        disabled={solution.rewardGiven}
+                        style={styles.rewardButton}
+                      >
+                        <Gift size={16} color={solution.rewardGiven ? '#6B7280' : '#FFFFFF'} />
+                        <Text style={styles.rewardButtonText}>
+                          {solution.rewardGiven ? '보상 지급 완료' : '보상 지급'}
+                        </Text>
+                      </Button>
+                    )}
+                  </View>
+                ))}
+              </View>
+
+              <Button variant="outline" onPress={() => setShowDetailModal(false)}>
+                닫기
+              </Button>
+            </View>
+          </View>
+        </Modal>
+      )}
+    </LinearGradient>
   );
 }
 
@@ -82,29 +439,260 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  background: {
+  tabsContainer: {
+    paddingHorizontal: spacing.md,
+    paddingTop: spacing.md,
+  },
+  tabsList: {
+    flexDirection: 'row',
+    backgroundColor: 'rgba(255, 255, 255, 0.5)',
+    borderRadius: 100,
+    padding: 8,
+    marginBottom: spacing.md,
+    ...shadows.lg,
+  },
+  tabTrigger: {
     flex: 1,
   },
-  header: {
+  tabTriggerActive: {
+    borderRadius: 100,
+    paddingVertical: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...shadows.lg,
+  },
+  tabText: {
+    ...typography.button,
+    color: '#6B7280',
+    textAlign: 'center',
+    paddingVertical: 12,
+  },
+  tabTextActive: {
+    ...typography.button,
+    color: '#FFFFFF',
+  },
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    paddingHorizontal: spacing.md,
+    paddingBottom: spacing.xl * 2,
+  },
+  quizCard: {
+    backgroundColor: '#F9FAFB',
+    borderRadius: 16,
+    padding: spacing.lg,
+    marginBottom: spacing.md,
+    ...shadows.sm,
+  },
+  quizQuestion: {
+    ...typography.h4,
+    color: '#111827',
+    marginBottom: spacing.sm,
+  },
+  quizDetails: {
+    marginBottom: spacing.sm,
+  },
+  quizDetail: {
+    ...typography.body2,
+    color: '#6B7280',
+    marginBottom: 4,
+  },
+  quizDetailLabel: {
+    fontWeight: 'bold',
+  },
+  authorBadgeContainer: {
+    alignItems: 'flex-end',
+    marginBottom: spacing.sm,
+  },
+  authorBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 100,
+    paddingVertical: 4,
+    paddingHorizontal: 10,
+    gap: 6,
+    ...shadows.sm,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  authorEmoji: {
+    fontSize: 18,
+  },
+  authorName: {
+    ...typography.caption,
+    color: '#374151',
+  },
+  solutionsContainer: {
+    borderTopWidth: 1,
+    borderTopColor: '#E5E7EB',
+    paddingTop: spacing.md,
+  },
+  solutionsTitle: {
+    ...typography.body2,
+    color: '#374151',
+    marginBottom: spacing.sm,
+  },
+  solutionsGrid: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+  },
+  solutionCard: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.xl + 40,
-    paddingBottom: spacing.md,
+    padding: spacing.sm,
+    borderRadius: borderRadius.md,
+    borderWidth: 1,
   },
-  headerTitle: {
+  solutionCardSolved: {
+    backgroundColor: '#ECFDF5',
+    borderColor: '#BBF7D0',
+  },
+  solutionCardPending: {
+    backgroundColor: '#F3F4F6',
+    borderColor: '#E5E7EB',
+  },
+  solutionInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+  },
+  solutionAvatar: {
+    fontSize: 24,
+  },
+  solutionName: {
+    ...typography.body2,
+    color: '#111827',
+  },
+  actionsContainer: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+    borderTopWidth: 1,
+    borderTopColor: '#E5E7EB',
+    paddingTop: spacing.md,
+  },
+  actionButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    borderRadius: borderRadius.md,
+    borderWidth: 1,
+    borderColor: '#5B9BD5',
+    backgroundColor: '#FFFFFF',
+    gap: spacing.xs,
+  },
+  actionButtonText: {
+    ...typography.body2,
+    color: '#5B9BD5',
+  },
+  deleteButton: {
+    borderColor: '#EF4444',
+  },
+  deleteButtonText: {
+    color: '#EF4444',
+  },
+  dateGroup: {
+    marginBottom: spacing.xl,
+  },
+  dateLabel: {
+    ...typography.body1,
+    color: '#6B7280',
+    marginBottom: spacing.sm,
+    paddingHorizontal: spacing.xs,
+  },
+  horizontalCards: {
+    flexDirection: 'row',
+    gap: spacing.md,
+  },
+  horizontalCard: {
+    width: 320,
+  },
+  floatingButton: {
+    position: 'absolute',
+    bottom: spacing.xl * 2,
+    right: spacing.lg,
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    ...shadows.xl,
+  },
+  floatingButtonGradient: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: spacing.lg,
+  },
+  modalContent: {
+    width: '100%',
+    maxWidth: 400,
+    backgroundColor: '#FFFFFF',
+    borderRadius: borderRadius.lg,
+    padding: spacing.xl,
+    ...shadows.lg,
+  },
+  modalTitle: {
     ...typography.h3,
-    color: colors.text.inverse,
-  },
-  tabContainer: {
-    paddingHorizontal: spacing.lg,
+    color: '#5B9BD5',
     marginBottom: spacing.md,
   },
-  content: {
-    flex: 1,
-    backgroundColor: colors.background.primary,
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
+  modalQuestion: {
+    ...typography.body1,
+    color: '#111827',
+    marginBottom: spacing.lg,
+  },
+  modalSolutions: {
+    marginBottom: spacing.lg,
+    gap: spacing.sm,
+  },
+  modalSolutionCard: {
+    padding: spacing.md,
+    borderRadius: borderRadius.md,
+    borderWidth: 1,
+  },
+  modalSolutionCardSolved: {
+    backgroundColor: '#ECFDF5',
+    borderColor: '#BBF7D0',
+  },
+  modalSolutionCardPending: {
+    backgroundColor: '#F3F4F6',
+    borderColor: '#E5E7EB',
+  },
+  modalSolutionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: spacing.sm,
+  },
+  modalSolutionInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+  },
+  modalSolutionAvatar: {
+    fontSize: 24,
+  },
+  modalSolutionName: {
+    ...typography.body1,
+    color: '#111827',
+  },
+  rewardButton: {
+    marginTop: spacing.sm,
+  },
+  rewardButtonText: {
+    marginLeft: spacing.xs,
   },
 });

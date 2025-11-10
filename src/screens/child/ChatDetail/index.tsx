@@ -1,17 +1,17 @@
 /**
  * 자녀 모드 Chat Focus 화면
  *
- * 주요 기능:
- * - Focus 모드: 단일 Q&A 상호작용
- * - 이미지 첨부
- * - 음성 재생 토글
- * - 종료 확인 다이얼로그
- *
- * API:
- * - POST /api/conversations/messages (api/conversations.ts)
+ * 웹 디자인 완전 변환:
+ * - 포커스 모드: 단일 Q&A 카드 형식
+ * - 마스코트 애니메이션
+ * - 진행 표시줄
+ * - 핑크-오렌지 그라디언트 (#FF6B9D ~ #FFA06B)
+ * - 전체 대화 목록 버튼
+ * - 이미지 첨부 및 뷰어
+ * - 음성 재생
  */
 
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -23,6 +23,7 @@ import {
   ScrollView,
   Image,
   Modal,
+  Animated,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import {
@@ -32,10 +33,14 @@ import {
   Send,
   ImageIcon,
   X,
+  MessageSquare,
+  List,
 } from 'lucide-react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { Button } from '../../../design/components/Button';
 import { colors, spacing, typography, borderRadius } from '../../../design/tokens';
+
+const mascotImage = require('../../../assets/images/mascot.png');
 
 interface Message {
   id: string;
@@ -47,6 +52,8 @@ interface Message {
 }
 
 export default function ChildChatDetailScreen() {
+  const [mode, setMode] = useState<'focus' | 'list'>('focus');
+  const [messages, setMessages] = useState<Message[]>([]);
   const [currentQuestion, setCurrentQuestion] = useState('');
   const [currentAnswer, setCurrentAnswer] = useState<Message | null>(null);
   const [currentImage, setCurrentImage] = useState<string | null>(null);
@@ -56,6 +63,27 @@ export default function ChildChatDetailScreen() {
   const [showImageViewer, setShowImageViewer] = useState(false);
   const [viewerImage, setViewerImage] = useState<string | null>(null);
   const [isPlayingAudio, setIsPlayingAudio] = useState(false);
+
+  // 마스코트 bounce 애니메이션
+  const bounceAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    // Bounce 애니메이션
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(bounceAnim, {
+          toValue: -20,
+          duration: 1000,
+          useNativeDriver: true,
+        }),
+        Animated.timing(bounceAnim, {
+          toValue: 0,
+          duration: 1000,
+          useNativeDriver: true,
+        }),
+      ])
+    ).start();
+  }, []);
 
   const handleImageAttach = async () => {
     const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -79,6 +107,14 @@ export default function ChildChatDetailScreen() {
   const handleSend = () => {
     if (!inputText.trim()) return;
 
+    const questionMessage: Message = {
+      id: Date.now().toString(),
+      sender: 'child',
+      text: inputText,
+      imageUrl: currentImage || undefined,
+      timestamp: new Date(),
+    };
+
     setCurrentQuestion(inputText);
     setCurrentAnswer(null);
     setIsLoading(true);
@@ -86,7 +122,7 @@ export default function ChildChatDetailScreen() {
     // Simulate AI response
     setTimeout(() => {
       const answerMessage: Message = {
-        id: Date.now().toString(),
+        id: (Date.now() + 1).toString(),
         sender: 'ai',
         text: `그거 정말 재밌는 질문이야! 🤔 "${inputText}"에 대해 알려줄게. 이건 아주 흥미로운 주제야!`,
         hasAudio: true,
@@ -94,6 +130,7 @@ export default function ChildChatDetailScreen() {
       };
 
       setCurrentAnswer(answerMessage);
+      setMessages((prev) => [...prev, questionMessage, answerMessage]);
       setIsLoading(false);
     }, 1500);
 
@@ -101,91 +138,173 @@ export default function ChildChatDetailScreen() {
     setCurrentImage(null);
   };
 
+  const handleExit = () => {
+    if (currentQuestion || currentAnswer) {
+      setShowExitDialog(true);
+    }
+  };
+
+  const confirmExit = () => {
+    setCurrentQuestion('');
+    setCurrentAnswer(null);
+    setCurrentImage(null);
+    setShowExitDialog(false);
+    // TODO: Navigate back
+  };
+
   const toggleAudioPlayback = () => {
     setIsPlayingAudio(!isPlayingAudio);
   };
 
+  // 진행률 계산
+  const getProgress = () => {
+    if (isLoading && !currentAnswer) return 0.5;
+    if (currentAnswer) return 1;
+    if (currentQuestion) return 0.5;
+    return 0;
+  };
+
   return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-    >
+    <View style={styles.container}>
       <LinearGradient
-        colors={[colors.child.bg1, colors.child.bg2]}
+        colors={['#FFE5E0', '#FFF0ED']}
         style={styles.background}
       >
-        {/* Header */}
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => setShowExitDialog(true)}>
-            <ArrowLeft size={24} color={colors.text.primary} />
+        {/* Top Bar */}
+        <View style={styles.topBar}>
+          <TouchableOpacity onPress={handleExit} style={styles.exitButton}>
+            <ArrowLeft size={24} color="#4a4a4a" />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>AI와 대화하기</Text>
-          <View style={{ width: 24 }} />
+
+          <TouchableOpacity
+            onPress={() => setMode('list')}
+            style={styles.chatListButton}
+          >
+            <LinearGradient
+              colors={['#FF6B9D', '#FFA06B']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={styles.chatListGradient}
+            >
+              <MessageSquare size={16} color="#fff" />
+              <Text style={styles.chatListText}>전체 대화</Text>
+            </LinearGradient>
+          </TouchableOpacity>
         </View>
 
-        {/* Content */}
-        <ScrollView style={styles.content} contentContainerStyle={styles.contentInner}>
+        {/* Main Content */}
+        <View style={styles.mainContent}>
           {/* Mascot */}
-          <View style={styles.mascotContainer}>
-            <View style={styles.mascotPlaceholder} />
-          </View>
+          <Animated.View
+            style={[
+              styles.mascotContainer,
+              { transform: [{ translateY: bounceAnim }] },
+            ]}
+          >
+            <Image source={mascotImage} style={styles.mascot} />
+          </Animated.View>
 
-          {/* Question */}
-          {currentQuestion && (
-            <View style={styles.questionContainer}>
-              {currentImage && (
-                <TouchableOpacity onPress={() => {
-                  setViewerImage(currentImage);
-                  setShowImageViewer(true);
-                }}>
-                  <Image source={{ uri: currentImage }} style={styles.questionImage} />
-                </TouchableOpacity>
-              )}
-              <View style={styles.questionBubble}>
-                <Text style={styles.questionText}>{currentQuestion}</Text>
-              </View>
+          {!currentQuestion && !currentAnswer && !isLoading ? (
+            /* Empty State */
+            <View style={styles.emptyState}>
+              <Text style={styles.emptyTitle}>궁금한 걸 물어봐!</Text>
+              <Text style={styles.emptySubtitle}>무엇이든 질문해도 좋아요</Text>
             </View>
-          )}
-
-          {/* Loading */}
-          {isLoading && (
-            <View style={styles.loadingContainer}>
-              <Text style={styles.loadingText}>생각하는 중...</Text>
-            </View>
-          )}
-
-          {/* Answer */}
-          {currentAnswer && (
-            <View style={styles.answerContainer}>
-              <View style={styles.answerBubble}>
-                <Text style={styles.answerText}>{currentAnswer.text}</Text>
+          ) : (
+            /* Q&A Card */
+            <ScrollView style={styles.qaCard} contentContainerStyle={styles.qaCardContent}>
+              {/* Progress Bar */}
+              <View style={styles.progressContainer}>
+                <View style={styles.progressBackground}>
+                  <View
+                    style={[styles.progressBar, { width: `${getProgress() * 100}%` }]}
+                  />
+                </View>
               </View>
-              {currentAnswer.hasAudio && (
-                <TouchableOpacity
-                  style={styles.audioButton}
-                  onPress={toggleAudioPlayback}
-                >
-                  {isPlayingAudio ? (
-                    <VolumeX size={24} color={colors.child.from} />
-                  ) : (
-                    <Volume2 size={24} color={colors.child.from} />
+
+              {/* Question Section */}
+              {currentQuestion && (
+                <View style={styles.section}>
+                  <View style={styles.badge}>
+                    <Text style={styles.badgeText}>질문</Text>
+                  </View>
+
+                  {currentImage && (
+                    <TouchableOpacity
+                      onPress={() => {
+                        setViewerImage(currentImage);
+                        setShowImageViewer(true);
+                      }}
+                    >
+                      <Image source={{ uri: currentImage }} style={styles.questionImage} />
+                    </TouchableOpacity>
                   )}
-                </TouchableOpacity>
-              )}
-            </View>
-          )}
-        </ScrollView>
 
-        {/* Input */}
+                  <Text style={styles.questionText}>{currentQuestion}</Text>
+                </View>
+              )}
+
+              {/* Divider */}
+              {(currentAnswer || (isLoading && currentQuestion)) && (
+                <View style={styles.divider} />
+              )}
+
+              {/* Answer Section */}
+              {(currentAnswer || (isLoading && currentQuestion)) && (
+                <View style={styles.section}>
+                  <View style={[styles.badge, styles.badgeAnswer]}>
+                    <Text style={styles.badgeText}>답변</Text>
+                  </View>
+
+                  {isLoading && !currentAnswer ? (
+                    <View style={styles.loadingContainer}>
+                      <View style={styles.loadingBar} />
+                      <View style={[styles.loadingBar, { width: '90%' }]} />
+                      <View style={[styles.loadingBar, { width: '70%' }]} />
+                    </View>
+                  ) : currentAnswer ? (
+                    <>
+                      <Text style={styles.answerText}>{currentAnswer.text}</Text>
+                      {currentAnswer.hasAudio && (
+                        <TouchableOpacity
+                          style={styles.audioButton}
+                          onPress={toggleAudioPlayback}
+                        >
+                          <LinearGradient
+                            colors={['#FF6B9D', '#FFA06B']}
+                            start={{ x: 0, y: 0 }}
+                            end={{ x: 1, y: 0 }}
+                            style={styles.audioGradient}
+                          >
+                            {isPlayingAudio ? (
+                              <VolumeX size={20} color="#fff" />
+                            ) : (
+                              <Volume2 size={20} color="#fff" />
+                            )}
+                            <Text style={styles.audioText}>
+                              {isPlayingAudio ? '멈추기' : '소리로 듣기'}
+                            </Text>
+                          </LinearGradient>
+                        </TouchableOpacity>
+                      )}
+                    </>
+                  ) : null}
+                </View>
+              )}
+            </ScrollView>
+          )}
+        </View>
+
+        {/* Input Bar */}
         <View style={styles.inputContainer}>
           {currentImage && (
-            <View style={styles.attachedImageContainer}>
+            <View style={styles.attachedImagePreview}>
               <Image source={{ uri: currentImage }} style={styles.attachedImage} />
               <TouchableOpacity
                 style={styles.removeImageButton}
                 onPress={() => setCurrentImage(null)}
               >
-                <X size={16} color={colors.text.inverse} />
+                <X size={12} color="#fff" />
               </TouchableOpacity>
             </View>
           )}
@@ -195,13 +314,13 @@ export default function ChildChatDetailScreen() {
               style={styles.attachButton}
               onPress={handleImageAttach}
             >
-              <ImageIcon size={24} color={colors.child.from} />
+              <ImageIcon size={20} color="#666" />
             </TouchableOpacity>
 
             <TextInput
               style={styles.input}
-              placeholder="질문을 입력하세요..."
-              placeholderTextColor={colors.text.tertiary}
+              placeholder="궁금한 걸 물어봐..."
+              placeholderTextColor="#999"
               value={inputText}
               onChangeText={setInputText}
               multiline
@@ -210,12 +329,19 @@ export default function ChildChatDetailScreen() {
             <TouchableOpacity
               style={[
                 styles.sendButton,
-                !inputText.trim() && styles.sendButtonDisabled,
+                inputText.trim() && styles.sendButtonActive,
               ]}
               onPress={handleSend}
               disabled={!inputText.trim()}
             >
-              <Send size={24} color={colors.text.inverse} />
+              <LinearGradient
+                colors={inputText.trim() ? ['#FF6B9D', '#FFA06B'] : ['#ccc', '#ccc']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={styles.sendGradient}
+              >
+                <Send size={20} color="#fff" />
+              </LinearGradient>
             </TouchableOpacity>
           </View>
         </View>
@@ -230,22 +356,26 @@ export default function ChildChatDetailScreen() {
           <View style={styles.modalOverlay}>
             <View style={styles.modalContent}>
               <Text style={styles.modalTitle}>대화를 종료할까요?</Text>
-              <Text style={styles.modalSubtitle}>
-                현재 대화 내용이 저장됩니다.
-              </Text>
+              <Text style={styles.modalSubtitle}>현재 대화 내용이 사라집니다.</Text>
 
               <View style={styles.modalButtons}>
-                <Button
-                  variant="outline"
+                <TouchableOpacity
+                  style={styles.modalButtonOutline}
                   onPress={() => setShowExitDialog(false)}
-                  style={{ flex: 1 }}
                 >
-                  취소
-                </Button>
-                <View style={{ width: spacing.sm }} />
-                <Button variant="primary" onPress={() => {}} style={{ flex: 1 }}>
-                  종료
-                </Button>
+                  <Text style={styles.modalButtonOutlineText}>취소</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity style={styles.modalButtonPrimary} onPress={confirmExit}>
+                  <LinearGradient
+                    colors={['#FF6B9D', '#FFA06B']}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                    style={styles.modalButtonGradient}
+                  >
+                    <Text style={styles.modalButtonPrimaryText}>종료</Text>
+                  </LinearGradient>
+                </TouchableOpacity>
               </View>
             </View>
           </View>
@@ -263,7 +393,7 @@ export default function ChildChatDetailScreen() {
               style={styles.imageViewerClose}
               onPress={() => setShowImageViewer(false)}
             >
-              <X size={32} color={colors.text.inverse} />
+              <X size={32} color="#fff" />
             </TouchableOpacity>
             {viewerImage && (
               <Image source={{ uri: viewerImage }} style={styles.imageViewerImage} />
@@ -271,7 +401,7 @@ export default function ChildChatDetailScreen() {
           </View>
         </Modal>
       </LinearGradient>
-    </KeyboardAvoidingView>
+    </View>
   );
 }
 
@@ -282,95 +412,184 @@ const styles = StyleSheet.create({
   background: {
     flex: 1,
   },
-  header: {
+  topBar: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.xl + 40,
-    paddingBottom: spacing.md,
+    paddingHorizontal: 16,
+    paddingTop: 40,
+    paddingBottom: 16,
   },
-  headerTitle: {
-    ...typography.h3,
+  exitButton: {
+    padding: 8,
+    borderRadius: 999,
   },
-  content: {
+  chatListButton: {
+    borderRadius: 999,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+  chatListGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 999,
+    gap: 8,
+  },
+  chatListText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  mainContent: {
     flex: 1,
-  },
-  contentInner: {
-    padding: spacing.lg,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 24,
+    paddingBottom: 180,
   },
   mascotContainer: {
+    marginBottom: 32,
+  },
+  mascot: {
+    width: 192,
+    height: 192,
+  },
+  emptyState: {
     alignItems: 'center',
-    marginBottom: spacing.xl,
+    maxWidth: 400,
   },
-  mascotPlaceholder: {
-    width: 120,
-    height: 120,
-    backgroundColor: colors.child.from,
-    borderRadius: borderRadius.full,
-    opacity: 0.3,
+  emptyTitle: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 16,
   },
-  questionContainer: {
-    alignItems: 'flex-end',
-    marginBottom: spacing.lg,
+  emptySubtitle: {
+    fontSize: 18,
+    color: '#666',
+  },
+  qaCard: {
+    width: '100%',
+    maxWidth: 400,
+    backgroundColor: '#fff',
+    borderRadius: 24,
+    maxHeight: '50%',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.3,
+    shadowRadius: 20,
+    elevation: 10,
+  },
+  qaCardContent: {
+    padding: 32,
+  },
+  progressContainer: {
+    marginBottom: 16,
+  },
+  progressBackground: {
+    height: 4,
+    backgroundColor: '#e5e7eb',
+    borderRadius: 999,
+    overflow: 'hidden',
+  },
+  progressBar: {
+    height: '100%',
+    backgroundColor: '#FFA06B',
+    borderRadius: 999,
+  },
+  section: {
+    marginBottom: 24,
+  },
+  badge: {
+    alignSelf: 'center',
+    backgroundColor: 'rgba(255, 107, 157, 0.2)',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 999,
+    marginBottom: 16,
+  },
+  badgeAnswer: {
+    backgroundColor: 'rgba(255, 160, 107, 0.2)',
+  },
+  badgeText: {
+    fontSize: 12,
+    color: '#4a4a4a',
   },
   questionImage: {
-    width: 200,
-    height: 200,
-    borderRadius: borderRadius.lg,
-    marginBottom: spacing.sm,
-  },
-  questionBubble: {
-    backgroundColor: colors.child.from,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
-    borderRadius: borderRadius.lg,
-    maxWidth: '80%',
+    width: '100%',
+    aspectRatio: 16 / 9,
+    borderRadius: 16,
+    marginBottom: 16,
   },
   questionText: {
-    ...typography.body1,
-    color: colors.text.inverse,
+    fontSize: 20,
+    textAlign: 'center',
+    color: '#333',
+    lineHeight: 32,
+  },
+  divider: {
+    height: 2,
+    backgroundColor: '#e5e7eb',
+    marginVertical: 24,
+    borderStyle: 'dashed',
   },
   loadingContainer: {
-    alignItems: 'center',
-    marginVertical: spacing.xl,
+    gap: 12,
   },
-  loadingText: {
-    ...typography.body1,
-    color: colors.text.secondary,
-  },
-  answerContainer: {
-    alignItems: 'flex-start',
-  },
-  answerBubble: {
-    backgroundColor: colors.background.primary,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
-    borderRadius: borderRadius.lg,
-    maxWidth: '80%',
+  loadingBar: {
+    height: 20,
+    backgroundColor: '#e5e7eb',
+    borderRadius: 8,
+    width: '100%',
   },
   answerText: {
-    ...typography.body1,
-    color: colors.text.primary,
+    fontSize: 18,
+    textAlign: 'center',
+    color: '#555',
+    lineHeight: 28,
   },
   audioButton: {
-    marginTop: spacing.sm,
-    padding: spacing.sm,
+    alignSelf: 'center',
+    marginTop: 16,
+    borderRadius: 999,
+  },
+  audioGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 999,
+    gap: 8,
+  },
+  audioText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
   },
   inputContainer: {
-    backgroundColor: colors.background.primary,
-    borderTopWidth: 1,
-    borderTopColor: colors.background.tertiary,
-    padding: spacing.md,
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: '#fff',
+    paddingHorizontal: 16,
+    paddingBottom: 16,
+    paddingTop: 12,
   },
-  attachedImageContainer: {
+  attachedImagePreview: {
     position: 'relative',
-    marginBottom: spacing.sm,
+    marginBottom: 12,
+    alignSelf: 'flex-start',
   },
   attachedImage: {
     width: 80,
     height: 80,
-    borderRadius: borderRadius.md,
+    borderRadius: 12,
   },
   removeImageButton: {
     position: 'absolute',
@@ -378,64 +597,118 @@ const styles = StyleSheet.create({
     right: -8,
     width: 24,
     height: 24,
-    borderRadius: borderRadius.full,
-    backgroundColor: colors.status.error,
+    borderRadius: 12,
+    backgroundColor: '#ef4444',
     alignItems: 'center',
     justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 3,
   },
   inputRow: {
     flexDirection: 'row',
     alignItems: 'flex-end',
-    gap: spacing.sm,
+    gap: 8,
+    maxWidth: 672,
+    marginHorizontal: 'auto',
   },
   attachButton: {
-    padding: spacing.sm,
+    padding: 12,
+    borderRadius: 999,
+    backgroundColor: '#f3f4f6',
   },
   input: {
     flex: 1,
-    ...typography.body1,
-    backgroundColor: colors.background.secondary,
-    borderRadius: borderRadius.lg,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    maxHeight: 100,
+    borderRadius: 999,
+    borderWidth: 2,
+    borderColor: '#e5e7eb',
+    paddingHorizontal: 24,
+    paddingVertical: 20,
+    fontSize: 16,
+    maxHeight: 120,
   },
   sendButton: {
     width: 48,
     height: 48,
-    borderRadius: borderRadius.full,
-    backgroundColor: colors.child.from,
+    borderRadius: 999,
+    overflow: 'hidden',
+  },
+  sendButtonActive: {
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+  sendGradient: {
+    width: '100%',
+    height: '100%',
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  sendButtonDisabled: {
-    opacity: 0.5,
   },
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
     justifyContent: 'center',
     alignItems: 'center',
-    padding: spacing.lg,
+    paddingHorizontal: 24,
   },
   modalContent: {
     width: '100%',
     maxWidth: 400,
-    backgroundColor: colors.background.primary,
-    borderRadius: borderRadius.lg,
-    padding: spacing.xl,
+    backgroundColor: '#fff',
+    borderRadius: 24,
+    padding: 24,
   },
   modalTitle: {
-    ...typography.h3,
-    marginBottom: spacing.xs,
+    fontSize: 24,
+    fontWeight: 'bold',
+    textAlign: 'center',
+    color: '#333',
+    marginBottom: 8,
   },
   modalSubtitle: {
-    ...typography.body2,
-    color: colors.text.secondary,
-    marginBottom: spacing.lg,
+    fontSize: 16,
+    textAlign: 'center',
+    color: '#666',
+    marginBottom: 24,
   },
   modalButtons: {
     flexDirection: 'row',
+    gap: 12,
+  },
+  modalButtonOutline: {
+    flex: 1,
+    height: 48,
+    borderRadius: 999,
+    borderWidth: 2,
+    borderColor: '#e5e7eb',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalButtonOutlineText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#666',
+  },
+  modalButtonPrimary: {
+    flex: 1,
+    height: 48,
+    borderRadius: 999,
+    overflow: 'hidden',
+  },
+  modalButtonGradient: {
+    width: '100%',
+    height: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalButtonPrimaryText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#fff',
   },
   imageViewerOverlay: {
     flex: 1,
@@ -445,9 +718,12 @@ const styles = StyleSheet.create({
   },
   imageViewerClose: {
     position: 'absolute',
-    top: spacing.xl + 40,
-    right: spacing.lg,
+    top: 60,
+    right: 24,
     zIndex: 1,
+    padding: 8,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    borderRadius: 999,
   },
   imageViewerImage: {
     width: '90%',

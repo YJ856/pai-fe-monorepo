@@ -12,8 +12,10 @@ import { AuthNavigator } from './AuthNavigator';
 import { ProfileNavigator } from './ProfileNavigator';
 import { ChildNavigator } from './ChildNavigator';
 import { ParentNavigator } from './ParentNavigator';
+import DevNavigatorScreen from '../../screens/DevNavigator';
 
 export type RootStackParamList = {
+  DevNavigator: undefined;
   Auth: undefined;
   Profile: undefined;
   ChildApp: undefined;
@@ -27,10 +29,25 @@ export function RootNavigator() {
   const isAuthenticated = false;
   const hasSelectedProfile = false;
 
+  // 개발 모드: 모든 페이지 접근 가능한 네비게이터 표시
+  const isDevelopmentMode = true;
+
   return (
     <NavigationContainer>
       <Stack.Navigator screenOptions={{ headerShown: false }}>
-        {!isAuthenticated ? (
+        {isDevelopmentMode ? (
+          <>
+            <Stack.Screen
+              name="DevNavigator"
+              component={DevNavigatorScreen}
+              options={{ title: '개발용 네비게이터' }}
+            />
+            <Stack.Screen name="Auth" component={AuthNavigator} />
+            <Stack.Screen name="Profile" component={ProfileNavigator} />
+            <Stack.Screen name="ChildApp" component={ChildNavigator} />
+            <Stack.Screen name="ParentApp" component={ParentNavigator} />
+          </>
+        ) : !isAuthenticated ? (
           <Stack.Screen name="Auth" component={AuthNavigator} />
         ) : !hasSelectedProfile ? (
           <Stack.Screen name="Profile" component={ProfileNavigator} />
