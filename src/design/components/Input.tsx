@@ -67,28 +67,30 @@ const styles = StyleSheet.create({
   },
 
   label: {
-    ...typography.body2,
-    color: colors.text.secondary,
+    ...typography.label,
+    color: colors.foreground,
     marginBottom: spacing.xs,
   },
 
   input: {
     ...typography.body1,
+    height: 36, // h-9 = 36px
     borderWidth: 1,
-    borderColor: colors.background.tertiary,
+    borderColor: colors.border,
     borderRadius: borderRadius.md,
-    padding: spacing.md,
-    backgroundColor: colors.background.primary,
-    color: colors.text.primary,
+    paddingHorizontal: spacing.md - 4, // px-3 = 12px
+    paddingVertical: spacing.xs, // py-1 = 4px
+    backgroundColor: colors.inputBackground, // #F3F3F5
+    color: colors.foreground,
   },
 
   inputError: {
-    borderColor: colors.status.error,
+    borderColor: colors.destructive,
   },
 
   error: {
     ...typography.caption,
-    color: colors.status.error,
+    color: colors.destructive,
     marginTop: spacing.xs,
   },
 });

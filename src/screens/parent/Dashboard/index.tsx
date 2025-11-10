@@ -1,16 +1,21 @@
 /**
- * 부모 대시보드 화면
+ * ParentDashboard 화면 (Design_v2 완벽 구현)
  *
  * 주요 기능:
- * - 3가지 탭 (관심사/활동/추천)
- * - 관심사: 자녀 관심사 워드클라우드 및 트렌드
- * - 활동: 날짜별 대화 기록, 갤러리 뷰
- * - 추천: 자녀 관심사 기반 체험 추천
+ * - 3가지 탭: 관심사 분석 / 활동 캘린더 / 추천 콘텐츠
+ * - 관심사: 버블 차트 (80-140px)
+ * - 활동: 캘린더 + 자녀별 대화 갤러리
+ * - 추천: 카테고리별 체험 추천
  *
  * 디자인:
- * - 블루 그라데이션 배경 (from-blue-50 to-indigo-50)
- * - 둥근 탭 버튼, 활성 탭 블루 그라데이션
- * - 카드 스타일 콘텐츠
+ * - Parent gradient (Blue 계열: #5B9BD5 → #667BC6)
+ * - rounded-full 탭 버튼 (12개 높이)
+ * - 배경: from-blue-50 to-indigo-50
+ *
+ * API:
+ * - GET /api/interests (관심사 데이터)
+ * - GET /api/conversations (대화 기록)
+ * - GET /api/recommendations (추천 콘텐츠)
  */
 
 import React, { useState } from 'react';
@@ -18,12 +23,17 @@ import {
   View,
   Text,
   StyleSheet,
-  TouchableOpacity,
   ScrollView,
-} from 'react';
+  TouchableOpacity,
+} from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { TrendingUp, MapPin, Book, Video } from 'lucide-react-native';
-import { spacing, typography, borderRadius, shadows } from '../../../design/tokens';
+import { Card } from '../../../design/components/Card';
+import { Badge } from '../../../design/components/Badge';
+import { Avatar } from '../../../design/components/Avatar';
+import { colors, spacing, typography, borderRadius, shadows } from '../../../design/tokens';
+
+type TabValue = 'interests' | 'calendar' | 'recommendations';
+type RecommendationType = '관광지' | '문화시설' | '축제공연행사';
 
 interface Interest {
   topic: string;
@@ -33,13 +43,20 @@ interface Interest {
 
 interface Recommendation {
   id: string;
-  type: '관광지' | '문화시설' | '축제공연행사';
+  type: RecommendationType;
   title: string;
   description: string;
   relatedInterest: string;
   icon: string;
 }
 
+interface Child {
+  id: string;
+  name: string;
+  avatar: string;
+}
+
+// Mock data
 const MOCK_INTERESTS: Interest[] = [
   { topic: '공룡', count: 15, icon: '🦕' },
   { topic: '우주', count: 12, icon: '🚀' },
@@ -49,6 +66,8 @@ const MOCK_INTERESTS: Interest[] = [
   { topic: '곤충', count: 6, icon: '🦋' },
   { topic: '날씨', count: 5, icon: '🌤️' },
   { topic: '음악', count: 4, icon: '🎵' },
+  { topic: '미술', count: 3, icon: '🎨' },
+  { topic: '스포츠', count: 2, icon: '⚽' },
 ];
 
 const MOCK_RECOMMENDATIONS: Recommendation[] = [
@@ -100,198 +119,273 @@ const MOCK_RECOMMENDATIONS: Recommendation[] = [
     relatedInterest: '미술',
     icon: '🎨',
   },
+  {
+    id: '7',
+    type: '문화시설',
+    title: '어린이 도서관',
+    description: '다양한 책과 함께 독서의 즐거움을 느껴보세요',
+    relatedInterest: '동물',
+    icon: '📚',
+  },
+  {
+    id: '8',
+    type: '관광지',
+    title: '식물원',
+    description: '다양한 식물들을 관찰하고 자연을 배워요',
+    relatedInterest: '식물',
+    icon: '🌱',
+  },
 ];
 
-type TabKey = 'interests' | 'activity' | 'recommendations';
+const CHILDREN: Child[] = [
+  { id: '3', name: '지우', avatar: '👧' },
+  { id: '4', name: '민준', avatar: '👦' },
+];
 
-export default function ParentDashboardScreen() {
-  const [activeTab, setActiveTab] = useState<TabKey>('interests');
-  const [selectedRecoType, setSelectedRecoType] = useState<'관광지' | '문화시설' | '축제공연행사'>(
-    '관광지'
-  );
+export default function ParentDashboard() {
+  const [activeTab, setActiveTab] = useState<TabValue>('interests');
+  const [selectedRecommendationType, setSelectedRecommendationType] = useState<RecommendationType>('관광지');
 
   const maxCount = Math.max(...MOCK_INTERESTS.map((i) => i.count));
 
-  const getTypeIcon = (type: string) => {
+  // Filter recommendations by type
+  const filteredRecommendations = MOCK_RECOMMENDATIONS.filter(
+    (rec) => rec.type === selectedRecommendationType
+  );
+
+  const getTypeIcon = (type: RecommendationType): string => {
     switch (type) {
       case '관광지':
-        return <MapPin size={20} color="#5B9BD5" />;
+        return '🗺️';
       case '문화시설':
-        return <Book size={20} color="#5B9BD5" />;
+        return '📚';
       case '축제공연행사':
-        return <Video size={20} color="#5B9BD5" />;
-      default:
-        return null;
+        return '🎬';
     }
   };
 
-  const filteredRecommendations = MOCK_RECOMMENDATIONS.filter(
-    (rec) => rec.type === selectedRecoType
-  );
-
   return (
-    <LinearGradient colors={['#EFF6FF', '#E0E7FF']} style={styles.container}>
-      {/* Tabs */}
-      <View style={styles.tabsContainer}>
-        <View style={styles.tabsList}>
-          <TouchableOpacity
-            style={styles.tabTrigger}
-            onPress={() => setActiveTab('interests')}
-            activeOpacity={0.8}
-          >
-            {activeTab === 'interests' ? (
-              <LinearGradient
-                colors={['#5B9BD5', '#667BC6']}
-                style={styles.tabTriggerActive}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-              >
-                <Text style={styles.tabTextActive}>관심사</Text>
-              </LinearGradient>
-            ) : (
-              <Text style={styles.tabText}>관심사</Text>
-            )}
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.tabTrigger}
-            onPress={() => setActiveTab('activity')}
-            activeOpacity={0.8}
-          >
-            {activeTab === 'activity' ? (
-              <LinearGradient
-                colors={['#5B9BD5', '#667BC6']}
-                style={styles.tabTriggerActive}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-              >
-                <Text style={styles.tabTextActive}>활동</Text>
-              </LinearGradient>
-            ) : (
-              <Text style={styles.tabText}>활동</Text>
-            )}
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.tabTrigger}
-            onPress={() => setActiveTab('recommendations')}
-            activeOpacity={0.8}
-          >
-            {activeTab === 'recommendations' ? (
-              <LinearGradient
-                colors={['#5B9BD5', '#667BC6']}
-                style={styles.tabTriggerActive}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-              >
-                <Text style={styles.tabTextActive}>추천</Text>
-              </LinearGradient>
-            ) : (
-              <Text style={styles.tabText}>추천</Text>
-            )}
-          </TouchableOpacity>
-        </View>
-      </View>
-
-      {/* Content */}
+    <LinearGradient
+      colors={['#eff6ff', '#e0e7ff']} // from-blue-50 to-indigo-50
+      style={styles.container}
+    >
       <ScrollView
         style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
       >
+        {/* Tab Navigation */}
+        <View style={styles.tabContainer}>
+          <LinearGradient
+            colors={['rgba(255, 255, 255, 0.5)', 'rgba(255, 255, 255, 0.3)']}
+            style={styles.tabList}
+          >
+            <TouchableOpacity
+              style={styles.tabTrigger}
+              onPress={() => setActiveTab('interests')}
+              activeOpacity={0.8}
+            >
+              {activeTab === 'interests' ? (
+                <LinearGradient
+                  colors={['#5B9BD5', '#667BC6']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={styles.tabActive}
+                >
+                  <Text style={styles.tabTextActive}>관심사 분석</Text>
+                </LinearGradient>
+              ) : (
+                <Text style={styles.tabTextInactive}>관심사 분석</Text>
+              )}
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.tabTrigger}
+              onPress={() => setActiveTab('calendar')}
+              activeOpacity={0.8}
+            >
+              {activeTab === 'calendar' ? (
+                <LinearGradient
+                  colors={['#5B9BD5', '#667BC6']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={styles.tabActive}
+                >
+                  <Text style={styles.tabTextActive}>활동 캘린더</Text>
+                </LinearGradient>
+              ) : (
+                <Text style={styles.tabTextInactive}>활동 캘린더</Text>
+              )}
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.tabTrigger}
+              onPress={() => setActiveTab('recommendations')}
+              activeOpacity={0.8}
+            >
+              {activeTab === 'recommendations' ? (
+                <LinearGradient
+                  colors={['#5B9BD5', '#667BC6']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={styles.tabActive}
+                >
+                  <Text style={styles.tabTextActive}>추천 콘텐츠</Text>
+                </LinearGradient>
+              ) : (
+                <Text style={styles.tabTextInactive}>추천 콘텐츠</Text>
+              )}
+            </TouchableOpacity>
+          </LinearGradient>
+        </View>
+
         {/* Interests Tab */}
         {activeTab === 'interests' && (
-          <>
-            {/* Trend Header */}
-            <View style={styles.sectionHeader}>
-              <TrendingUp size={24} color="#5B9BD5" />
-              <Text style={styles.sectionTitle}>관심사 분석</Text>
-            </View>
+          <Card style={styles.contentCard}>
+            <View style={styles.cardPadding}>
+              {/* Header */}
+              <View style={styles.sectionHeader}>
+                <Text style={styles.trendIcon}>📈</Text>
+                <Text style={styles.sectionTitle}>관심사 TOP 10</Text>
+              </View>
 
-            {/* Interest Cards */}
-            <View style={styles.interestsGrid}>
-              {MOCK_INTERESTS.map((interest) => {
-                const percentage = (interest.count / maxCount) * 100;
-                return (
-                  <View key={interest.topic} style={styles.interestCard}>
-                    <Text style={styles.interestIcon}>{interest.icon}</Text>
-                    <Text style={styles.interestTopic}>{interest.topic}</Text>
-                    <View style={styles.interestBar}>
-                      <View
+              {/* Bubble Grid */}
+              <View style={styles.bubbleGrid}>
+                {MOCK_INTERESTS.map((interest) => {
+                  const percentage = (interest.count / maxCount) * 100;
+                  const size = 80 + (percentage / 100) * 60; // 80-140px
+
+                  return (
+                    <View key={interest.topic} style={styles.bubbleItem}>
+                      <LinearGradient
+                        colors={['#5B9BD5', '#4A8BC2']}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 1 }}
                         style={[
-                          styles.interestBarFill,
-                          { width: `${percentage}%` },
+                          styles.bubble,
+                          { width: size, height: size },
                         ]}
-                      />
+                      >
+                        <Text style={styles.bubbleIcon}>{interest.icon}</Text>
+                        <Text style={styles.bubbleCount}>{interest.count}</Text>
+                      </LinearGradient>
+                      <Text style={styles.bubbleTopic}>{interest.topic}</Text>
                     </View>
-                    <Text style={styles.interestCount}>{interest.count}회</Text>
-                  </View>
-                );
-              })}
+                  );
+                })}
+              </View>
             </View>
-          </>
+          </Card>
         )}
 
-        {/* Activity Tab */}
-        {activeTab === 'activity' && (
-          <View style={styles.emptyState}>
-            <Text style={styles.emptyIcon}>📅</Text>
-            <Text style={styles.emptyText}>달력을 통해 날짜별 대화 기록을 확인하세요</Text>
-            <Text style={styles.emptySubtext}>활동 탭 기능은 추후 구현됩니다</Text>
-          </View>
+        {/* Calendar Tab */}
+        {activeTab === 'calendar' && (
+          <Card style={styles.contentCard}>
+            <View style={styles.cardPadding}>
+              {/* Header */}
+              <View style={styles.sectionHeader}>
+                <Text style={styles.calendarIcon}>📅</Text>
+                <Text style={styles.sectionTitle}>활동 캘린더</Text>
+              </View>
+
+              {/* Calendar Placeholder */}
+              <View style={styles.calendarPlaceholder}>
+                <Text style={styles.placeholderIcon}>📅</Text>
+                <Text style={styles.placeholderText}>
+                  캘린더 컴포넌트
+                </Text>
+                <Text style={styles.placeholderSubtext}>
+                  파란색 표시된 날짜는 아이가 질문한 날입니다
+                </Text>
+              </View>
+
+              {/* Children Grid */}
+              <Text style={styles.dateTitle}>오늘의 대화 기록</Text>
+              <View style={styles.childrenGrid}>
+                {CHILDREN.map((child) => (
+                  <TouchableOpacity
+                    key={child.id}
+                    style={styles.childCard}
+                    activeOpacity={0.8}
+                  >
+                    <LinearGradient
+                      colors={['#5B9BD5', '#4A8BC2']}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 1 }}
+                      style={styles.childCardGradient}
+                    >
+                      <Text style={styles.childAvatar}>{child.avatar}</Text>
+                      <Text style={styles.childName}>{child.name}</Text>
+                    </LinearGradient>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+          </Card>
         )}
 
         {/* Recommendations Tab */}
         {activeTab === 'recommendations' && (
-          <>
-            {/* Type Filter */}
-            <View style={styles.typeFilter}>
-              {(['관광지', '문화시설', '축제공연행사'] as const).map((type) => (
-                <TouchableOpacity
-                  key={type}
-                  style={[
-                    styles.typeButton,
-                    selectedRecoType === type && styles.typeButtonActive,
-                  ]}
-                  onPress={() => setSelectedRecoType(type)}
-                  activeOpacity={0.7}
-                >
-                  {getTypeIcon(type)}
-                  <Text
-                    style={[
-                      styles.typeButtonText,
-                      selectedRecoType === type && styles.typeButtonTextActive,
-                    ]}
-                  >
-                    {type}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
+          <Card style={styles.contentCard}>
+            <View style={styles.cardPadding}>
+              {/* Header */}
+              <Text style={styles.sectionTitle}>추천 콘텐츠</Text>
 
-            {/* Recommendation Cards */}
-            <View style={styles.recommendationsGrid}>
-              {filteredRecommendations.map((reco) => (
-                <TouchableOpacity
-                  key={reco.id}
-                  style={styles.recoCard}
-                  activeOpacity={0.7}
-                >
-                  <View style={styles.recoHeader}>
-                    <Text style={styles.recoIcon}>{reco.icon}</Text>
-                    <View style={styles.recoTypeBadge}>
-                      <Text style={styles.recoTypeBadgeText}>{reco.type}</Text>
+              {/* Category Tabs */}
+              <View style={styles.categoryTabs}>
+                {(['관광지', '문화시설', '축제공연행사'] as RecommendationType[]).map((type) => (
+                  <TouchableOpacity
+                    key={type}
+                    style={styles.categoryTab}
+                    onPress={() => setSelectedRecommendationType(type)}
+                    activeOpacity={0.8}
+                  >
+                    {selectedRecommendationType === type ? (
+                      <LinearGradient
+                        colors={['#5B9BD5', '#667BC6']}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 0 }}
+                        style={styles.categoryTabActive}
+                      >
+                        <Text style={styles.categoryTabTextActive}>{type}</Text>
+                      </LinearGradient>
+                    ) : (
+                      <Text style={styles.categoryTabTextInactive}>{type}</Text>
+                    )}
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              {/* Recommendation List */}
+              <View style={styles.recommendationList}>
+                {filteredRecommendations.map((rec) => (
+                  <TouchableOpacity
+                    key={rec.id}
+                    style={styles.recommendationCard}
+                    activeOpacity={0.8}
+                  >
+                    <View style={styles.recommendationContent}>
+                      <Text style={styles.recommendationIcon}>{rec.icon}</Text>
+                      <View style={styles.recommendationInfo}>
+                        <View style={styles.recommendationHeader}>
+                          <Text style={styles.typeIcon}>{getTypeIcon(rec.type)}</Text>
+                          <Text style={styles.recommendationTitle}>{rec.title}</Text>
+                        </View>
+                        <Text style={styles.recommendationDescription}>
+                          {rec.description}
+                        </Text>
+                        <View style={styles.relatedBadge}>
+                          <Text style={styles.relatedText}>
+                            관련 관심사: {rec.relatedInterest}
+                          </Text>
+                        </View>
+                      </View>
                     </View>
-                  </View>
-                  <Text style={styles.recoTitle}>{reco.title}</Text>
-                  <Text style={styles.recoDescription}>{reco.description}</Text>
-                  <View style={styles.recoRelated}>
-                    <Text style={styles.recoRelatedText}>
-                      {reco.relatedInterest} 관련
-                    </Text>
-                  </View>
-                </TouchableOpacity>
-              ))}
+                  </TouchableOpacity>
+                ))}
+              </View>
             </View>
-          </>
+          </Card>
         )}
       </ScrollView>
     </LinearGradient>
@@ -302,183 +396,288 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  tabsContainer: {
-    paddingHorizontal: spacing.md,
-    paddingTop: spacing.md,
-  },
-  tabsList: {
-    flexDirection: 'row',
-    backgroundColor: 'rgba(255, 255, 255, 0.5)',
-    borderRadius: 100,
-    padding: 8,
-    marginBottom: spacing.md,
-    ...shadows.lg,
-  },
-  tabTrigger: {
-    flex: 1,
-  },
-  tabTriggerActive: {
-    borderRadius: 100,
-    paddingVertical: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    ...shadows.lg,
-  },
-  tabText: {
-    ...typography.button,
-    color: '#6B7280',
-    textAlign: 'center',
-    paddingVertical: 12,
-  },
-  tabTextActive: {
-    ...typography.button,
-    color: '#FFFFFF',
-  },
+
   scrollView: {
     flex: 1,
   },
-  scrollContent: {
-    paddingHorizontal: spacing.md,
-    paddingBottom: spacing.xl,
+
+  content: {
+    padding: spacing.lg,
+    paddingTop: spacing.xl,
+    paddingBottom: spacing.xl * 2,
   },
+
+  // Tab Navigation
+  tabContainer: {
+    marginBottom: spacing.xl,
+  },
+
+  tabList: {
+    flexDirection: 'row',
+    padding: spacing.sm,
+    borderRadius: borderRadius.full,
+    ...shadows.lg,
+  },
+
+  tabTrigger: {
+    flex: 1,
+  },
+
+  tabActive: {
+    height: 48,
+    borderRadius: borderRadius.full,
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...shadows.lg,
+  },
+
+  tabTextActive: {
+    ...typography.button,
+    fontSize: 15,
+    color: colors.primaryForeground,
+  },
+
+  tabTextInactive: {
+    ...typography.button,
+    fontSize: 15,
+    color: '#6b7280', // text-gray-600
+    textAlign: 'center',
+    paddingVertical: spacing.md,
+  },
+
+  // Content Card
+  contentCard: {
+    backgroundColor: '#f9fafb', // bg-gray-50
+    borderRadius: borderRadius['2xl'],
+    ...shadows.sm,
+  },
+
+  cardPadding: {
+    padding: spacing.xl,
+  },
+
+  // Section Header
   sectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.sm,
-    marginBottom: spacing.md,
+    marginBottom: spacing.xl,
   },
+
+  trendIcon: {
+    fontSize: 24,
+    marginRight: spacing.sm,
+  },
+
+  calendarIcon: {
+    fontSize: 24,
+    marginRight: spacing.sm,
+  },
+
   sectionTitle: {
-    ...typography.h3,
-    color: '#111827',
+    ...typography.h2,
+    fontSize: 24,
+    color: '#111827', // text-gray-900
   },
-  interestsGrid: {
-    gap: spacing.md,
-  },
-  interestCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: spacing.md,
-    ...shadows.sm,
-  },
-  interestIcon: {
-    fontSize: 32,
-    marginBottom: spacing.xs,
-  },
-  interestTopic: {
-    ...typography.h4,
-    color: '#111827',
-    marginBottom: spacing.xs,
-  },
-  interestBar: {
-    height: 8,
-    backgroundColor: '#E5E7EB',
-    borderRadius: 4,
-    marginBottom: spacing.xs,
-    overflow: 'hidden',
-  },
-  interestBarFill: {
-    height: '100%',
-    backgroundColor: '#5B9BD5',
-    borderRadius: 4,
-  },
-  interestCount: {
-    ...typography.body2,
-    color: '#6B7280',
-  },
-  emptyState: {
-    alignItems: 'center',
-    paddingVertical: spacing.xl * 2,
-  },
-  emptyIcon: {
-    fontSize: 64,
-    marginBottom: spacing.md,
-  },
-  emptyText: {
-    ...typography.body1,
-    color: '#6B7280',
-    textAlign: 'center',
-    marginBottom: spacing.xs,
-  },
-  emptySubtext: {
-    ...typography.body2,
-    color: '#9CA3AF',
-    textAlign: 'center',
-  },
-  typeFilter: {
+
+  // Interests - Bubble Grid
+  bubbleGrid: {
     flexDirection: 'row',
-    gap: spacing.sm,
+    flexWrap: 'wrap',
+    justifyContent: 'space-around',
+    gap: spacing.lg,
+  },
+
+  bubbleItem: {
+    width: '18%',
+    alignItems: 'center',
     marginBottom: spacing.lg,
   },
-  typeButton: {
-    flex: 1,
-    flexDirection: 'row',
+
+  bubble: {
+    borderRadius: borderRadius.full,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.xs,
-    borderRadius: borderRadius.md,
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    gap: spacing.xs,
-  },
-  typeButtonActive: {
-    backgroundColor: '#EFF6FF',
-    borderColor: '#5B9BD5',
-  },
-  typeButtonText: {
-    ...typography.body2,
-    color: '#6B7280',
-  },
-  typeButtonTextActive: {
-    color: '#5B9BD5',
-    fontWeight: 'bold',
-  },
-  recommendationsGrid: {
-    gap: spacing.md,
-  },
-  recoCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: spacing.md,
-    ...shadows.sm,
-  },
-  recoHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    ...shadows.lg,
     marginBottom: spacing.sm,
   },
-  recoIcon: {
-    fontSize: 32,
+
+  bubbleIcon: {
+    fontSize: 30,
+    marginBottom: 4,
   },
-  recoTypeBadge: {
-    backgroundColor: '#EFF6FF',
-    paddingVertical: 4,
-    paddingHorizontal: spacing.sm,
-    borderRadius: borderRadius.sm,
+
+  bubbleCount: {
+    fontSize: 14,
+    color: colors.primaryForeground,
+    fontWeight: '500',
   },
-  recoTypeBadgeText: {
-    ...typography.caption,
-    color: '#5B9BD5',
+
+  bubbleTopic: {
+    fontSize: 12,
+    color: '#1f2937', // text-gray-800
+    textAlign: 'center',
   },
-  recoTitle: {
-    ...typography.h4,
-    color: '#111827',
+
+  // Calendar
+  calendarPlaceholder: {
+    backgroundColor: colors.card,
+    borderRadius: borderRadius.xl,
+    padding: spacing.xl,
+    alignItems: 'center',
+    marginBottom: spacing.xl,
+  },
+
+  placeholderIcon: {
+    fontSize: 48,
+    marginBottom: spacing.md,
+  },
+
+  placeholderText: {
+    ...typography.h3,
+    fontSize: 18,
+    color: colors.foreground,
     marginBottom: spacing.xs,
   },
-  recoDescription: {
+
+  placeholderSubtext: {
     ...typography.body2,
-    color: '#6B7280',
-    lineHeight: 20,
-    marginBottom: spacing.sm,
+    fontSize: 14,
+    color: colors.mutedForeground,
+    textAlign: 'center',
   },
-  recoRelated: {
+
+  dateTitle: {
+    ...typography.h3,
+    fontSize: 18,
+    color: '#111827',
+    marginBottom: spacing.lg,
+  },
+
+  childrenGrid: {
+    flexDirection: 'row',
+    gap: spacing.lg,
+  },
+
+  childCard: {
+    flex: 1,
+    aspectRatio: 1,
+    borderRadius: borderRadius['2xl'],
+    overflow: 'hidden',
+    ...shadows.md,
+  },
+
+  childCardGradient: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  childAvatar: {
+    fontSize: 60,
+    marginBottom: spacing.lg,
+  },
+
+  childName: {
+    ...typography.h2,
+    fontSize: 24,
+    color: colors.primaryForeground,
+  },
+
+  // Recommendations
+  categoryTabs: {
+    flexDirection: 'row',
+    padding: spacing.sm,
+    backgroundColor: 'rgba(255, 255, 255, 0.5)',
+    borderRadius: borderRadius.full,
+    marginTop: spacing.lg,
+    marginBottom: spacing.xl,
+    ...shadows.lg,
+  },
+
+  categoryTab: {
+    flex: 1,
+  },
+
+  categoryTabActive: {
+    height: 40,
+    borderRadius: borderRadius.full,
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...shadows.lg,
+  },
+
+  categoryTabTextActive: {
+    ...typography.button,
+    fontSize: 13,
+    color: colors.primaryForeground,
+  },
+
+  categoryTabTextInactive: {
+    ...typography.button,
+    fontSize: 13,
+    color: '#6b7280',
+    textAlign: 'center',
+    paddingVertical: spacing.sm,
+  },
+
+  recommendationList: {
+    gap: spacing.md,
+  },
+
+  recommendationCard: {
+    backgroundColor: colors.card,
+    borderRadius: borderRadius.xl,
+    padding: spacing.lg,
+    ...shadows.sm,
+  },
+
+  recommendationContent: {
+    flexDirection: 'row',
+    gap: spacing.lg,
+  },
+
+  recommendationIcon: {
+    fontSize: 40,
+  },
+
+  recommendationInfo: {
+    flex: 1,
+  },
+
+  recommendationHeader: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: spacing.sm,
+    marginBottom: spacing.xs,
   },
-  recoRelatedText: {
-    ...typography.caption,
-    color: '#9CA3AF',
+
+  typeIcon: {
+    fontSize: 20,
+  },
+
+  recommendationTitle: {
+    ...typography.h4,
+    fontSize: 18,
+    color: '#111827',
+  },
+
+  recommendationDescription: {
+    ...typography.body1,
+    fontSize: 14,
+    color: '#6b7280',
+    marginBottom: spacing.sm,
+  },
+
+  relatedBadge: {
+    alignSelf: 'flex-start',
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+    backgroundColor: 'rgba(91, 155, 213, 0.1)',
+    borderRadius: borderRadius.full,
+  },
+
+  relatedText: {
+    fontSize: 12,
+    color: '#5B9BD5',
   },
 });

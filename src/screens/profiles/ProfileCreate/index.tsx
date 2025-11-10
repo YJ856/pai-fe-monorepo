@@ -1,11 +1,17 @@
 /**
- * 프로필 생성 화면
+ * ProfileCreation 화면 (Design_v2 기반)
  *
  * 주요 기능:
  * - 프로필 타입 선택 (부모/자녀)
  * - 이름, 생년월일, 성별 입력
  * - 아바타 이모지 선택
  * - 부모 프로필: PIN 설정
+ *
+ * 디자인:
+ * - background.png 배경
+ * - rounded-3xl 카드 (24px)
+ * - shadow-2xl
+ * - Tab 컴포넌트로 프로필 타입 선택
  *
  * API:
  * - POST /api/profiles (api/profiles.ts)
@@ -22,24 +28,18 @@ import {
   Image,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { ArrowLeft } from 'lucide-react-native';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { useNavigation } from '@react-navigation/native';
+import { Card, CardContent } from '../../../design/components/Card';
+import { Tab } from '../../../design/components/Tab';
 import { Input } from '../../../design/components/Input';
+import { Label } from '../../../design/components/Label';
 import { Button } from '../../../design/components/Button';
+import { Avatar } from '../../../design/components/Avatar';
 import { colors, spacing, typography, borderRadius, shadows } from '../../../design/tokens';
 import { Profile, ProfileType, Gender } from '../../../shared/types';
-import { ProfileStackParamList } from '../../../app/navigation/ProfileNavigator';
 
 const AVATAR_OPTIONS = ['👶', '👧', '👦', '👨', '👩', '🧑', '👴', '👵'];
 
-type ProfileCreateNavigationProp = NativeStackNavigationProp<
-  ProfileStackParamList,
-  'ProfileCreate'
->;
-
 export default function ProfileCreateScreen() {
-  const navigation = useNavigation<ProfileCreateNavigationProp>();
   const [profileType, setProfileType] = useState<ProfileType>('child');
   const [name, setName] = useState('');
   const [birthdate, setBirthdate] = useState('');
@@ -47,10 +47,36 @@ export default function ProfileCreateScreen() {
   const [avatar, setAvatar] = useState('👶');
   const [pin, setPin] = useState('');
   const [confirmPin, setConfirmPin] = useState('');
+  const [errors, setErrors] = useState<Record<string, string>>({});
+
+  const validateForm = (): boolean => {
+    const newErrors: Record<string, string> = {};
+
+    if (!name.trim()) {
+      newErrors.name = '이름을 입력해주세요';
+    }
+
+    if (!birthdate.trim()) {
+      newErrors.birthdate = '생년월일을 입력해주세요';
+    }
+
+    if (profileType === 'parent') {
+      if (!pin || pin.length !== 4) {
+        newErrors.pin = '4자리 PIN을 입력해주세요';
+      }
+      if (pin !== confirmPin) {
+        newErrors.confirmPin = 'PIN이 일치하지 않습니다';
+      }
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
 
   const handleSubmit = () => {
-    // TODO: Validation
-    // TODO: API call
+    if (!validateForm()) {
+      return;
+    }
 
     const newProfile: Profile = {
       id: Date.now().toString(),
@@ -63,12 +89,13 @@ export default function ProfileCreateScreen() {
     };
 
     console.log('Created profile:', newProfile);
-    // TODO: Save profile and navigate
-    navigation.goBack();
+    // TODO: Save profile and navigate back
+    handleCancel();
   };
 
   const handleCancel = () => {
-    navigation.goBack();
+    // TODO: Navigate back
+    console.log('Cancel profile creation');
   };
 
   return (
@@ -77,186 +104,183 @@ export default function ProfileCreateScreen() {
       style={styles.container}
       resizeMode="cover"
     >
-      <ScrollView
-        style={styles.scrollView}
-        contentContainerStyle={styles.content}
-        showsVerticalScrollIndicator={false}
+      <LinearGradient
+        colors={['rgba(0, 0, 0, 0.3)', 'rgba(0, 0, 0, 0.5)']}
+        style={styles.overlay}
       >
-        {/* Header */}
-        <View style={styles.header}>
-          <TouchableOpacity onPress={handleCancel} style={styles.backButton}>
-            <ArrowLeft size={24} color={colors.text.inverse} />
-          </TouchableOpacity>
-          <View style={styles.headerTitleContainer}>
+        <ScrollView
+          style={styles.scrollView}
+          contentContainerStyle={styles.content}
+          showsVerticalScrollIndicator={false}
+        >
+          {/* Header */}
+          <View style={styles.header}>
             <Image
               source={require('../../../assets/images/mascot.png')}
               style={styles.mascot}
+              resizeMode="contain"
             />
             <Text style={styles.title}>프로필 생성</Text>
+            <Text style={styles.subtitle}>새로운 가족 구성원을 추가해주세요</Text>
           </View>
-        </View>
 
-          {/* Card */}
-          <View style={styles.card}>
-            {/* Profile Type */}
-            <View style={styles.section}>
-              <Text style={styles.label}>프로필 유형</Text>
-              <View style={styles.typeButtons}>
-                <TouchableOpacity
-                  style={[
-                    styles.typeButton,
-                    profileType === 'parent' && styles.typeButtonActive,
+          {/* Form Card */}
+          <Card style={styles.card}>
+            <CardContent style={styles.cardContent}>
+              {/* Profile Type Selection */}
+              <View style={styles.section}>
+                <Label>프로필 유형</Label>
+                <Tab
+                  tabs={[
+                    { key: 'child', label: '자녀' },
+                    { key: 'parent', label: '부모' },
                   ]}
-                  onPress={() => setProfileType('parent')}
-                  activeOpacity={0.7}
-                >
-                  <Text
-                    style={[
-                      styles.typeButtonText,
-                      profileType === 'parent' && styles.typeButtonTextActive,
-                    ]}
-                  >
-                    부모
-                  </Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[
-                    styles.typeButton,
-                    profileType === 'child' && styles.typeButtonActive,
-                  ]}
-                  onPress={() => setProfileType('child')}
-                  activeOpacity={0.7}
-                >
-                  <Text
-                    style={[
-                      styles.typeButtonText,
-                      profileType === 'child' && styles.typeButtonTextActive,
-                    ]}
-                  >
-                    자녀
-                  </Text>
-                </TouchableOpacity>
+                  activeTab={profileType}
+                  onTabChange={(key) => setProfileType(key as ProfileType)}
+                  variant="full"
+                  gradient={profileType === 'child' ? colors.child : colors.parent}
+                />
               </View>
-            </View>
 
-            {/* Name */}
-            <Input
-              label="이름"
-              placeholder="이름 입력"
-              value={name}
-              onChangeText={setName}
-            />
+              {/* Name */}
+              <View style={styles.section}>
+                <Label>이름</Label>
+                <Input
+                  placeholder="이름 입력"
+                  value={name}
+                  onChangeText={(text) => {
+                    setName(text);
+                    setErrors({ ...errors, name: '' });
+                  }}
+                />
+                {errors.name && (
+                  <Text style={styles.errorText}>{errors.name}</Text>
+                )}
+              </View>
 
-            {/* Birthdate */}
-            <Input
-              label="생년월일"
-              placeholder="YYYY-MM-DD"
-              value={birthdate}
-              onChangeText={setBirthdate}
-            />
+              {/* Birthdate */}
+              <View style={styles.section}>
+                <Label>생년월일</Label>
+                <Input
+                  placeholder="YYYY-MM-DD"
+                  value={birthdate}
+                  onChangeText={(text) => {
+                    setBirthdate(text);
+                    setErrors({ ...errors, birthdate: '' });
+                  }}
+                  keyboardType="numbers-and-punctuation"
+                />
+                {errors.birthdate && (
+                  <Text style={styles.errorText}>{errors.birthdate}</Text>
+                )}
+              </View>
 
-            {/* Gender */}
-            <View style={styles.section}>
-              <Text style={styles.label}>성별</Text>
-              <View style={styles.genderButtons}>
-                <TouchableOpacity
-                  style={[
-                    styles.genderButton,
-                    gender === 'male' && styles.genderButtonActive,
-                  ]}
-                  onPress={() => setGender('male')}
-                  activeOpacity={0.7}
-                >
-                  <Text
-                    style={[
-                      styles.genderButtonText,
-                      gender === 'male' && styles.genderButtonTextActive,
-                    ]}
+              {/* Gender */}
+              <View style={styles.section}>
+                <Label>성별</Label>
+                <View style={styles.genderButtons}>
+                  <Button
+                    variant={gender === 'male' ? 'default' : 'outline'}
+                    onPress={() => setGender('male')}
+                    style={styles.genderButton}
                   >
                     남성
-                  </Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[
-                    styles.genderButton,
-                    gender === 'female' && styles.genderButtonActive,
-                  ]}
-                  onPress={() => setGender('female')}
-                  activeOpacity={0.7}
-                >
-                  <Text
-                    style={[
-                      styles.genderButtonText,
-                      gender === 'female' && styles.genderButtonTextActive,
-                    ]}
+                  </Button>
+                  <Button
+                    variant={gender === 'female' ? 'default' : 'outline'}
+                    onPress={() => setGender('female')}
+                    style={styles.genderButton}
                   >
                     여성
-                  </Text>
-                </TouchableOpacity>
+                  </Button>
+                </View>
               </View>
-            </View>
 
-            {/* Avatar */}
-            <View style={styles.section}>
-              <Text style={styles.label}>아바타</Text>
-              <View style={styles.avatarGrid}>
-                {AVATAR_OPTIONS.map((emoji) => (
-                  <TouchableOpacity
-                    key={emoji}
-                    style={[
-                      styles.avatarButton,
-                      avatar === emoji && styles.avatarButtonActive,
-                    ]}
-                    onPress={() => setAvatar(emoji)}
-                    activeOpacity={0.7}
-                  >
-                    <Text style={styles.avatarEmoji}>{emoji}</Text>
-                  </TouchableOpacity>
-                ))}
+              {/* Avatar Selection */}
+              <View style={styles.section}>
+                <Label>아바타 선택</Label>
+                <View style={styles.avatarGrid}>
+                  {AVATAR_OPTIONS.map((emoji) => (
+                    <TouchableOpacity
+                      key={emoji}
+                      style={[
+                        styles.avatarButton,
+                        avatar === emoji && styles.avatarButtonActive,
+                      ]}
+                      onPress={() => setAvatar(emoji)}
+                      activeOpacity={0.8}
+                    >
+                      <Text style={styles.avatarEmoji}>{emoji}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
               </View>
-            </View>
 
-            {/* PIN (for parent only) */}
-            {profileType === 'parent' && (
-              <>
-                <Input
-                  label="PIN 설정"
-                  placeholder="4자리 PIN"
-                  value={pin}
-                  onChangeText={setPin}
-                  keyboardType="number-pad"
-                  secureTextEntry
-                  maxLength={4}
-                />
-                <Input
-                  label="PIN 확인"
-                  placeholder="PIN 재입력"
-                  value={confirmPin}
-                  onChangeText={setConfirmPin}
-                  keyboardType="number-pad"
-                  secureTextEntry
-                  maxLength={4}
-                />
-              </>
-            )}
+              {/* PIN (for parent only) */}
+              {profileType === 'parent' && (
+                <>
+                  <View style={styles.section}>
+                    <Label>PIN 설정</Label>
+                    <Input
+                      placeholder="4자리 PIN"
+                      value={pin}
+                      onChangeText={(text) => {
+                        setPin(text);
+                        setErrors({ ...errors, pin: '' });
+                      }}
+                      keyboardType="number-pad"
+                      secureTextEntry
+                      maxLength={4}
+                      style={styles.pinInput}
+                    />
+                    {errors.pin && (
+                      <Text style={styles.errorText}>{errors.pin}</Text>
+                    )}
+                  </View>
 
-            {/* Buttons */}
-            <View style={styles.buttons}>
-              <Button variant="outline" onPress={handleCancel} style={{ flex: 1 }}>
-                취소
-              </Button>
-              <View style={{ width: spacing.sm }} />
-              <Button
-                variant="gradient"
-                gradient={colors.auth}
-                onPress={handleSubmit}
-                style={{ flex: 1 }}
-              >
-                생성
-              </Button>
-            </View>
-          </View>
+                  <View style={styles.section}>
+                    <Label>PIN 확인</Label>
+                    <Input
+                      placeholder="PIN 재입력"
+                      value={confirmPin}
+                      onChangeText={(text) => {
+                        setConfirmPin(text);
+                        setErrors({ ...errors, confirmPin: '' });
+                      }}
+                      keyboardType="number-pad"
+                      secureTextEntry
+                      maxLength={4}
+                      style={styles.pinInput}
+                    />
+                    {errors.confirmPin && (
+                      <Text style={styles.errorText}>{errors.confirmPin}</Text>
+                    )}
+                  </View>
+                </>
+              )}
+
+              {/* Action Buttons */}
+              <View style={styles.buttons}>
+                <Button
+                  variant="outline"
+                  onPress={handleCancel}
+                  style={styles.actionButton}
+                >
+                  취소
+                </Button>
+                <Button
+                  variant="gradient"
+                  gradient={profileType === 'child' ? colors.child : colors.parent}
+                  onPress={handleSubmit}
+                  style={styles.actionButton}
+                >
+                  생성
+                </Button>
+              </View>
+            </CardContent>
+          </Card>
         </ScrollView>
+      </LinearGradient>
     </ImageBackground>
   );
 }
@@ -265,122 +289,114 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
+
+  overlay: {
+    flex: 1,
+  },
+
   scrollView: {
     flex: 1,
   },
+
   content: {
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.xl,
+    padding: spacing.lg,
+    paddingBottom: spacing.xl * 2,
   },
+
   header: {
-    flexDirection: 'row',
     alignItems: 'center',
     marginBottom: spacing.xl,
+    marginTop: spacing.lg,
   },
-  backButton: {
-    marginRight: spacing.md,
-  },
-  headerTitleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-  },
+
   mascot: {
-    width: 48,
-    height: 48,
-    marginRight: spacing.sm,
-  },
-  title: {
-    ...typography.h2,
-    color: colors.text.inverse,
-  },
-  card: {
-    backgroundColor: colors.background.primary,
-    borderRadius: 24,
-    padding: spacing.lg,
-    ...shadows.lg,
-  },
-  section: {
+    width: 100,
+    height: 100,
     marginBottom: spacing.md,
   },
-  label: {
-    ...typography.body2,
-    color: colors.text.secondary,
+
+  title: {
+    ...typography.h1,
+    fontSize: 32,
+    fontWeight: '600',
+    color: colors.primaryForeground,
     marginBottom: spacing.xs,
   },
-  typeButtons: {
-    flexDirection: 'row',
-    gap: spacing.sm,
+
+  subtitle: {
+    ...typography.body1,
+    fontSize: 16,
+    color: 'rgba(255, 255, 255, 0.9)',
   },
-  typeButton: {
-    flex: 1,
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.lg,
-    borderRadius: borderRadius.md,
-    borderWidth: 1,
-    borderColor: colors.background.tertiary,
-    alignItems: 'center',
-    backgroundColor: colors.background.secondary,
+
+  card: {
+    borderRadius: borderRadius['3xl'], // 24px
+    ...shadows['2xl'],
   },
-  typeButtonActive: {
-    backgroundColor: colors.primary[500],
-    borderColor: colors.primary[500],
+
+  cardContent: {
+    padding: spacing.xl,
   },
-  typeButtonText: {
-    ...typography.button,
-    color: colors.text.secondary,
+
+  section: {
+    marginBottom: spacing.lg,
   },
-  typeButtonTextActive: {
-    color: colors.text.inverse,
-  },
+
   genderButtons: {
     flexDirection: 'row',
     gap: spacing.sm,
   },
+
   genderButton: {
     flex: 1,
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.lg,
-    borderRadius: borderRadius.md,
-    borderWidth: 1,
-    borderColor: colors.background.tertiary,
-    alignItems: 'center',
-    backgroundColor: colors.background.secondary,
   },
-  genderButtonActive: {
-    backgroundColor: colors.primary[500],
-    borderColor: colors.primary[500],
-  },
-  genderButtonText: {
-    ...typography.button,
-    color: colors.text.secondary,
-  },
-  genderButtonTextActive: {
-    color: colors.text.inverse,
-  },
+
   avatarGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: spacing.sm,
   },
+
   avatarButton: {
-    width: 60,
-    height: 60,
-    borderRadius: borderRadius.md,
-    backgroundColor: colors.background.secondary,
+    width: 70,
+    height: 70,
+    borderRadius: borderRadius.xl,
+    backgroundColor: colors.muted,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 2,
+    borderWidth: 3,
     borderColor: 'transparent',
   },
+
   avatarButtonActive: {
-    borderColor: colors.primary[500],
+    borderColor: colors.primary,
+    backgroundColor: colors.accent,
   },
+
   avatarEmoji: {
-    fontSize: 32,
+    fontSize: 36,
   },
+
+  pinInput: {
+    textAlign: 'center',
+    fontSize: 18,
+    letterSpacing: 8,
+  },
+
+  errorText: {
+    ...typography.body2,
+    fontSize: 12,
+    color: colors.destructive,
+    marginTop: spacing.xs - 2,
+  },
+
   buttons: {
     flexDirection: 'row',
-    marginTop: spacing.lg,
+    gap: spacing.sm,
+    marginTop: spacing.md,
+  },
+
+  actionButton: {
+    flex: 1,
   },
 });

@@ -20,10 +20,10 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, ImageBackground, TouchableOpacity, Image, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { ScreenContainer } from '../../../design/layouts/ScreenContainer';
 import { Input } from '../../../design/components/Input';
 import { Button } from '../../../design/components/Button';
 import { Tab } from '../../../design/components/Tab';
+import { Label } from '../../../design/components/Label';
 import { colors, spacing, typography, borderRadius, shadows } from '../../../design/tokens';
 // import { useMutation } from '@tanstack/react-query';
 // import { login, signup } from '../../../api/auth';
@@ -112,28 +112,35 @@ export default function LoginScreen() {
               onTabChange={setActiveTab}
               variant="full"
               gradient={colors.auth}
+              sparkle
               style={styles.tabs}
             />
 
             {/* Login Form */}
             {activeTab === 'login' && (
               <View style={styles.form}>
-                <Input
-                  label="이메일"
-                  placeholder="이메일 입력"
-                  value={loginEmail}
-                  onChangeText={setLoginEmail}
-                  keyboardType="email-address"
-                  autoCapitalize="none"
-                />
+                <View>
+                  <Label>이메일</Label>
+                  <Input
+                    placeholder="이메일 입력"
+                    value={loginEmail}
+                    onChangeText={setLoginEmail}
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                    style={styles.input}
+                  />
+                </View>
 
-                <Input
-                  label="비밀번호"
-                  placeholder="비밀번호 입력"
-                  value={loginPassword}
-                  onChangeText={setLoginPassword}
-                  secureTextEntry
-                />
+                <View>
+                  <Label>비밀번호</Label>
+                  <Input
+                    placeholder="비밀번호 입력"
+                    value={loginPassword}
+                    onChangeText={setLoginPassword}
+                    secureTextEntry
+                    style={styles.input}
+                  />
+                </View>
 
                 <TouchableOpacity>
                   <Text style={styles.forgotPassword}>비밀번호 찾기</Text>
@@ -142,7 +149,9 @@ export default function LoginScreen() {
                 <Button
                   variant="gradient"
                   gradient={colors.auth}
+                  sparkle
                   onPress={handleLogin}
+                  style={styles.submitButton}
                   // loading={loginMutation.isPending}
                 >
                   로그인
@@ -153,34 +162,45 @@ export default function LoginScreen() {
             {/* Signup Form */}
             {activeTab === 'signup' && (
               <View style={styles.form}>
-                <Input
-                  label="이메일"
-                  placeholder="이메일 입력"
-                  value={signupEmail}
-                  onChangeText={setSignupEmail}
-                  keyboardType="email-address"
-                  autoCapitalize="none"
-                />
+                <View>
+                  <Label>이메일</Label>
+                  <Input
+                    placeholder="이메일 입력"
+                    value={signupEmail}
+                    onChangeText={setSignupEmail}
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                    style={styles.input}
+                  />
+                </View>
 
-                <Input
-                  label="비밀번호"
-                  placeholder="비밀번호 입력"
-                  value={signupPassword}
-                  onChangeText={setSignupPassword}
-                  secureTextEntry
-                />
+                <View>
+                  <Label>비밀번호</Label>
+                  <Input
+                    placeholder="비밀번호 입력"
+                    value={signupPassword}
+                    onChangeText={setSignupPassword}
+                    secureTextEntry
+                    style={styles.input}
+                  />
+                </View>
 
-                <Input
-                  label="주소"
-                  placeholder="주소 입력"
-                  value={signupAddress}
-                  onChangeText={setSignupAddress}
-                />
+                <View>
+                  <Label>주소</Label>
+                  <Input
+                    placeholder="주소 입력"
+                    value={signupAddress}
+                    onChangeText={setSignupAddress}
+                    style={styles.input}
+                  />
+                </View>
 
                 <Button
                   variant="gradient"
                   gradient={colors.auth}
+                  sparkle
                   onPress={handleSignup}
+                  style={styles.submitButton}
                   // loading={signupMutation.isPending}
                 >
                   회원가입
@@ -238,20 +258,30 @@ const styles = StyleSheet.create({
     color: 'rgba(255, 255, 255, 0.9)',
   },
   card: {
-    backgroundColor: colors.background.primary,
-    borderRadius: 24,
+    backgroundColor: colors.card,
+    borderRadius: borderRadius['3xl'], // rounded-3xl = 24px
     padding: spacing.lg,
-    ...shadows.lg,
+    ...shadows['2xl'], // shadow-2xl
   },
   tabs: {
     marginBottom: spacing.lg,
+    backgroundColor: colors.muted, // TabsList 배경 (회색)
   },
   form: {
     gap: spacing.md,
   },
+  input: {
+    marginTop: spacing.xs,
+    marginBottom: 0,
+  },
   forgotPassword: {
     ...typography.body2,
+    fontSize: 14,
     color: colors.auth.from,
     textAlign: 'left',
+  },
+  submitButton: {
+    width: '100%',
+    marginTop: spacing.xs,
   },
 });

@@ -38,7 +38,7 @@ import {
   ViewStyle,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { colors, spacing, typography, borderRadius } from '../tokens';
+import { colors, spacing, typography, borderRadius, sparkleEffect } from '../tokens';
 
 export interface TabItem {
   key: string;
@@ -51,6 +51,7 @@ export interface TabProps {
   onTabChange: (key: string) => void;
   variant?: 'scrollable' | 'full'; // scrollable: 스크롤 가능, full: 전체 너비
   gradient?: { from: string; to: string };
+  sparkle?: boolean; // Sparkle 효과 활성화
   style?: ViewStyle;
 }
 
@@ -60,8 +61,34 @@ export function Tab({
   onTabChange,
   variant = 'scrollable',
   gradient,
+  sparkle = false,
   style,
 }: TabProps) {
+  // Sparkle 효과 렌더링
+  const renderSparkles = () => {
+    if (!sparkle) return null;
+
+    return (
+      <View style={styles.sparkleContainer}>
+        {sparkleEffect.medium.map((sparkle, index) => (
+          <View
+            key={index}
+            style={[
+              styles.sparkle,
+              {
+                left: sparkle.x,
+                top: sparkle.y,
+                width: sparkle.size,
+                height: sparkle.size,
+                opacity: sparkle.opacity,
+              },
+            ]}
+          />
+        ))}
+      </View>
+    );
+  };
+
   if (variant === 'full') {
     // Full width variant (로그인/회원가입용)
     return (
@@ -73,7 +100,7 @@ export function Tab({
               key={tab.key}
               style={styles.fullTab}
               onPress={() => onTabChange(tab.key)}
-              activeOpacity={0.7}
+              activeOpacity={0.8}
             >
               {isActive && gradient ? (
                 <LinearGradient
@@ -82,6 +109,7 @@ export function Tab({
                   end={{ x: 1, y: 0 }}
                   style={styles.fullTabGradient}
                 >
+                  {sparkle && renderSparkles()}
                   <Text style={[styles.tabText, styles.tabTextActive]}>
                     {tab.label}
                   </Text>
@@ -93,6 +121,7 @@ export function Tab({
                     isActive && !gradient && styles.tabActive,
                   ]}
                 >
+                  {isActive && sparkle && renderSparkles()}
                   <Text
                     style={[styles.tabText, isActive && styles.tabTextActive]}
                   >
@@ -170,6 +199,8 @@ const styles = StyleSheet.create({
     borderRadius: borderRadius.md,
     alignItems: 'center',
     justifyContent: 'center',
+    overflow: 'hidden',
+    position: 'relative',
   },
 
   fullTabGradient: {
@@ -178,19 +209,36 @@ const styles = StyleSheet.create({
     borderRadius: borderRadius.md,
     alignItems: 'center',
     justifyContent: 'center',
+    overflow: 'hidden',
+    position: 'relative',
   },
 
   tabActive: {
-    backgroundColor: colors.primary[500],
+    backgroundColor: colors.primary,
   },
 
   tabText: {
     ...typography.body2,
-    color: colors.text.secondary,
+    color: colors.mutedForeground,
   },
 
   tabTextActive: {
-    color: colors.text.inverse,
+    color: colors.primaryForeground,
     fontWeight: '600',
+  },
+
+  // Sparkle 효과
+  sparkleContainer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    pointerEvents: 'none',
+  },
+  sparkle: {
+    position: 'absolute',
+    backgroundColor: sparkleEffect.color,
+    borderRadius: 9999,
   },
 });

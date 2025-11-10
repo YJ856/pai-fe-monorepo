@@ -1,11 +1,17 @@
 /**
- * 프로필 선택 화면
+ * ProfileSelection 화면 (Design_v2 기반)
  *
  * 주요 기능:
  * - 가족 구성원 프로필 그리드 표시
  * - 자녀 프로필: 직접 선택
  * - 부모 프로필: PIN 입력 모달
  * - 프로필 생성 버튼
+ *
+ * 디자인:
+ * - background.png 배경
+ * - rounded-3xl 카드 (24px)
+ * - shadow-2xl
+ * - Auth gradient (Navy → Blue)
  *
  * API:
  * - GET /api/profiles (api/profiles.ts)
@@ -23,14 +29,13 @@ import {
   Image,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Lock, Plus } from 'lucide-react-native';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { useNavigation } from '@react-navigation/native';
+import { Card, CardContent } from '../../../design/components/Card';
 import { Input } from '../../../design/components/Input';
+import { Label } from '../../../design/components/Label';
 import { Button } from '../../../design/components/Button';
+import { Avatar } from '../../../design/components/Avatar';
 import { colors, spacing, typography, borderRadius, shadows } from '../../../design/tokens';
 import { Profile } from '../../../shared/types';
-import { ProfileStackParamList } from '../../../app/navigation/ProfileNavigator';
 
 // Mock data
 const MOCK_PROFILES: Profile[] = [
@@ -70,13 +75,7 @@ const MOCK_PROFILES: Profile[] = [
   },
 ];
 
-type ProfileSelectNavigationProp = NativeStackNavigationProp<
-  ProfileStackParamList,
-  'ProfileSelect'
->;
-
 export default function ProfileSelectScreen() {
-  const navigation = useNavigation<ProfileSelectNavigationProp>();
   const [profiles] = useState<Profile[]>(MOCK_PROFILES);
   const [selectedProfile, setSelectedProfile] = useState<Profile | null>(null);
   const [showPinModal, setShowPinModal] = useState(false);
@@ -106,7 +105,8 @@ export default function ProfileSelectScreen() {
   };
 
   const handleCreateProfile = () => {
-    navigation.navigate('ProfileCreate');
+    // TODO: Navigate to ProfileCreate screen
+    console.log('Create new profile');
   };
 
   const renderProfileCard = ({ item }: { item: Profile }) => {
@@ -116,16 +116,14 @@ export default function ProfileSelectScreen() {
       <TouchableOpacity
         style={styles.profileCard}
         onPress={() => handleProfileClick(item)}
-        activeOpacity={0.7}
+        activeOpacity={0.8}
       >
-        <View style={styles.avatarContainer}>
-          <Text style={styles.avatar}>{item.avatar}</Text>
-          {isParent && (
-            <View style={styles.lockBadge}>
-              <Lock size={12} color={colors.text.inverse} />
-            </View>
-          )}
-        </View>
+        <Avatar emoji={item.avatar} size="lg" />
+        {isParent && (
+          <View style={styles.lockBadge}>
+            <Text style={styles.lockIcon}>🔒</Text>
+          </View>
+        )}
         <Text style={styles.profileName}>{item.name}</Text>
         <Text style={styles.profileType}>
           {isParent ? '부모' : '자녀'}
@@ -140,43 +138,46 @@ export default function ProfileSelectScreen() {
       style={styles.container}
       resizeMode="cover"
     >
-      <View style={styles.background}>
+      <LinearGradient
+        colors={['rgba(0, 0, 0, 0.3)', 'rgba(0, 0, 0, 0.5)']}
+        style={styles.overlay}
+      >
         <View style={styles.content}>
           {/* Header */}
           <View style={styles.header}>
-            <View style={styles.logoContainer}>
-              <Image
-                source={require('../../../assets/images/mascot.png')}
-                style={styles.mascot}
-              />
-            </View>
+            <Image
+              source={require('../../../assets/images/mascot.png')}
+              style={styles.mascot}
+              resizeMode="contain"
+            />
             <Text style={styles.title}>누구세요?</Text>
             <Text style={styles.subtitle}>프로필을 선택해주세요</Text>
           </View>
 
-          {/* Profiles Grid */}
-          <View style={styles.card}>
-            <FlatList
-              data={profiles}
-              renderItem={renderProfileCard}
-              keyExtractor={(item) => item.id}
-              numColumns={2}
-              columnWrapperStyle={styles.row}
-              contentContainerStyle={styles.gridContent}
-            />
+          {/* Profiles Card */}
+          <Card style={styles.card}>
+            <CardContent style={styles.cardContent}>
+              <FlatList
+                data={profiles}
+                renderItem={renderProfileCard}
+                keyExtractor={(item) => item.id}
+                numColumns={2}
+                columnWrapperStyle={styles.row}
+                contentContainerStyle={styles.gridContent}
+                scrollEnabled={false}
+              />
 
-            {/* Create Profile Button */}
-            <TouchableOpacity
-              style={styles.createButton}
-              onPress={handleCreateProfile}
-              activeOpacity={0.7}
-            >
-              <View style={styles.createIcon}>
-                <Plus size={24} color={colors.primary[500]} />
-              </View>
-              <Text style={styles.createText}>프로필 생성</Text>
-            </TouchableOpacity>
-          </View>
+              {/* Create Profile Button */}
+              <TouchableOpacity
+                style={styles.createButton}
+                onPress={handleCreateProfile}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.createIcon}>➕</Text>
+                <Text style={styles.createText}>프로필 생성</Text>
+              </TouchableOpacity>
+            </CardContent>
+          </Card>
         </View>
 
         {/* PIN Modal */}
@@ -187,46 +188,57 @@ export default function ProfileSelectScreen() {
           onRequestClose={() => setShowPinModal(false)}
         >
           <View style={styles.modalOverlay}>
-            <View style={styles.modalContent}>
-              <View style={styles.modalHeader}>
-                <Lock size={32} color={colors.primary[500]} />
-                <Text style={styles.modalTitle}>PIN 입력</Text>
-                <Text style={styles.modalSubtitle}>
-                  {selectedProfile?.name}님의 PIN을 입력하세요
-                </Text>
-              </View>
+            <Card style={styles.modalCard}>
+              <CardContent style={styles.modalContent}>
+                {/* Modal Header */}
+                <View style={styles.modalHeader}>
+                  <Text style={styles.lockIconLarge}>🔒</Text>
+                  <Text style={styles.modalTitle}>PIN 입력</Text>
+                  <Text style={styles.modalSubtitle}>
+                    {selectedProfile?.name}님의 PIN을 입력하세요
+                  </Text>
+                </View>
 
-              <Input
-                placeholder="PIN 입력"
-                value={pin}
-                onChangeText={setPin}
-                keyboardType="number-pad"
-                secureTextEntry
-                maxLength={4}
-                error={pinError}
-              />
+                {/* PIN Input */}
+                <View style={styles.inputGroup}>
+                  <Label>PIN</Label>
+                  <Input
+                    placeholder="4자리 PIN"
+                    value={pin}
+                    onChangeText={setPin}
+                    keyboardType="number-pad"
+                    secureTextEntry
+                    maxLength={4}
+                    style={styles.pinInput}
+                  />
+                  {pinError && (
+                    <Text style={styles.errorText}>{pinError}</Text>
+                  )}
+                </View>
 
-              <View style={styles.modalButtons}>
-                <Button
-                  variant="outline"
-                  onPress={() => setShowPinModal(false)}
-                  style={{ flex: 1 }}
-                >
-                  취소
-                </Button>
-                <View style={{ width: spacing.sm }} />
-                <Button
-                  variant="primary"
-                  onPress={handlePinSubmit}
-                  style={{ flex: 1 }}
-                >
-                  확인
-                </Button>
-              </View>
-            </View>
+                {/* Modal Buttons */}
+                <View style={styles.modalButtons}>
+                  <Button
+                    variant="outline"
+                    onPress={() => setShowPinModal(false)}
+                    style={styles.modalButton}
+                  >
+                    취소
+                  </Button>
+                  <Button
+                    variant="gradient"
+                    gradient={colors.auth}
+                    onPress={handlePinSubmit}
+                    style={styles.modalButton}
+                  >
+                    확인
+                  </Button>
+                </View>
+              </CardContent>
+            </Card>
           </View>
         </Modal>
-      </View>
+      </LinearGradient>
     </ImageBackground>
   );
 }
@@ -235,133 +247,193 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  background: {
+
+  overlay: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
   },
+
   content: {
     width: '100%',
     maxWidth: 500,
     paddingHorizontal: spacing.lg,
   },
+
   header: {
     alignItems: 'center',
     marginBottom: spacing.xl,
   },
-  logoContainer: {
-    marginBottom: spacing.sm,
-  },
+
   mascot: {
-    width: 96,
-    height: 96,
+    width: 120,
+    height: 120,
+    marginBottom: spacing.md,
   },
+
   title: {
     ...typography.h1,
     fontSize: 36,
-    color: colors.text.inverse,
+    fontWeight: '600',
+    color: colors.primaryForeground,
     marginBottom: spacing.xs,
   },
+
   subtitle: {
     ...typography.body1,
+    fontSize: 18,
     color: 'rgba(255, 255, 255, 0.9)',
   },
+
   card: {
-    backgroundColor: colors.background.primary,
-    borderRadius: 24,
-    padding: spacing.lg,
-    ...shadows.lg,
+    borderRadius: borderRadius['3xl'], // 24px (rounded-3xl)
+    ...shadows['2xl'],
   },
+
+  cardContent: {
+    padding: spacing.xl,
+  },
+
   gridContent: {
     paddingBottom: spacing.md,
   },
+
   row: {
     justifyContent: 'space-between',
     marginBottom: spacing.md,
   },
+
   profileCard: {
     flex: 0.48,
     aspectRatio: 1,
-    backgroundColor: colors.background.secondary,
-    borderRadius: borderRadius.lg,
+    backgroundColor: colors.muted,
+    borderRadius: borderRadius.xl,
     padding: spacing.md,
     alignItems: 'center',
     justifyContent: 'center',
+    position: 'relative',
     ...shadows.sm,
   },
-  avatarContainer: {
-    position: 'relative',
-    marginBottom: spacing.sm,
-  },
-  avatar: {
-    fontSize: 48,
-  },
+
   lockBadge: {
     position: 'absolute',
-    bottom: -4,
-    right: -4,
-    width: 20,
-    height: 20,
+    top: 8,
+    right: 8,
+    width: 24,
+    height: 24,
     borderRadius: borderRadius.full,
-    backgroundColor: colors.primary[500],
+    backgroundColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
   },
+
+  lockIcon: {
+    fontSize: 12,
+  },
+
   profileName: {
     ...typography.h4,
-    marginBottom: spacing.xs,
+    fontSize: 18,
+    color: colors.foreground,
+    marginTop: spacing.sm,
+    marginBottom: spacing.xs - 2,
   },
+
   profileType: {
     ...typography.body2,
-    color: colors.text.secondary,
+    fontSize: 14,
+    color: colors.mutedForeground,
   },
+
   createButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: spacing.md,
     borderWidth: 2,
-    borderColor: colors.primary[500],
+    borderColor: colors.border,
     borderStyle: 'dashed',
     borderRadius: borderRadius.md,
+    marginTop: spacing.sm,
   },
+
   createIcon: {
+    fontSize: 20,
     marginRight: spacing.sm,
   },
+
   createText: {
     ...typography.button,
-    color: colors.primary[500],
+    color: colors.foreground,
   },
+
+  // Modal styles
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
     justifyContent: 'center',
     alignItems: 'center',
     padding: spacing.lg,
   },
-  modalContent: {
+
+  modalCard: {
     width: '100%',
     maxWidth: 400,
-    backgroundColor: colors.background.primary,
-    borderRadius: borderRadius.lg,
-    padding: spacing.xl,
-    ...shadows.lg,
+    borderRadius: borderRadius.xl,
+    ...shadows.xl,
   },
+
+  modalContent: {
+    padding: spacing.xl,
+  },
+
   modalHeader: {
     alignItems: 'center',
     marginBottom: spacing.lg,
   },
+
+  lockIconLarge: {
+    fontSize: 48,
+    marginBottom: spacing.sm,
+  },
+
   modalTitle: {
     ...typography.h3,
-    marginTop: spacing.sm,
+    fontSize: 24,
+    color: colors.foreground,
     marginBottom: spacing.xs,
   },
+
   modalSubtitle: {
     ...typography.body2,
-    color: colors.text.secondary,
+    fontSize: 14,
+    color: colors.mutedForeground,
   },
+
+  inputGroup: {
+    gap: spacing.sm,
+  },
+
+  pinInput: {
+    textAlign: 'center',
+    fontSize: 18,
+    letterSpacing: 8,
+  },
+
+  errorText: {
+    ...typography.body2,
+    fontSize: 12,
+    color: colors.destructive,
+    marginTop: spacing.xs - 2,
+  },
+
   modalButtons: {
     flexDirection: 'row',
-    marginTop: spacing.md,
+    gap: spacing.sm,
+    marginTop: spacing.lg,
+  },
+
+  modalButton: {
+    flex: 1,
   },
 });
