@@ -23,6 +23,7 @@ import {
   TouchableOpacity,
   Alert,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { LogOut, User, Users, Mic } from 'lucide-react-native';
 import { spacing, typography, borderRadius, shadows } from '../../../design/tokens';
@@ -90,12 +91,13 @@ export default function ParentProfileScreen() {
   }
 
   return (
-    <View style={styles.container}>
-      <ScrollView
-        style={styles.scroll}
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-      >
+    <SafeAreaView style={styles.safeArea}>
+      <View style={styles.container}>
+        <ScrollView
+          style={styles.scroll}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+        >
         {/* Profile Header */}
         <View style={styles.header}>
           <Text style={styles.avatarLarge}>{MOCK_PROFILE.avatar}</Text>
@@ -193,10 +195,15 @@ export default function ParentProfileScreen() {
         </TouchableOpacity>
       </ScrollView>
     </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: '#EFF6FF',
+  },
   container: {
     flex: 1,
     backgroundColor: '#FFFFFF',

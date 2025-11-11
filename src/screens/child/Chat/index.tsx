@@ -25,6 +25,7 @@ import {
   ScrollView,
   Image,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { ArrowLeft, Send, ImageIcon, X } from 'lucide-react-native';
 import * as ImagePicker from 'expo-image-picker';
@@ -125,12 +126,13 @@ export default function ChildChatScreen() {
   };
 
   return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
-    >
-      <LinearGradient colors={['#FFE5E0', '#FFF0ED']} style={styles.background}>
+    <SafeAreaView style={styles.safeArea}>
+      <KeyboardAvoidingView
+        style={styles.container}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
+      >
+        <LinearGradient colors={['#FFE5E0', '#FFF0ED']} style={styles.background}>
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity style={styles.backButton}>
@@ -283,11 +285,16 @@ export default function ChildChatScreen() {
           </View>
         </View>
       </LinearGradient>
-    </KeyboardAvoidingView>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: '#FFE5E0',
+  },
   container: {
     flex: 1,
   },

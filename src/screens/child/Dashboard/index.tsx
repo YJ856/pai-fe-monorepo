@@ -14,6 +14,7 @@
 
 import React from 'react';
 import { View, Text, StyleSheet, ScrollView } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Card, CardContent } from '../../../design/components/Card';
 import { Badge } from '../../../design/components/Badge';
@@ -45,7 +46,8 @@ export default function ChildDashboard() {
   const totalQuestions = MOCK_INTERESTS.reduce((sum, i) => sum + i.count, 0);
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+    <SafeAreaView style={styles.safeArea}>
+      <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       {/* Header */}
       <View style={styles.header}>
         <Avatar emoji="👧" size="xl" />
@@ -123,10 +125,15 @@ export default function ChildDashboard() {
         </Text>
       </LinearGradient>
     </ScrollView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: '#FFE5E0',
+  },
   container: {
     flex: 1,
     backgroundColor: colors.child.background, // #FFF9E6

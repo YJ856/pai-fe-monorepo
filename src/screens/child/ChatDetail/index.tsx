@@ -25,6 +25,7 @@ import {
   Modal,
   Animated,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import {
   ArrowLeft,
@@ -165,11 +166,12 @@ export default function ChildChatDetailScreen() {
   };
 
   return (
-    <View style={styles.container}>
-      <LinearGradient
-        colors={['#FFE5E0', '#FFF0ED']}
-        style={styles.background}
-      >
+    <SafeAreaView style={styles.safeArea}>
+      <View style={styles.container}>
+        <LinearGradient
+          colors={['#FFE5E0', '#FFF0ED']}
+          style={styles.background}
+        >
         {/* Top Bar */}
         <View style={styles.topBar}>
           <TouchableOpacity onPress={handleExit} style={styles.exitButton}>
@@ -402,10 +404,15 @@ export default function ChildChatDetailScreen() {
         </Modal>
       </LinearGradient>
     </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: '#FFE5E0',
+  },
   container: {
     flex: 1,
   },

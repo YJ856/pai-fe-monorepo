@@ -26,6 +26,7 @@ import {
   ScrollView,
   TouchableOpacity,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Card } from '../../../design/components/Card';
 import { Badge } from '../../../design/components/Badge';
@@ -165,10 +166,11 @@ export default function ParentDashboard() {
   };
 
   return (
-    <LinearGradient
-      colors={['#eff6ff', '#e0e7ff']} // from-blue-50 to-indigo-50
-      style={styles.container}
-    >
+    <SafeAreaView style={styles.safeArea}>
+      <LinearGradient
+        colors={['#eff6ff', '#e0e7ff']} // from-blue-50 to-indigo-50
+        style={styles.container}
+      >
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.content}
@@ -389,10 +391,15 @@ export default function ParentDashboard() {
         )}
       </ScrollView>
     </LinearGradient>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: '#EFF6FF',
+  },
   container: {
     flex: 1,
   },

@@ -25,6 +25,7 @@ import {
   TextInput,
   FlatList,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Lightbulb, Trophy, Lock } from 'lucide-react-native';
 import { spacing, typography, borderRadius, shadows } from '../../../design/tokens';
@@ -242,7 +243,8 @@ export default function ChildQuizScreen() {
   );
 
   return (
-    <LinearGradient colors={['#FFE5E0', '#FFF0ED']} style={styles.container}>
+    <SafeAreaView style={styles.safeArea}>
+      <LinearGradient colors={['#FFE5E0', '#FFF0ED']} style={styles.container}>
       {/* Tabs */}
       <View style={styles.tabsContainer}>
         <View style={styles.tabsList}>
@@ -380,10 +382,15 @@ export default function ChildQuizScreen() {
         </View>
       </Modal>
     </LinearGradient>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: '#FFE5E0',
+  },
   container: {
     flex: 1,
   },

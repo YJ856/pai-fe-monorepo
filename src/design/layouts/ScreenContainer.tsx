@@ -47,7 +47,7 @@ export function ScreenContainer({
 
   if (scrollable) {
     return (
-      <SafeAreaView style={styles.safeArea} edges={['top']}>
+      <SafeAreaView style={styles.safeArea}>
         <ScrollView
           style={containerStyle}
           contentContainerStyle={styles.scrollContent}
@@ -60,7 +60,7 @@ export function ScreenContainer({
   }
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['top']}>
+    <SafeAreaView style={styles.safeArea}>
       <View style={containerStyle}>{children}</View>
     </SafeAreaView>
   );

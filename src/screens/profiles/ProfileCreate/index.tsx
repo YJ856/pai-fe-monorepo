@@ -27,6 +27,7 @@ import {
   ImageBackground,
   Image,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Card, CardContent } from '../../../design/components/Card';
 import { Tab } from '../../../design/components/Tab';
@@ -99,20 +100,21 @@ export default function ProfileCreateScreen() {
   };
 
   return (
-    <ImageBackground
-      source={require('../../../assets/images/background.png')}
-      style={styles.container}
-      resizeMode="cover"
-    >
-      <LinearGradient
-        colors={['rgba(0, 0, 0, 0.3)', 'rgba(0, 0, 0, 0.5)']}
-        style={styles.overlay}
+    <SafeAreaView style={styles.safeArea}>
+      <ImageBackground
+        source={require('../../../assets/images/background.png')}
+        style={styles.container}
+        resizeMode="cover"
       >
-        <ScrollView
-          style={styles.scrollView}
-          contentContainerStyle={styles.content}
-          showsVerticalScrollIndicator={false}
+        <LinearGradient
+          colors={['rgba(0, 0, 0, 0.3)', 'rgba(0, 0, 0, 0.5)']}
+          style={styles.overlay}
         >
+          <ScrollView
+            style={styles.scrollView}
+            contentContainerStyle={styles.content}
+            showsVerticalScrollIndicator={false}
+          >
           {/* Header */}
           <View style={styles.header}>
             <Image
@@ -282,10 +284,15 @@ export default function ProfileCreateScreen() {
         </ScrollView>
       </LinearGradient>
     </ImageBackground>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+  },
   container: {
     flex: 1,
   },

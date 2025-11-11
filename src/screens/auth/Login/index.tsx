@@ -19,6 +19,7 @@
 
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, ImageBackground, TouchableOpacity, Image, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Input } from '../../../design/components/Input';
 import { Button } from '../../../design/components/Button';
@@ -74,15 +75,16 @@ export default function LoginScreen() {
   };
 
   return (
-    <ImageBackground
-      source={require('../../../assets/images/background.png')}
-      style={styles.container}
-      resizeMode="cover"
-    >
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={styles.keyboardView}
+    <SafeAreaView style={styles.safeArea}>
+      <ImageBackground
+        source={require('../../../assets/images/background.png')}
+        style={styles.container}
+        resizeMode="cover"
       >
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={styles.keyboardView}
+        >
         <ScrollView
           contentContainerStyle={styles.scrollContent}
           keyboardShouldPersistTaps="handled"
@@ -212,10 +214,15 @@ export default function LoginScreen() {
         </ScrollView>
       </KeyboardAvoidingView>
     </ImageBackground>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+  },
   container: {
     flex: 1,
   },

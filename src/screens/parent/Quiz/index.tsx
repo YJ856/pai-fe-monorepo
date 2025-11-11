@@ -24,6 +24,7 @@ import {
   ScrollView,
   Modal,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { CheckCircle, XCircle, Gift, Plus, Edit, Trash2 } from 'lucide-react-native';
 import { spacing, typography, borderRadius, shadows } from '../../../design/tokens';
@@ -254,7 +255,8 @@ export default function ParentQuizScreen() {
   };
 
   return (
-    <LinearGradient colors={['#EFF6FF', '#E0E7FF']} style={styles.container}>
+    <SafeAreaView style={styles.safeArea}>
+      <LinearGradient colors={['#EFF6FF', '#E0E7FF']} style={styles.container}>
       {/* Tabs */}
       <View style={styles.tabsContainer}>
         <View style={styles.tabsList}>
@@ -432,10 +434,15 @@ export default function ParentQuizScreen() {
         </Modal>
       )}
     </LinearGradient>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: '#EFF6FF',
+  },
   container: {
     flex: 1,
   },

@@ -28,6 +28,7 @@ import {
   Platform,
   Animated,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Send, ImageIcon as ImagePlus, Sparkles } from 'lucide-react-native';
 import * as ImagePicker from 'expo-image-picker';
@@ -147,12 +148,13 @@ export default function ParentChatScreen() {
   };
 
   return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
-    >
-      <LinearGradient colors={['#EFF6FF', '#E0E7FF']} style={styles.background}>
+    <SafeAreaView style={styles.safeArea}>
+      <KeyboardAvoidingView
+        style={styles.container}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
+      >
+        <LinearGradient colors={['#EFF6FF', '#E0E7FF']} style={styles.background}>
         {/* Messages Area */}
         <ScrollView
           ref={scrollViewRef}
@@ -299,10 +301,15 @@ export default function ParentChatScreen() {
         </View>
       </LinearGradient>
     </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: '#EFF6FF',
+  },
   container: {
     flex: 1,
   },
