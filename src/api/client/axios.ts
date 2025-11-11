@@ -59,3 +59,57 @@ export const mediaServiceClient = axios.create({
     'Content-Type': 'application/json',
   },
 });
+
+// 디버깅용 인터셉터 (개발 환경)
+const addDebugInterceptor = (client: any, serviceName: string) => {
+  // Request 인터셉터
+  client.interceptors.request.use(
+    (config: any) => {
+      console.log(`[${serviceName}] Request:`, {
+        url: config.url,
+        baseURL: config.baseURL,
+        fullURL: `${config.baseURL}${config.url}`,
+        method: config.method,
+        data: config.data,
+      });
+      return config;
+    },
+    (error: any) => {
+      console.error(`[${serviceName}] Request Error:`, error);
+      return Promise.reject(error);
+    }
+  );
+
+  // Response 인터셉터
+  client.interceptors.response.use(
+    (response: any) => {
+      console.log(`[${serviceName}] Response:`, {
+        status: response.status,
+        data: response.data,
+      });
+      return response;
+    },
+    (error: any) => {
+      console.error(`[${serviceName}] Response Error:`, {
+        message: error.message,
+        code: error.code,
+        config: error.config ? {
+          url: error.config.url,
+          baseURL: error.config.baseURL,
+        } : null,
+        response: error.response ? {
+          status: error.response.status,
+          data: error.response.data,
+        } : null,
+      });
+      return Promise.reject(error);
+    }
+  );
+};
+
+// 모든 클라이언트에 디버깅 인터셉터 추가
+addDebugInterceptor(userServiceClient, 'USER');
+addDebugInterceptor(insightServiceClient, 'INSIGHT');
+addDebugInterceptor(quizServiceClient, 'QUIZ');
+addDebugInterceptor(conversationServiceClient, 'CONVERSATION');
+addDebugInterceptor(mediaServiceClient, 'MEDIA');

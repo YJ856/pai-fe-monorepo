@@ -34,15 +34,13 @@ export const checkEmail = async (email: string) => {
  * - email: string
  * - password: string
  * - address: string (주소)
- * - latitude: number (위도)
- * - longitude: number (경도)
+ *
+ * Note: latitude, longitude는 백엔드에서 주소 기반으로 자동 처리
  */
 export const signup = async (data: {
   email: string;
   password: string;
   address: string;
-  latitude: number;
-  longitude: number;
 }) => {
   const response = await userServiceClient.post('/api/auth/signup', data);
   return response.data;

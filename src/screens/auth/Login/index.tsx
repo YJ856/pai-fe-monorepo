@@ -18,19 +18,20 @@
  */
 
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ImageBackground, TouchableOpacity, Image, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, ImageBackground, TouchableOpacity, Image, KeyboardAvoidingView, Platform, ScrollView, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { LinearGradient } from 'expo-linear-gradient';
+import { useNavigation } from '@react-navigation/native';
+import { useMutation } from '@tanstack/react-query';
 import { Input } from '../../../design/components/Input';
 import { Button } from '../../../design/components/Button';
 import { Tab } from '../../../design/components/Tab';
 import { Label } from '../../../design/components/Label';
 import { colors, spacing, typography, borderRadius, shadows } from '../../../design/tokens';
-// import { useMutation } from '@tanstack/react-query';
-// import { login, signup } from '../../../api/auth';
-// import { tokenManager } from '../../../api/client/interceptors';
+import { login, signup } from '../../../api/auth';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function LoginScreen() {
+  const navigation = useNavigation<any>();
   const [activeTab, setActiveTab] = useState('login');
 
   // 로그인 상태
@@ -42,36 +43,72 @@ export default function LoginScreen() {
   const [signupPassword, setSignupPassword] = useState('');
   const [signupAddress, setSignupAddress] = useState('');
 
-  // TODO: useMutation으로 로그인 API 호출
-  // const loginMutation = useMutation({
-  //   mutationFn: () => login(loginEmail, loginPassword),
-  //   onSuccess: async (data) => {
-  //     await tokenManager.setAccessToken(data.accessToken);
-  //     await tokenManager.setRefreshToken(data.refreshToken);
-  //     // Navigate to ProfileSelect
-  //   },
-  // });
+  // 로그인 Mutation
+  const loginMutation = useMutation({
+    mutationFn: ({ email, password }: { email: string; password: string }) =>
+      login(email, password),
+    onSuccess: async (response) => {
+      // response는 response.data.data로 이미 반환됨
+      if (response && response.accessToken) {
+        // 토큰 저장
+        await AsyncStorage.setItem('accessToken', response.accessToken);
+        await AsyncStorage.setItem('refreshToken', response.refreshToken);
+        await AsyncStorage.setItem('userId', response.userId.toString());
 
-  // TODO: useMutation으로 회원가입 API 호출
-  // const signupMutation = useMutation({
-  //   mutationFn: () => signup(signupEmail, signupPassword, signupAddress),
-  //   onSuccess: async (data) => {
-  //     await tokenManager.setAccessToken(data.accessToken);
-  //     await tokenManager.setRefreshToken(data.refreshToken);
-  //     // Navigate to ProfileSelect
-  //   },
-  // });
+        Alert.alert('로그인 성공', '프로필을 선택해주세요');
+        navigation.navigate('Profile');
+      } else {
+        Alert.alert('로그인 실패', '로그인에 실패했습니다');
+      }
+    },
+    onError: (error: any) => {
+      Alert.alert('로그인 오류', error.message || '서버 오류가 발생했습니다');
+    },
+  });
+
+  // 회원가입 Mutation
+  const signupMutation = useMutation({
+    mutationFn: (data: { email: string; password: string; address: string }) => signup(data),
+    onSuccess: async (response) => {
+      if (response.success && response.data) {
+        // 토큰 저장
+        await AsyncStorage.setItem('accessToken', response.data.accessToken);
+        await AsyncStorage.setItem('refreshToken', response.data.refreshToken);
+        await AsyncStorage.setItem('userId', response.data.userId.toString());
+
+        Alert.alert('회원가입 성공', '프로필을 생성해주세요');
+        navigation.navigate('Profile');
+      } else {
+        Alert.alert('회원가입 실패', response.message || '회원가입에 실패했습니다');
+      }
+    },
+    onError: (error: any) => {
+      Alert.alert('회원가입 오류', error.message || '서버 오류가 발생했습니다');
+    },
+  });
 
   const handleLogin = () => {
-    // TODO: 유효성 검사
-    // TODO: loginMutation.mutate()
-    console.log('Login:', loginEmail, loginPassword);
+    // 유효성 검사
+    if (!loginEmail || !loginPassword) {
+      Alert.alert('입력 오류', '이메일과 비밀번호를 입력해주세요');
+      return;
+    }
+
+    loginMutation.mutate({ email: loginEmail, password: loginPassword });
   };
 
   const handleSignup = () => {
-    // TODO: 유효성 검사
-    // TODO: signupMutation.mutate()
-    console.log('Signup:', signupEmail, signupPassword, signupAddress);
+    // 유효성 검사
+    if (!signupEmail || !signupPassword || !signupAddress) {
+      Alert.alert('입력 오류', '모든 필드를 입력해주세요');
+      return;
+    }
+
+    signupMutation.mutate({
+      email: signupEmail,
+      password: signupPassword,
+      address: signupAddress
+    });
   };
 
   return (
