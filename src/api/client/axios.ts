@@ -13,7 +13,9 @@
  */
 
 import axios from 'axios';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SERVICE_URLS } from './serviceUrls';
+import { authEvents } from '../../utils/authEvents';
 
 // 사용자 서비스 (인증, 프로필)
 export const userServiceClient = axios.create({
@@ -60,6 +62,25 @@ export const mediaServiceClient = axios.create({
   },
 });
 
+// 인증 토큰 인터셉터
+const addAuthInterceptor = (client: any) => {
+  client.interceptors.request.use(
+    async (config: any) => {
+      // AsyncStorage에서 토큰 가져오기
+      const accessToken = await AsyncStorage.getItem('accessToken');
+
+      if (accessToken) {
+        config.headers.Authorization = `Bearer ${accessToken}`;
+      }
+
+      return config;
+    },
+    (error: any) => {
+      return Promise.reject(error);
+    }
+  );
+};
+
 // 디버깅용 인터셉터 (개발 환경)
 const addDebugInterceptor = (client: any, serviceName: string) => {
   // Request 인터셉터
@@ -71,6 +92,7 @@ const addDebugInterceptor = (client: any, serviceName: string) => {
         fullURL: `${config.baseURL}${config.url}`,
         method: config.method,
         data: config.data,
+        headers: config.headers,
       });
       return config;
     },
@@ -89,7 +111,7 @@ const addDebugInterceptor = (client: any, serviceName: string) => {
       });
       return response;
     },
-    (error: any) => {
+    async (error: any) => {
       console.error(`[${serviceName}] Response Error:`, {
         message: error.message,
         code: error.code,
@@ -102,10 +124,27 @@ const addDebugInterceptor = (client: any, serviceName: string) => {
           data: error.response.data,
         } : null,
       });
+
+      // 401 에러 발생 시 자동 로그아웃
+      if (error.response?.status === 401) {
+        console.log('[AUTH] 401 Unauthorized - Clearing tokens and redirecting to login');
+        // AsyncStorage에서 토큰 삭제
+        await AsyncStorage.multiRemove(['accessToken', 'refreshToken', 'userId']);
+        // 인증 이벤트 발생 (RootNavigator가 감지하여 로그인 화면으로 이동)
+        authEvents.emit();
+      }
+
       return Promise.reject(error);
     }
   );
 };
+
+// 모든 클라이언트에 인증 인터셉터 추가
+addAuthInterceptor(userServiceClient);
+addAuthInterceptor(insightServiceClient);
+addAuthInterceptor(quizServiceClient);
+addAuthInterceptor(conversationServiceClient);
+addAuthInterceptor(mediaServiceClient);
 
 // 모든 클라이언트에 디버깅 인터셉터 추가
 addDebugInterceptor(userServiceClient, 'USER');

@@ -16,12 +16,20 @@
  */
 
 import { userServiceClient } from './client/axios';
+import type {
+  SignupRequestDto,
+  SignupResponseData,
+  LoginRequestDto,
+  LoginResponseData,
+  RefreshTokenResponseData,
+  BaseResponse,
+} from './types';
 
 /**
  * POST /api/auth/check-email
  * 이메일 중복 확인
  */
-export const checkEmail = async (email: string) => {
+export const checkEmail = async (email: string): Promise<BaseResponse<{ available: boolean }>> => {
   const response = await userServiceClient.post('/api/auth/check-email', { email });
   return response.data;
 };
@@ -37,11 +45,7 @@ export const checkEmail = async (email: string) => {
  *
  * Note: latitude, longitude는 백엔드에서 주소 기반으로 자동 처리
  */
-export const signup = async (data: {
-  email: string;
-  password: string;
-  address: string;
-}) => {
+export const signup = async (data: SignupRequestDto): Promise<BaseResponse<SignupResponseData>> => {
   const response = await userServiceClient.post('/api/auth/signup', data);
   return response.data;
 };
@@ -54,12 +58,9 @@ export const signup = async (data: {
  * - accessToken: string (JWT)
  * - refreshToken: string
  */
-export const login = async (email: string, password: string) => {
-  const response = await userServiceClient.post('/api/auth/login', {
-    email,
-    password,
-  });
-  return response.data.data;
+export const login = async (data: LoginRequestDto): Promise<LoginResponseData> => {
+  const response = await userServiceClient.post<BaseResponse<LoginResponseData>>('/api/auth/login', data);
+  return response.data.data!;
 };
 
 /**
@@ -67,7 +68,7 @@ export const login = async (email: string, password: string) => {
  * 로그아웃 (인증 필요)
  * 서버 측 토큰 무효화
  */
-export const logout = async () => {
+export const logout = async (): Promise<BaseResponse<void>> => {
   const response = await userServiceClient.post('/api/auth/logout');
   return response.data;
 };
@@ -85,9 +86,9 @@ export const logout = async () => {
  *
  * Note: 인터셉터에서 자동으로 호출되므로 직접 호출 불필요
  */
-export const refreshToken = async (refreshToken: string) => {
-  const response = await userServiceClient.post('/api/auth/refresh', {
+export const refreshToken = async (refreshToken: string): Promise<RefreshTokenResponseData> => {
+  const response = await userServiceClient.post<BaseResponse<RefreshTokenResponseData>>('/api/auth/refresh', {
     refreshToken,
   });
-  return response.data.data;
+  return response.data.data!;
 };

@@ -27,8 +27,10 @@ import {
   Modal,
   ImageBackground,
   Image,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useNavigation } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Card, CardContent } from '../../../design/components/Card';
 import { Input } from '../../../design/components/Input';
@@ -37,6 +39,8 @@ import { Button } from '../../../design/components/Button';
 import { Avatar } from '../../../design/components/Avatar';
 import { colors, spacing, typography, borderRadius, shadows } from '../../../design/tokens';
 import { Profile } from '../../../shared/types';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { logout } from '../../../api/auth';
 
 // Mock data
 const MOCK_PROFILES: Profile[] = [
@@ -77,6 +81,7 @@ const MOCK_PROFILES: Profile[] = [
 ];
 
 export default function ProfileSelectScreen() {
+  const navigation = useNavigation<any>();
   const [profiles] = useState<Profile[]>(MOCK_PROFILES);
   const [selectedProfile, setSelectedProfile] = useState<Profile | null>(null);
   const [showPinModal, setShowPinModal] = useState(false);
@@ -110,6 +115,45 @@ export default function ProfileSelectScreen() {
     console.log('Create new profile');
   };
 
+  const handleLogout = async () => {
+    Alert.alert(
+      '로그아웃',
+      '로그아웃 하시겠습니까?',
+      [
+        {
+          text: '취소',
+          style: 'cancel',
+        },
+        {
+          text: '로그아웃',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              // AsyncStorage에서 토큰 가져오기
+              const accessToken = await AsyncStorage.getItem('accessToken');
+
+              if (accessToken) {
+                // 토큰이 있으면 서버에 로그아웃 요청
+                await logout();
+              }
+            } catch (error) {
+              console.log('Logout API error:', error);
+              // API 실패해도 로컬 토큰은 삭제하고 계속 진행
+            } finally {
+              // AsyncStorage에서 토큰 삭제
+              await AsyncStorage.multiRemove(['accessToken', 'refreshToken', 'userId']);
+              // 로그인 화면으로 이동
+              navigation.reset({
+                index: 0,
+                routes: [{ name: 'Login' }],
+              });
+            }
+          },
+        },
+      ]
+    );
+  };
+
   const renderProfileCard = ({ item }: { item: Profile }) => {
     const isParent = item.profileType === 'parent';
 
@@ -126,9 +170,6 @@ export default function ProfileSelectScreen() {
           </View>
         )}
         <Text style={styles.profileName}>{item.name}</Text>
-        <Text style={styles.profileType}>
-          {isParent ? '부모' : '자녀'}
-        </Text>
       </TouchableOpacity>
     );
   };
@@ -144,104 +185,120 @@ export default function ProfileSelectScreen() {
           colors={['rgba(0, 0, 0, 0.3)', 'rgba(0, 0, 0, 0.5)']}
           style={styles.overlay}
         >
-        <View style={styles.content}>
-          {/* Header */}
-          <View style={styles.header}>
-            <Image
-              source={require('../../../assets/images/mascot.png')}
-              style={styles.mascot}
-              resizeMode="contain"
-            />
-            <Text style={styles.title}>누구세요?</Text>
-            <Text style={styles.subtitle}>프로필을 선택해주세요</Text>
-          </View>
-
-          {/* Profiles Card */}
-          <Card style={styles.card}>
-            <CardContent style={styles.cardContent}>
-              <FlatList
-                data={profiles}
-                renderItem={renderProfileCard}
-                keyExtractor={(item) => item.id}
-                numColumns={2}
-                columnWrapperStyle={styles.row}
-                contentContainerStyle={styles.gridContent}
-                scrollEnabled={false}
-              />
-
-              {/* Create Profile Button */}
-              <TouchableOpacity
-                style={styles.createButton}
-                onPress={handleCreateProfile}
-                activeOpacity={0.8}
+          <View style={styles.content}>
+            {/* Logout Button */}
+            <TouchableOpacity
+              style={styles.logoutButton}
+              onPress={handleLogout}
+              activeOpacity={0.8}
+            >
+              <LinearGradient
+                colors={['rgba(255, 255, 255, 0.25)', 'rgba(255, 255, 255, 0.15)']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.logoutGradient}
               >
-                <Text style={styles.createIcon}>➕</Text>
-                <Text style={styles.createText}>프로필 생성</Text>
-              </TouchableOpacity>
-            </CardContent>
-          </Card>
-        </View>
+                <Text style={styles.logoutText}>로그아웃</Text>
+              </LinearGradient>
+            </TouchableOpacity>
 
-        {/* PIN Modal */}
-        <Modal
-          visible={showPinModal}
-          transparent
-          animationType="fade"
-          onRequestClose={() => setShowPinModal(false)}
-        >
-          <View style={styles.modalOverlay}>
-            <Card style={styles.modalCard}>
-              <CardContent style={styles.modalContent}>
-                {/* Modal Header */}
-                <View style={styles.modalHeader}>
-                  <Text style={styles.lockIconLarge}>🔒</Text>
-                  <Text style={styles.modalTitle}>PIN 입력</Text>
-                  <Text style={styles.modalSubtitle}>
-                    {selectedProfile?.name}님의 PIN을 입력하세요
-                  </Text>
-                </View>
+            {/* Header */}
+            <View style={styles.header}>
+              <Image
+                source={require('../../../assets/images/mascot.png')}
+                style={styles.mascot}
+                resizeMode="contain"
+              />
+              <Text style={styles.title}>누구세요?</Text>
+              <Text style={styles.subtitle}>프로필을 선택해주세요</Text>
+            </View>
 
-                {/* PIN Input */}
-                <View style={styles.inputGroup}>
-                  <Label>PIN</Label>
-                  <Input
-                    placeholder="4자리 PIN"
-                    value={pin}
-                    onChangeText={setPin}
-                    keyboardType="number-pad"
-                    secureTextEntry
-                    maxLength={4}
-                    style={styles.pinInput}
-                  />
-                  {pinError && (
-                    <Text style={styles.errorText}>{pinError}</Text>
-                  )}
-                </View>
+            {/* Profiles Card */}
+            <Card style={styles.card}>
+              <CardContent style={styles.cardContent}>
+                <FlatList
+                  data={profiles}
+                  renderItem={renderProfileCard}
+                  keyExtractor={(item) => item.id}
+                  numColumns={2}
+                  columnWrapperStyle={styles.row}
+                  contentContainerStyle={styles.gridContent}
+                  scrollEnabled={false}
+                />
 
-                {/* Modal Buttons */}
-                <View style={styles.modalButtons}>
-                  <Button
-                    variant="outline"
-                    onPress={() => setShowPinModal(false)}
-                    style={styles.modalButton}
-                  >
-                    취소
-                  </Button>
-                  <Button
-                    variant="gradient"
-                    gradient={colors.auth}
-                    onPress={handlePinSubmit}
-                    style={styles.modalButton}
-                  >
-                    확인
-                  </Button>
-                </View>
+                {/* Create Profile Button */}
+                <TouchableOpacity
+                  style={styles.createButton}
+                  onPress={handleCreateProfile}
+                  activeOpacity={0.8}
+                >
+                  <Text style={styles.createIcon}>➕</Text>
+                  <Text style={styles.createText}>프로필 생성</Text>
+                </TouchableOpacity>
               </CardContent>
             </Card>
           </View>
-        </Modal>
-      </LinearGradient>
-    </ImageBackground>
+
+          {/* PIN Modal */}
+          <Modal
+            visible={showPinModal}
+            transparent
+            animationType="fade"
+            onRequestClose={() => setShowPinModal(false)}
+          >
+            <View style={styles.modalOverlay}>
+              <Card style={styles.modalCard}>
+                <CardContent style={styles.modalContent}>
+                  {/* Modal Header */}
+                  <View style={styles.modalHeader}>
+                    <Text style={styles.lockIconLarge}>🔒</Text>
+                    <Text style={styles.modalTitle}>PIN 입력</Text>
+                    <Text style={styles.modalSubtitle}>
+                      {selectedProfile?.name}님의 PIN을 입력하세요
+                    </Text>
+                  </View>
+
+                  {/* PIN Input */}
+                  <View style={styles.inputGroup}>
+                    <Label>PIN</Label>
+                    <Input
+                      placeholder="4자리 PIN"
+                      value={pin}
+                      onChangeText={setPin}
+                      keyboardType="number-pad"
+                      secureTextEntry
+                      maxLength={4}
+                      style={styles.pinInput}
+                    />
+                    {pinError && (
+                      <Text style={styles.errorText}>{pinError}</Text>
+                    )}
+                  </View>
+
+                  {/* Modal Buttons */}
+                  <View style={styles.modalButtons}>
+                    <Button
+                      variant="outline"
+                      onPress={() => setShowPinModal(false)}
+                      style={styles.modalButton}
+                    >
+                      취소
+                    </Button>
+                    <Button
+                      variant="gradient"
+                      gradient={colors.auth}
+                      onPress={handlePinSubmit}
+                      style={styles.modalButton}
+                    >
+                      확인
+                    </Button>
+                  </View>
+                </CardContent>
+              </Card>
+            </View>
+          </Modal>
+        </LinearGradient>
+      </ImageBackground>
     </SafeAreaView>
   );
 }
@@ -265,6 +322,41 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: 500,
     paddingHorizontal: spacing.lg,
+  },
+
+  logoutButton: {
+    position: 'absolute',
+    top: spacing.md,
+    right: spacing.lg,
+    borderRadius: borderRadius.full,
+    overflow: 'hidden',
+    ...shadows.lg,
+  },
+
+  logoutGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md + 2,
+    borderRadius: borderRadius.full,
+    borderWidth: 1.5,
+    borderColor: 'rgba(255, 255, 255, 0.4)',
+  },
+
+  logoutIcon: {
+    fontSize: 16,
+  },
+
+  logoutText: {
+    ...typography.body2,
+    fontSize: 14,
+    color: '#FFFFFF',
+    fontWeight: '600',
+    letterSpacing: 0.3,
+    textShadowColor: 'rgba(0, 0, 0, 0.3)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
   },
 
   header: {

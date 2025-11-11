@@ -28,6 +28,7 @@ import { Tab } from '../../../design/components/Tab';
 import { Label } from '../../../design/components/Label';
 import { colors, spacing, typography, borderRadius, shadows } from '../../../design/tokens';
 import { login, signup } from '../../../api/auth';
+import type { LoginRequestDto, SignupRequestDto } from '../../../api/types';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function LoginScreen() {
@@ -45,21 +46,15 @@ export default function LoginScreen() {
 
   // 로그인 Mutation
   const loginMutation = useMutation({
-    mutationFn: ({ email, password }: { email: string; password: string }) =>
-      login(email, password),
+    mutationFn: (data: LoginRequestDto) => login(data),
     onSuccess: async (response) => {
-      // response는 response.data.data로 이미 반환됨
-      if (response && response.accessToken) {
-        // 토큰 저장
-        await AsyncStorage.setItem('accessToken', response.accessToken);
-        await AsyncStorage.setItem('refreshToken', response.refreshToken);
-        await AsyncStorage.setItem('userId', response.userId.toString());
+      // 토큰 저장
+      await AsyncStorage.setItem('accessToken', response.accessToken);
+      await AsyncStorage.setItem('refreshToken', response.refreshToken);
+      await AsyncStorage.setItem('userId', response.userId.toString());
 
-        Alert.alert('로그인 성공', '프로필을 선택해주세요');
-        navigation.navigate('Profile');
-      } else {
-        Alert.alert('로그인 실패', '로그인에 실패했습니다');
-      }
+      Alert.alert('로그인 성공', '프로필을 선택해주세요');
+      navigation.navigate('Profile');
     },
     onError: (error: any) => {
       Alert.alert('로그인 오류', error.message || '서버 오류가 발생했습니다');
@@ -68,7 +63,7 @@ export default function LoginScreen() {
 
   // 회원가입 Mutation
   const signupMutation = useMutation({
-    mutationFn: (data: { email: string; password: string; address: string }) => signup(data),
+    mutationFn: (data: SignupRequestDto) => signup(data),
     onSuccess: async (response) => {
       if (response.success && response.data) {
         // 토큰 저장
@@ -94,7 +89,11 @@ export default function LoginScreen() {
       return;
     }
 
-    loginMutation.mutate({ email: loginEmail, password: loginPassword });
+    const loginData: LoginRequestDto = {
+      email: loginEmail,
+      password: loginPassword,
+    };
+    loginMutation.mutate(loginData);
   };
 
   const handleSignup = () => {
@@ -104,11 +103,12 @@ export default function LoginScreen() {
       return;
     }
 
-    signupMutation.mutate({
+    const signupData: SignupRequestDto = {
       email: signupEmail,
       password: signupPassword,
-      address: signupAddress
-    });
+      address: signupAddress,
+    };
+    signupMutation.mutate(signupData);
   };
 
   return (

@@ -5,20 +5,13 @@
  * 프론트엔드 전용 타입을 정의
  *
  * 사용 예시:
- * import { BaseResponse, PaginatedResponse } from '@/api/types';
+ * import { BaseResponse, LoginRequestDto } from '@/api/types';
  */
 
-// 백엔드 공통 응답 타입
-export interface BaseResponse<T = any> {
-  success: boolean;
-  data?: T;
-  error?: {
-    code: string;
-    message: string;
-  };
-}
+// pai-shared-types에서 공통 타입 가져오기
+export * from 'pai-shared-types';
 
-// 페이지네이션 응답 타입
+// 페이지네이션 응답 타입 (프론트엔드 전용)
 export interface PaginatedResponse<T> {
   items: T[];
   totalCount: number;
@@ -26,6 +19,3 @@ export interface PaginatedResponse<T> {
   currentPage: number;
   pageSize: number;
 }
-
-// TODO: pai-shared-types 패키지 설치 후 여기서 재export
-// export * from 'pai-shared-types';
