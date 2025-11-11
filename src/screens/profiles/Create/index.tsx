@@ -18,20 +18,20 @@
  * - 음성 녹음 기능 추가
  */
 
-import React, { useState } from 'react';
-import { View, Text, StyleSheet } from 'react-native';
-import { ScreenContainer } from '../../../design/layouts/ScreenContainer';
-import { Input } from '../../../design/components/Input';
-import { Button } from '../../../design/components/Button';
-import { spacing, typography } from '../../../design/tokens';
+import React, { useState } from "react";
+import { View, Text, StyleSheet } from "react-native";
+import { ScreenContainer } from "../../../design/layouts/ScreenContainer";
+import { Input } from "../../../design/components/Input";
+import { Button } from "../../../design/components/Button";
+import { spacing, typography } from "../../../design/tokens";
 // import { ProfileType } from '../../../shared/types';
 
 export default function ProfileCreateScreen() {
-  const [profileType, setProfileType] = useState<'parent' | 'child'>('parent');
-  const [name, setName] = useState('');
-  const [birthDate, setBirthDate] = useState('');
-  const [gender, setGender] = useState<'male' | 'female' | 'other'>('male');
-  const [pin, setPin] = useState('');
+  const [profileType, setProfileType] = useState<"parent" | "child">("parent");
+  const [name, setName] = useState("");
+  const [birthDate, setBirthDate] = useState("");
+  const [gender, setGender] = useState<"male" | "female" | "other">("male");
+  const [pin, setPin] = useState("");
 
   // TODO: useMutation으로 프로필 생성 API 호출
 
@@ -39,7 +39,13 @@ export default function ProfileCreateScreen() {
     // TODO: 유효성 검사
     // TODO: 아바타 업로드 (uploadMedia)
     // TODO: 프로필 생성 (createProfile)
-    console.log('Create profile:', { profileType, name, birthDate, gender, pin });
+    console.log("Create profile:", {
+      profileType,
+      name,
+      birthDate,
+      gender,
+      pin,
+    });
   };
 
   return (
@@ -67,7 +73,7 @@ export default function ProfileCreateScreen() {
 
         {/* TODO: 아바타 이미지 선택 */}
 
-        {profileType === 'child' && (
+        {profileType === "child" && (
           <Input
             label="PIN 번호 (4자리)"
             placeholder="PIN 번호를 입력하세요"
@@ -79,7 +85,7 @@ export default function ProfileCreateScreen() {
           />
         )}
 
-        <Button variant="primary" onPress={handleCreateProfile}>
+        <Button variant="default" onPress={handleCreateProfile}>
           프로필 만들기
         </Button>
       </View>

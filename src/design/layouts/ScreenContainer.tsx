@@ -16,15 +16,10 @@
  * </ScreenContainer>
  */
 
-import React from 'react';
-import {
-  View,
-  ScrollView,
-  StyleSheet,
-  ViewStyle,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { colors, spacing } from '../tokens';
+import React from "react";
+import { View, ScrollView, StyleSheet, ViewStyle } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { colors, spacing } from "../tokens";
 
 export interface ScreenContainerProps {
   children: React.ReactNode;
@@ -69,12 +64,12 @@ export function ScreenContainer({
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: colors.background.primary,
+    backgroundColor: colors.background,
   },
 
   container: {
     flex: 1,
-    backgroundColor: colors.background.primary,
+    backgroundColor: colors.background,
   },
 
   padding: {
