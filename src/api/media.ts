@@ -22,9 +22,6 @@ import { mediaServiceClient } from './client/axios';
  *
  * Request (FormData):
  * - file: File (필수)
- * - ownerType: string (예: 'profile', 'conversation')
- * - ownerId: string (프로필 ID, 대화 ID 등)
- * - profileId: string (업로드한 사용자 프로필 ID)
  *
  * Response:
  * - mediaId: string
@@ -40,27 +37,30 @@ import { mediaServiceClient } from './client/axios';
  *   type: 'image/jpeg',
  *   name: 'avatar.jpg',
  * });
- * formData.append('ownerType', 'profile');
- * formData.append('ownerId', profileId);
  * const { mediaId, cdnUrl } = await uploadMedia(formData);
  */
 export const uploadMedia = async (formData: FormData) => {
+  console.log('[MEDIA] 업로드 요청 시작');
+  console.log('[MEDIA] FormData 내용:', {
+    // FormData는 직접 출력 불가하므로 설명만
+    note: 'FormData에는 file만 포함됨'
+  });
+
   const response = await mediaServiceClient.post('/api/media/upload', formData, {
     headers: {
       'Content-Type': 'multipart/form-data',
     },
   });
+
+  console.log('[MEDIA] 업로드 응답:', response.data);
   return response.data.data;
 };
 
 /**
- * GET /api/media?ownerType=&ownerId=&profileId=
+ * GET /api/media
  * 미디어 조회
  *
- * Query (모두 선택적):
- * - ownerType: string (예: 'profile', 'conversation')
- * - ownerId: string (소유자 ID)
- * - profileId: string (프로필 ID)
+ * Query: 없음 (전체 미디어 조회)
  *
  * Response:
  * - media: Array<{
@@ -69,18 +69,14 @@ export const uploadMedia = async (formData: FormData) => {
  *     mimeType: string,
  *     fileSize: number,
  *     cdnUrl: string,
- *     ownerType: string,
- *     ownerId: string,
  *     createdAt: string
  *   }>
  *
  * 사용 예시:
- * const { media } = await getMedia({ ownerType: 'conversation', ownerId: conversationId });
+ * const { media } = await getMedia();
  */
 export const getMedia = async (params?: {
-  ownerType?: string;
-  ownerId?: string;
-  profileId?: string;
+  // 향후 필터링 파라미터가 추가될 수 있음
 }) => {
   const response = await mediaServiceClient.get('/api/media', {
     params,

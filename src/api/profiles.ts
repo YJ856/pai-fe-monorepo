@@ -53,12 +53,15 @@ export const createProfile = async (data: CreateProfileRequest) => {
  *
  * Query:
  * - profileType: 'parent' | 'child' (선택적, 필터링용)
+ *
+ * Response:
+ * - { profiles: [...] }
  */
 export const getProfiles = async (profileType?: ProfileType) => {
   const response = await userServiceClient.get('/api/profiles', {
     params: { profileType },
   });
-  return response.data.data;
+  return response.data.data.profiles || [];
 };
 
 /**
@@ -85,12 +88,14 @@ export const deleteProfile = async (profileId: string) => {
  *
  * Request:
  * - profileId: string
+ * - pin?: string (부모 프로필 선택 시 필수)
  *
  * Note: 선택 후 tokenManager.setProfileId()로 저장 필요
  */
-export const selectProfile = async (profileId: string) => {
+export const selectProfile = async (profileId: string, pin?: string) => {
   const response = await userServiceClient.post('/api/profiles/select', {
     profileId,
+    pin,
   });
   return response.data.data;
 };

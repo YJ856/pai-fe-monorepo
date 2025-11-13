@@ -17,47 +17,63 @@
  * - TanStack Query useMutation 사용
  */
 
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, ImageBackground, TouchableOpacity, Image, KeyboardAvoidingView, Platform, ScrollView, Alert } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
-import { useMutation } from '@tanstack/react-query';
-import { Input } from '../../../design/components/Input';
-import { Button } from '../../../design/components/Button';
-import { Tab } from '../../../design/components/Tab';
-import { Label } from '../../../design/components/Label';
-import { colors, spacing, typography, borderRadius, shadows } from '../../../design/tokens';
-import { login, signup } from '../../../api/auth';
-import type { LoginRequestDto, SignupRequestDto } from '../../../api/types';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import React, { useState } from "react";
+import {
+  View,
+  Text,
+  StyleSheet,
+  ImageBackground,
+  TouchableOpacity,
+  Image,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  Alert,
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { useNavigation } from "@react-navigation/native";
+import { useMutation } from "@tanstack/react-query";
+import { Input } from "../../../design/components/Input";
+import { Button } from "../../../design/components/Button";
+import { Tab } from "../../../design/components/Tab";
+import { Label } from "../../../design/components/Label";
+import {
+  colors,
+  spacing,
+  typography,
+  borderRadius,
+  shadows,
+} from "../../../design/tokens";
+import { login, signup } from "../../../api/auth";
+import type { LoginRequestDto, SignupRequestDto } from "../../../api/types";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 export default function LoginScreen() {
   const navigation = useNavigation<any>();
-  const [activeTab, setActiveTab] = useState('login');
+  const [activeTab, setActiveTab] = useState("login");
 
   // 로그인 상태
-  const [loginEmail, setLoginEmail] = useState('');
-  const [loginPassword, setLoginPassword] = useState('');
+  const [loginEmail, setLoginEmail] = useState("");
+  const [loginPassword, setLoginPassword] = useState("");
 
   // 회원가입 상태
-  const [signupEmail, setSignupEmail] = useState('');
-  const [signupPassword, setSignupPassword] = useState('');
-  const [signupAddress, setSignupAddress] = useState('');
+  const [signupEmail, setSignupEmail] = useState("");
+  const [signupPassword, setSignupPassword] = useState("");
+  const [signupAddress, setSignupAddress] = useState("");
 
   // 로그인 Mutation
   const loginMutation = useMutation({
     mutationFn: (data: LoginRequestDto) => login(data),
     onSuccess: async (response) => {
       // 토큰 저장
-      await AsyncStorage.setItem('accessToken', response.accessToken);
-      await AsyncStorage.setItem('refreshToken', response.refreshToken);
-      await AsyncStorage.setItem('userId', response.userId.toString());
+      await AsyncStorage.setItem("accessToken", response.accessToken);
+      await AsyncStorage.setItem("refreshToken", response.refreshToken);
+      await AsyncStorage.setItem("userId", response.userId.toString());
 
-      Alert.alert('로그인 성공', '프로필을 선택해주세요');
-      navigation.navigate('Profile');
+      navigation.navigate("Profile");
     },
     onError: (error: any) => {
-      Alert.alert('로그인 오류', error.message || '서버 오류가 발생했습니다');
+      Alert.alert("로그인 오류", error.message || "서버 오류가 발생했습니다");
     },
   });
 
@@ -67,25 +83,28 @@ export default function LoginScreen() {
     onSuccess: async (response) => {
       if (response.success && response.data) {
         // 토큰 저장
-        await AsyncStorage.setItem('accessToken', response.data.accessToken);
-        await AsyncStorage.setItem('refreshToken', response.data.refreshToken);
-        await AsyncStorage.setItem('userId', response.data.userId.toString());
+        await AsyncStorage.setItem("accessToken", response.data.accessToken);
+        await AsyncStorage.setItem("refreshToken", response.data.refreshToken);
+        await AsyncStorage.setItem("userId", response.data.userId.toString());
 
-        Alert.alert('회원가입 성공', '프로필을 생성해주세요');
-        navigation.navigate('Profile');
+        Alert.alert("회원가입 성공", "프로필을 생성해주세요");
+        navigation.navigate("Profile");
       } else {
-        Alert.alert('회원가입 실패', response.message || '회원가입에 실패했습니다');
+        Alert.alert(
+          "회원가입 실패",
+          response.message || "회원가입에 실패했습니다"
+        );
       }
     },
     onError: (error: any) => {
-      Alert.alert('회원가입 오류', error.message || '서버 오류가 발생했습니다');
+      Alert.alert("회원가입 오류", error.message || "서버 오류가 발생했습니다");
     },
   });
 
   const handleLogin = () => {
     // 유효성 검사
     if (!loginEmail || !loginPassword) {
-      Alert.alert('입력 오류', '이메일과 비밀번호를 입력해주세요');
+      Alert.alert("입력 오류", "이메일과 비밀번호를 입력해주세요");
       return;
     }
 
@@ -99,7 +118,7 @@ export default function LoginScreen() {
   const handleSignup = () => {
     // 유효성 검사
     if (!signupEmail || !signupPassword || !signupAddress) {
-      Alert.alert('입력 오류', '모든 필드를 입력해주세요');
+      Alert.alert("입력 오류", "모든 필드를 입력해주세요");
       return;
     }
 
@@ -114,143 +133,143 @@ export default function LoginScreen() {
   return (
     <SafeAreaView style={styles.safeArea}>
       <ImageBackground
-        source={require('../../../assets/images/background.png')}
+        source={require("../../../assets/images/background.png")}
         style={styles.container}
         resizeMode="cover"
       >
         <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
           style={styles.keyboardView}
         >
-        <ScrollView
-          contentContainerStyle={styles.scrollContent}
-          keyboardShouldPersistTaps="handled"
-        >
-        <View style={styles.content}>
-          {/* Header */}
-          <View style={styles.header}>
-            <View style={styles.logoContainer}>
-              <Image
-                source={require('../../../assets/images/mascot.png')}
-                style={styles.mascot}
-              />
+          <ScrollView
+            contentContainerStyle={styles.scrollContent}
+            keyboardShouldPersistTaps="handled"
+          >
+            <View style={styles.content}>
+              {/* Header */}
+              <View style={styles.header}>
+                <View style={styles.logoContainer}>
+                  <Image
+                    source={require("../../../assets/images/mascot.png")}
+                    style={styles.mascot}
+                  />
+                </View>
+                <Text style={styles.title}>PAI</Text>
+                <Text style={styles.subtitle}>Parent-Child AI Interaction</Text>
+              </View>
+
+              {/* Card */}
+              <View style={styles.card}>
+                {/* Tabs */}
+                <Tab
+                  tabs={[
+                    { key: "login", label: "로그인" },
+                    { key: "signup", label: "회원가입" },
+                  ]}
+                  activeTab={activeTab}
+                  onTabChange={setActiveTab}
+                  variant="full"
+                  gradient={colors.auth}
+                  sparkle
+                  style={styles.tabs}
+                />
+
+                {/* Login Form */}
+                {activeTab === "login" && (
+                  <View style={styles.form}>
+                    <View>
+                      <Label>이메일</Label>
+                      <Input
+                        placeholder="이메일 입력"
+                        value={loginEmail}
+                        onChangeText={setLoginEmail}
+                        keyboardType="email-address"
+                        autoCapitalize="none"
+                        style={styles.input}
+                      />
+                    </View>
+
+                    <View>
+                      <Label>비밀번호</Label>
+                      <Input
+                        placeholder="비밀번호 입력"
+                        value={loginPassword}
+                        onChangeText={setLoginPassword}
+                        secureTextEntry
+                        style={styles.input}
+                      />
+                    </View>
+
+                    <TouchableOpacity>
+                      <Text style={styles.forgotPassword}>비밀번호 찾기</Text>
+                    </TouchableOpacity>
+
+                    <Button
+                      variant="gradient"
+                      gradient={colors.auth}
+                      sparkle
+                      onPress={handleLogin}
+                      style={styles.submitButton}
+                      // loading={loginMutation.isPending}
+                    >
+                      로그인
+                    </Button>
+                  </View>
+                )}
+
+                {/* Signup Form */}
+                {activeTab === "signup" && (
+                  <View style={styles.form}>
+                    <View>
+                      <Label>이메일</Label>
+                      <Input
+                        placeholder="이메일 입력"
+                        value={signupEmail}
+                        onChangeText={setSignupEmail}
+                        keyboardType="email-address"
+                        autoCapitalize="none"
+                        style={styles.input}
+                      />
+                    </View>
+
+                    <View>
+                      <Label>비밀번호</Label>
+                      <Input
+                        placeholder="비밀번호 입력"
+                        value={signupPassword}
+                        onChangeText={setSignupPassword}
+                        secureTextEntry
+                        style={styles.input}
+                      />
+                    </View>
+
+                    <View>
+                      <Label>주소</Label>
+                      <Input
+                        placeholder="주소 입력"
+                        value={signupAddress}
+                        onChangeText={setSignupAddress}
+                        style={styles.input}
+                      />
+                    </View>
+
+                    <Button
+                      variant="gradient"
+                      gradient={colors.auth}
+                      sparkle
+                      onPress={handleSignup}
+                      style={styles.submitButton}
+                      // loading={signupMutation.isPending}
+                    >
+                      회원가입
+                    </Button>
+                  </View>
+                )}
+              </View>
             </View>
-            <Text style={styles.title}>PAI</Text>
-            <Text style={styles.subtitle}>Parent-Child AI Interaction</Text>
-          </View>
-
-          {/* Card */}
-          <View style={styles.card}>
-            {/* Tabs */}
-            <Tab
-              tabs={[
-                { key: 'login', label: '로그인' },
-                { key: 'signup', label: '회원가입' },
-              ]}
-              activeTab={activeTab}
-              onTabChange={setActiveTab}
-              variant="full"
-              gradient={colors.auth}
-              sparkle
-              style={styles.tabs}
-            />
-
-            {/* Login Form */}
-            {activeTab === 'login' && (
-              <View style={styles.form}>
-                <View>
-                  <Label>이메일</Label>
-                  <Input
-                    placeholder="이메일 입력"
-                    value={loginEmail}
-                    onChangeText={setLoginEmail}
-                    keyboardType="email-address"
-                    autoCapitalize="none"
-                    style={styles.input}
-                  />
-                </View>
-
-                <View>
-                  <Label>비밀번호</Label>
-                  <Input
-                    placeholder="비밀번호 입력"
-                    value={loginPassword}
-                    onChangeText={setLoginPassword}
-                    secureTextEntry
-                    style={styles.input}
-                  />
-                </View>
-
-                <TouchableOpacity>
-                  <Text style={styles.forgotPassword}>비밀번호 찾기</Text>
-                </TouchableOpacity>
-
-                <Button
-                  variant="gradient"
-                  gradient={colors.auth}
-                  sparkle
-                  onPress={handleLogin}
-                  style={styles.submitButton}
-                  // loading={loginMutation.isPending}
-                >
-                  로그인
-                </Button>
-              </View>
-            )}
-
-            {/* Signup Form */}
-            {activeTab === 'signup' && (
-              <View style={styles.form}>
-                <View>
-                  <Label>이메일</Label>
-                  <Input
-                    placeholder="이메일 입력"
-                    value={signupEmail}
-                    onChangeText={setSignupEmail}
-                    keyboardType="email-address"
-                    autoCapitalize="none"
-                    style={styles.input}
-                  />
-                </View>
-
-                <View>
-                  <Label>비밀번호</Label>
-                  <Input
-                    placeholder="비밀번호 입력"
-                    value={signupPassword}
-                    onChangeText={setSignupPassword}
-                    secureTextEntry
-                    style={styles.input}
-                  />
-                </View>
-
-                <View>
-                  <Label>주소</Label>
-                  <Input
-                    placeholder="주소 입력"
-                    value={signupAddress}
-                    onChangeText={setSignupAddress}
-                    style={styles.input}
-                  />
-                </View>
-
-                <Button
-                  variant="gradient"
-                  gradient={colors.auth}
-                  sparkle
-                  onPress={handleSignup}
-                  style={styles.submitButton}
-                  // loading={signupMutation.isPending}
-                >
-                  회원가입
-                </Button>
-              </View>
-            )}
-          </View>
-        </View>
-        </ScrollView>
-      </KeyboardAvoidingView>
-    </ImageBackground>
+          </ScrollView>
+        </KeyboardAvoidingView>
+      </ImageBackground>
     </SafeAreaView>
   );
 }
@@ -258,7 +277,7 @@ export default function LoginScreen() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: "#FFFFFF",
   },
   container: {
     flex: 1,
@@ -268,20 +287,20 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     flexGrow: 1,
-    justifyContent: 'center',
+    justifyContent: "center",
   },
   background: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
   },
   content: {
-    width: '100%',
+    width: "100%",
     maxWidth: 400,
     paddingHorizontal: spacing.lg,
   },
   header: {
-    alignItems: 'center',
+    alignItems: "center",
     marginBottom: spacing.xl,
   },
   logoContainer: {
@@ -299,13 +318,13 @@ const styles = StyleSheet.create({
   },
   subtitle: {
     ...typography.body1,
-    color: 'rgba(255, 255, 255, 0.9)',
+    color: "rgba(255, 255, 255, 0.9)",
   },
   card: {
     backgroundColor: colors.card,
-    borderRadius: borderRadius['3xl'], // rounded-3xl = 24px
+    borderRadius: borderRadius["3xl"], // rounded-3xl = 24px
     padding: spacing.lg,
-    ...shadows['2xl'], // shadow-2xl
+    ...shadows["2xl"], // shadow-2xl
   },
   tabs: {
     marginBottom: spacing.lg,
@@ -322,10 +341,10 @@ const styles = StyleSheet.create({
     ...typography.body2,
     fontSize: 14,
     color: colors.auth.from,
-    textAlign: 'left',
+    textAlign: "left",
   },
   submitButton: {
-    width: '100%',
+    width: "100%",
     marginTop: spacing.xs,
   },
 });

@@ -48,18 +48,22 @@ export function RootNavigator() {
 
   const checkAuthStatus = async () => {
     try {
+      console.log('[RootNavigator] 인증 상태 확인 시작');
       const accessToken = await AsyncStorage.getItem('accessToken');
+      console.log('[RootNavigator] accessToken 존재 여부:', !!accessToken);
       setIsAuthenticated(!!accessToken);
     } catch (error) {
-      console.error('Failed to check auth status:', error);
+      console.error('[RootNavigator] 인증 상태 확인 실패:', error);
       setIsAuthenticated(false);
     } finally {
+      console.log('[RootNavigator] 로딩 완료');
       setIsLoading(false);
     }
   };
 
-  // 로딩 중에는 빈 화면 표시
+  // 로딩 중에는 로딩 인디케이터 표시
   if (isLoading) {
+    console.log('[RootNavigator] 로딩 중...');
     return null;
   }
 
@@ -73,10 +77,58 @@ export function RootNavigator() {
               component={DevNavigatorScreen}
               options={{ title: '개발용 네비게이터' }}
             />
-            <Stack.Screen name="Auth" component={AuthNavigator} />
-            <Stack.Screen name="Profile" component={ProfileNavigator} />
-            <Stack.Screen name="ChildApp" component={ChildNavigator} />
-            <Stack.Screen name="ParentApp" component={ParentNavigator} />
+            <Stack.Screen
+              name="Auth"
+              component={AuthNavigator}
+              listeners={({ navigation }) => ({
+                focus: async () => {
+                  // 로그인 화면에 접근할 때 이미 로그인되어 있으면 프로필 선택으로 이동
+                  const accessToken = await AsyncStorage.getItem('accessToken');
+                  if (accessToken) {
+                    navigation.replace('Profile');
+                  }
+                }
+              })}
+            />
+            <Stack.Screen
+              name="Profile"
+              component={ProfileNavigator}
+              listeners={({ navigation }) => ({
+                focus: async () => {
+                  // 프로필 화면에 접근할 때 로그인되어 있지 않으면 로그인으로 이동
+                  const accessToken = await AsyncStorage.getItem('accessToken');
+                  if (!accessToken) {
+                    navigation.replace('Auth');
+                  }
+                }
+              })}
+            />
+            <Stack.Screen
+              name="ChildApp"
+              component={ChildNavigator}
+              listeners={({ navigation }) => ({
+                focus: async () => {
+                  // 자녀 앱에 접근할 때 로그인되어 있지 않으면 로그인으로 이동
+                  const accessToken = await AsyncStorage.getItem('accessToken');
+                  if (!accessToken) {
+                    navigation.replace('Auth');
+                  }
+                }
+              })}
+            />
+            <Stack.Screen
+              name="ParentApp"
+              component={ParentNavigator}
+              listeners={({ navigation }) => ({
+                focus: async () => {
+                  // 부모 앱에 접근할 때 로그인되어 있지 않으면 로그인으로 이동
+                  const accessToken = await AsyncStorage.getItem('accessToken');
+                  if (!accessToken) {
+                    navigation.replace('Auth');
+                  }
+                }
+              })}
+            />
           </>
         ) : !isAuthenticated ? (
           <Stack.Screen name="Auth" component={AuthNavigator} />

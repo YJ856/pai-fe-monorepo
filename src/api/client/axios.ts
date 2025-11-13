@@ -66,11 +66,17 @@ export const mediaServiceClient = axios.create({
 const addAuthInterceptor = (client: any) => {
   client.interceptors.request.use(
     async (config: any) => {
-      // AsyncStorage에서 토큰 가져오기
-      const accessToken = await AsyncStorage.getItem('accessToken');
+      // 회원가입, 로그인은 토큰 불필요
+      const publicEndpoints = ['/api/auth/signup', '/api/auth/login'];
+      const isPublicEndpoint = publicEndpoints.some(endpoint => config.url?.includes(endpoint));
 
-      if (accessToken) {
-        config.headers.Authorization = `Bearer ${accessToken}`;
+      if (!isPublicEndpoint) {
+        // AsyncStorage에서 토큰 가져오기
+        const accessToken = await AsyncStorage.getItem('accessToken');
+
+        if (accessToken) {
+          config.headers.Authorization = `Bearer ${accessToken}`;
+        }
       }
 
       return config;

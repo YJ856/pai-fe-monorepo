@@ -14,7 +14,7 @@
  * - 음성 설정은 그라데이션 카드
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -22,45 +22,82 @@ import {
   ScrollView,
   TouchableOpacity,
   Alert,
+  ActivityIndicator,
+  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { LogOut, User, Users, Mic } from 'lucide-react-native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { spacing, typography, borderRadius, shadows } from '../../../design/tokens';
 import VoiceRegistrationScreen from './VoiceRegistration';
+import { getProfiles } from '../../../api/profiles';
+import { logout } from '../../../api/auth';
 
-// Mock family data
-const CHILDREN = [
-  { id: '3', name: '지우', avatar: '👧', age: 7 },
-  { id: '4', name: '민준', avatar: '👦', age: 5 },
-];
-
-const PARENTS = [
-  { id: '1', name: '엄마', avatar: '👩', role: '부모' },
-  { id: '2', name: '아빠', avatar: '👨', role: '부모' },
-];
-
-const FAMILY_MEMBERS = [
-  ...PARENTS.map(p => ({ ...p, age: undefined })),
-  ...CHILDREN.map(c => ({ ...c, role: '자녀' })),
-];
-
-// Mock profile data
-const MOCK_PROFILE = {
-  name: '엄마',
-  avatar: '👩',
-  gender: 'female' as const,
-};
+interface FamilyMember {
+  id: string;
+  name: string;
+  avatar: string;
+  profileType: string;
+  birthDate?: string;
+  gender?: string;
+  avatarUrl?: string;
+}
 
 export default function ParentProfileScreen() {
+  const navigation = useNavigation<any>();
   const [showVoiceRegistration, setShowVoiceRegistration] = useState(false);
+  const [currentProfile, setCurrentProfile] = useState<FamilyMember | null>(null);
+  const [familyMembers, setFamilyMembers] = useState<FamilyMember[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Filter out the current user from family members
-  const otherFamilyMembers = FAMILY_MEMBERS.filter(
-    (member) => member.name !== MOCK_PROFILE.name
+  // 프로필 데이터 로드
+  useFocusEffect(
+    React.useCallback(() => {
+      loadProfiles();
+    }, [])
   );
 
-  const handleLogout = () => {
+  const loadProfiles = async () => {
+    setIsLoading(true);
+    try {
+      const profileList = await getProfiles();
+      console.log('📥 프로필 API 응답:', JSON.stringify(profileList, null, 2));
+
+      if (Array.isArray(profileList) && profileList.length > 0) {
+        const transformedProfiles = profileList.map((profile: any) => ({
+          id: profile.profileId || profile.id,
+          name: profile.name,
+          avatar: profile.avatar || '👤',
+          profileType: profile.profileType?.toLowerCase() || 'child',
+          birthDate: profile.birthDate || profile.birthdate,
+          gender: profile.gender?.toLowerCase(),
+          avatarUrl: profile.avatarUrl,
+        }));
+        console.log('🔄 변환된 프로필:', JSON.stringify(transformedProfiles, null, 2));
+
+        // 현재 프로필은 부모 프로필 중 첫 번째 (실제로는 토큰에서 profileId로 찾아야 함)
+        const parentProfile = transformedProfiles.find(
+          (p: FamilyMember) => p.profileType === 'parent'
+        );
+        setCurrentProfile(parentProfile || transformedProfiles[0]);
+
+        // 가족 구성원은 현재 프로필 제외한 나머지
+        const others = transformedProfiles.filter(
+          (p: FamilyMember) => p.id !== (parentProfile?.id || transformedProfiles[0]?.id)
+        );
+        setFamilyMembers(others);
+      }
+    } catch (error: any) {
+      console.error('프로필 로드 오류:', error);
+      Alert.alert('오류', '프로필 정보를 불러오는 중 오류가 발생했습니다.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleLogout = async () => {
     Alert.alert(
       '로그아웃',
       '정말 로그아웃 하시겠어요?',
@@ -72,9 +109,21 @@ export default function ParentProfileScreen() {
         {
           text: '로그아웃',
           style: 'destructive',
-          onPress: () => {
-            // Handle logout
-            console.log('Logout');
+          onPress: async () => {
+            try {
+              const accessToken = await AsyncStorage.getItem('accessToken');
+              if (accessToken) {
+                await logout();
+              }
+            } catch (error) {
+              console.log('Logout API error:', error);
+            } finally {
+              await AsyncStorage.multiRemove(['accessToken', 'refreshToken', 'userId']);
+              navigation.reset({
+                index: 0,
+                routes: [{ name: 'Auth' }],
+              });
+            }
           },
         },
       ],
@@ -90,6 +139,17 @@ export default function ParentProfileScreen() {
     );
   }
 
+  if (isLoading) {
+    return (
+      <SafeAreaView style={styles.safeArea}>
+        <View style={[styles.container, styles.centered]}>
+          <ActivityIndicator size="large" color="#5B9BD5" />
+          <Text style={styles.loadingText}>프로필 로드 중...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.container}>
@@ -100,9 +160,18 @@ export default function ParentProfileScreen() {
         >
         {/* Profile Header */}
         <View style={styles.header}>
-          <Text style={styles.avatarLarge}>{MOCK_PROFILE.avatar}</Text>
-          <Text style={styles.headerName}>{MOCK_PROFILE.name}</Text>
-          <Text style={styles.headerRole}>부모</Text>
+          {currentProfile?.avatarUrl ? (
+            <Image
+              source={{ uri: currentProfile.avatarUrl }}
+              style={styles.avatarImage}
+            />
+          ) : (
+            <Text style={styles.avatarLarge}>{currentProfile?.avatar || '👤'}</Text>
+          )}
+          <Text style={styles.headerName}>{currentProfile?.name || '사용자'}</Text>
+          <Text style={styles.headerRole}>
+            {currentProfile?.profileType === 'parent' ? '부모' : '자녀'}
+          </Text>
         </View>
 
         {/* Profile Info Card */}
@@ -117,18 +186,22 @@ export default function ParentProfileScreen() {
           <View style={styles.infoList}>
             <View style={styles.infoRow}>
               <Text style={styles.infoLabel}>이름</Text>
-              <Text style={styles.infoValue}>{MOCK_PROFILE.name}</Text>
+              <Text style={styles.infoValue}>{currentProfile?.name || '-'}</Text>
             </View>
             <View style={styles.infoRow}>
               <Text style={styles.infoLabel}>역할</Text>
-              <Text style={styles.infoValue}>부모</Text>
-            </View>
-            <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>성별</Text>
               <Text style={styles.infoValue}>
-                {MOCK_PROFILE.gender === 'male' ? '남성' : '여성'}
+                {currentProfile?.profileType === 'parent' ? '부모' : '자녀'}
               </Text>
             </View>
+            {currentProfile?.gender && (
+              <View style={styles.infoRow}>
+                <Text style={styles.infoLabel}>성별</Text>
+                <Text style={styles.infoValue}>
+                  {currentProfile.gender === 'male' ? '남성' : '여성'}
+                </Text>
+              </View>
+            )}
           </View>
         </View>
 
@@ -142,17 +215,28 @@ export default function ParentProfileScreen() {
           </View>
 
           <View style={styles.familyList}>
-            {otherFamilyMembers.map((member) => (
-              <View key={member.id} style={styles.familyItem}>
-                <Text style={styles.familyAvatar}>{member.avatar}</Text>
-                <View style={styles.familyInfo}>
-                  <Text style={styles.familyName}>{member.name}</Text>
-                  <Text style={styles.familyDetail}>
-                    {member.age ? `${member.age}살` : member.role}
-                  </Text>
+            {familyMembers.length === 0 ? (
+              <Text style={styles.emptyText}>다른 가족 구성원이 없습니다</Text>
+            ) : (
+              familyMembers.map((member) => (
+                <View key={member.id} style={styles.familyItem}>
+                  {member.avatarUrl ? (
+                    <Image
+                      source={{ uri: member.avatarUrl }}
+                      style={styles.familyAvatarImage}
+                    />
+                  ) : (
+                    <Text style={styles.familyAvatar}>{member.avatar}</Text>
+                  )}
+                  <View style={styles.familyInfo}>
+                    <Text style={styles.familyName}>{member.name}</Text>
+                    <Text style={styles.familyDetail}>
+                      {member.profileType === 'parent' ? '부모' : '자녀'}
+                    </Text>
+                  </View>
                 </View>
-              </View>
-            ))}
+              ))
+            )}
           </View>
         </View>
 
@@ -223,6 +307,12 @@ const styles = StyleSheet.create({
     fontSize: 96,
     marginBottom: spacing.md,
   },
+  avatarImage: {
+    width: 96,
+    height: 96,
+    borderRadius: 48,
+    marginBottom: spacing.md,
+  },
   headerName: {
     fontSize: 28,
     fontWeight: '700',
@@ -290,6 +380,11 @@ const styles = StyleSheet.create({
   },
   familyAvatar: {
     fontSize: 40,
+  },
+  familyAvatarImage: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
   },
   familyInfo: {
     flex: 1,
@@ -364,5 +459,20 @@ const styles = StyleSheet.create({
     fontSize: 18,
     color: '#6B7280',
     fontWeight: '600',
+  },
+  centered: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  loadingText: {
+    marginTop: spacing.md,
+    fontSize: 16,
+    color: '#6B7280',
+  },
+  emptyText: {
+    fontSize: 14,
+    color: '#9CA3AF',
+    textAlign: 'center',
+    paddingVertical: spacing.lg,
   },
 });

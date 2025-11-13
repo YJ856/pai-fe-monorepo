@@ -20,21 +20,21 @@ export const SERVICE_URLS = {
   USER_SERVICE:
     process.env.EXPO_PUBLIC_USER_SERVICE_URL || "http://10.0.2.2:3001",
 
+  // pai-service-media: 미디어 업로드 (포트 3002)
+  MEDIA_SERVICE:
+    process.env.EXPO_PUBLIC_MEDIA_SERVICE_URL || "http://10.0.2.2:3002",
+
   // pai-service-insight: 관심사 분석, 추천
   INSIGHT_SERVICE:
-    process.env.EXPO_PUBLIC_INSIGHT_SERVICE_URL || "http://10.0.2.2:3002",
+    process.env.EXPO_PUBLIC_INSIGHT_SERVICE_URL || "http://10.0.2.2:3003",
 
   // pai-service-quiz: 퀴즈
   QUIZ_SERVICE:
-    process.env.EXPO_PUBLIC_QUIZ_SERVICE_URL || "http://10.0.2.2:3003",
+    process.env.EXPO_PUBLIC_QUIZ_SERVICE_URL || "http://10.0.2.2:3004",
 
   // pai-service-conversation: 대화
   CONVERSATION_SERVICE:
-    process.env.EXPO_PUBLIC_CONVERSATION_SERVICE_URL || "http://10.0.2.2:3004",
-
-  // pai-service-media: 미디어 업로드
-  MEDIA_SERVICE:
-    process.env.EXPO_PUBLIC_MEDIA_SERVICE_URL || "http://10.0.2.2:3005",
+    process.env.EXPO_PUBLIC_CONVERSATION_SERVICE_URL || "http://10.0.2.2:3005",
 } as const;
 
 // 개발 환경에서 URL 확인용

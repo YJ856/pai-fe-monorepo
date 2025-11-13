@@ -17,7 +17,7 @@
  * - useActivityData (Dashboard/hooks/)
  */
 
-import React, { useState } from 'react';
+import React, { useState } from "react";
 import {
   View,
   Text,
@@ -25,10 +25,17 @@ import {
   ScrollView,
   TouchableOpacity,
   Image,
-} from 'react-native';
-import { Calendar, Grid, MessageCircle } from 'lucide-react-native';
-import { Button } from '../../../../design/components/Button';
-import { colors, spacing, typography, borderRadius, shadows } from '../../../../design/tokens';
+} from "react-native";
+import { Calendar, Grid, MessageCircle } from "lucide-react-native";
+import { Button } from "../../../../design/components/Button";
+import {
+  colors,
+  spacing,
+  typography,
+  borderRadius,
+  shadows,
+} from "../../../../design/tokens";
+import ActivityCalendar from "../components/ActivityCalendar";
 
 interface ActivityTabProps {
   childId: string;
@@ -46,12 +53,14 @@ interface RecentActivity {
   thumbnailUrl?: string;
 }
 
-// Mock data
+// Mock data - 현재 월(11월) 기준
 const MOCK_ACTIVITIES: ActivityDay[] = [
-  { date: '2025-01-01', count: 3 },
-  { date: '2025-01-05', count: 5 },
-  { date: '2025-01-08', count: 2 },
-  { date: '2025-01-09', count: 4 },
+  { date: '2025-11-01', count: 3 },
+  { date: '2025-11-05', count: 5 },
+  { date: '2025-11-08', count: 2 },
+  { date: '2025-11-09', count: 4 },
+  { date: '2025-11-12', count: 3 },
+  { date: '2025-11-13', count: 2 },
 ];
 
 const MOCK_RECENT: RecentActivity[] = [
@@ -82,17 +91,18 @@ export default function ActivityTab({ childId }: ActivityTabProps) {
     const diff = now.getTime() - date.getTime();
     const days = Math.floor(diff / 86400000);
 
-    if (days === 0) return '오늘';
-    if (days === 1) return '어제';
+    if (days === 0) return "오늘";
+    if (days === 1) return "어제";
     return `${days}일 전`;
   };
 
-  const handleCalendarPress = () => {
-    console.log('Open calendar view');
+  const handleDateSelect = (date: string) => {
+    setSelectedDate(date);
+    console.log("Selected date:", date);
   };
 
   const handleGalleryPress = () => {
-    console.log('Open gallery view');
+    console.log("Open gallery view");
   };
 
   return (
@@ -134,15 +144,16 @@ export default function ActivityTab({ childId }: ActivityTabProps) {
               <Text style={styles.statLabel}>평균/일</Text>
             </View>
           </View>
-
-          <Button
-            variant="outline"
-            onPress={handleCalendarPress}
-            style={{ marginTop: spacing.md }}
-          >
-            달력으로 보기
-          </Button>
         </View>
+      </View>
+
+      {/* Activity Calendar */}
+      <View style={styles.section}>
+        <ActivityCalendar
+          events={activities}
+          selectedDate={selectedDate || undefined}
+          onDateSelect={handleDateSelect}
+        />
       </View>
 
       {/* Recent Activities */}
@@ -157,7 +168,7 @@ export default function ActivityTab({ childId }: ActivityTabProps) {
             <TouchableOpacity
               key={activity.id}
               style={styles.activityItem}
-              onPress={() => console.log('Activity clicked:', activity.id)}
+              onPress={() => console.log("Activity clicked:", activity.id)}
             >
               {activity.thumbnailUrl ? (
                 <Image
@@ -205,8 +216,8 @@ const styles = StyleSheet.create({
     marginBottom: spacing.xl,
   },
   sectionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: spacing.sm,
     marginBottom: spacing.md,
   },
@@ -214,18 +225,18 @@ const styles = StyleSheet.create({
     ...typography.h4,
   },
   card: {
-    backgroundColor: colors.background.primary,
+    backgroundColor: colors.background,
     borderRadius: borderRadius.lg,
     padding: spacing.lg,
     ...shadows.sm,
   },
   statsRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-around",
+    alignItems: "center",
   },
   statItem: {
-    alignItems: 'center',
+    alignItems: "center",
   },
   statValue: {
     ...typography.h2,
@@ -239,14 +250,14 @@ const styles = StyleSheet.create({
   divider: {
     width: 1,
     height: 40,
-    backgroundColor: colors.background.tertiary,
+    backgroundColor: colors.muted,
   },
   activityItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     paddingVertical: spacing.sm,
     borderBottomWidth: 1,
-    borderBottomColor: colors.background.tertiary,
+    borderBottomColor: colors.muted,
   },
   activityThumbnail: {
     width: 60,
@@ -258,9 +269,9 @@ const styles = StyleSheet.create({
     width: 60,
     height: 60,
     borderRadius: borderRadius.md,
-    backgroundColor: colors.background.secondary,
-    alignItems: 'center',
-    justifyContent: 'center',
+    backgroundColor: colors.secondary,
+    alignItems: "center",
+    justifyContent: "center",
     marginRight: spacing.md,
   },
   activityInfo: {
