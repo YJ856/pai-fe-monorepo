@@ -7,9 +7,11 @@
 import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { MessageCircle, FileQuestion } from 'lucide-react-native';
 import ChatScreen from '../../screens/child/Chat';
 import ChatDetailScreen from '../../screens/child/ChatDetail';
 import QuizScreen from '../../screens/child/Quiz';
+import { colors } from '../../design/tokens';
 
 export type ChildTabParamList = {
   Chat: undefined;
@@ -34,9 +36,30 @@ function ChatStack() {
 
 export function ChildNavigator() {
   return (
-    <Tab.Navigator screenOptions={{ headerShown: false }}>
-      <Tab.Screen name="Chat" component={ChatStack} options={{ title: '대화' }} />
-      <Tab.Screen name="Quiz" component={QuizScreen} options={{ title: '퀴즈' }} />
+    <Tab.Navigator
+      screenOptions={{
+        headerShown: false,
+        tabBarActiveTintColor: colors.child.from,
+        tabBarInactiveTintColor: colors.text.secondary,
+        tabBarShowLabel: false,
+      }}
+    >
+      <Tab.Screen
+        name="Chat"
+        component={ChatStack}
+        options={{
+          title: '대화',
+          tabBarIcon: ({ color, size }) => <MessageCircle size={size} color={color} />,
+        }}
+      />
+      <Tab.Screen
+        name="Quiz"
+        component={QuizScreen}
+        options={{
+          title: '퀴즈',
+          tabBarIcon: ({ color, size }) => <FileQuestion size={size} color={color} />,
+        }}
+      />
     </Tab.Navigator>
   );
 }
