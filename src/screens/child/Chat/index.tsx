@@ -29,9 +29,14 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { ArrowLeft, Send, ImageIcon, X } from 'lucide-react-native';
 import * as ImagePicker from 'expo-image-picker';
+import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import type { ChildStackParamList } from '../../../app/navigation/ChildNavigator';
 import { spacing, typography, borderRadius, shadows } from '../../../design/tokens';
 
 const mascotImage = require('../../../assets/images/mascot.png');
+
+type ChatListNavigationProp = NativeStackNavigationProp<ChildStackParamList, 'ChatList'>;
 
 interface Message {
   id: string;
@@ -63,6 +68,7 @@ const MOCK_MESSAGES: Message[] = [
 ];
 
 export default function ChildChatScreen() {
+  const navigation = useNavigation<ChatListNavigationProp>();
   const [messages, setMessages] = useState<Message[]>(MOCK_MESSAGES);
   const [inputText, setInputText] = useState('');
   const [currentImage, setCurrentImage] = useState<string | null>(null);
@@ -126,16 +132,16 @@ export default function ChildChatScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <KeyboardAvoidingView
-        style={styles.container}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
-      >
-        <LinearGradient colors={['#FFE5E0', '#FFF0ED']} style={styles.background}>
-        {/* Header */}
-        <View style={styles.header}>
-          <TouchableOpacity style={styles.backButton}>
+    <LinearGradient colors={['#FFE5E0', '#FFF0ED']} style={styles.gradientContainer}>
+      <SafeAreaView style={styles.safeArea} edges={['top']}>
+        <KeyboardAvoidingView
+          style={styles.container}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          keyboardVerticalOffset={0}
+        >
+          {/* Header */}
+          <View style={styles.header}>
+          <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
             <ArrowLeft size={24} color="#4a4a4a" />
           </TouchableOpacity>
           <View style={styles.headerContent}>
@@ -172,45 +178,46 @@ export default function ChildChatScreen() {
                       : styles.aiMessageContainer,
                   ]}
                 >
-                  <View
-                    style={[
-                      styles.messageBubble,
-                      message.sender === 'child' ? styles.childBubble : styles.aiBubble,
-                    ]}
-                  >
-                    {message.sender === 'ai' && (
+                  {message.sender === 'child' ? (
+                    <LinearGradient
+                      colors={['#FF6B9D', '#FFA06B']}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 0 }}
+                      style={[styles.messageBubble, styles.childBubble]}
+                    >
+                      {message.imageUrl && (
+                        <Image source={{ uri: message.imageUrl }} style={styles.messageImage} />
+                      )}
+                      <Text style={[styles.messageText, styles.childMessageText]}>
+                        {message.text}
+                      </Text>
+                      <Text style={[styles.messageTime, styles.childMessageTime]}>
+                        {message.timestamp.toLocaleTimeString('ko-KR', {
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        })}
+                      </Text>
+                    </LinearGradient>
+                  ) : (
+                    <View style={[styles.messageBubble, styles.aiBubble]}>
                       <View style={styles.aiHeader}>
                         <Image source={mascotImage} style={styles.aiAvatar} />
                         <Text style={styles.aiName}>새싹</Text>
                       </View>
-                    )}
-                    {message.imageUrl && (
-                      <Image source={{ uri: message.imageUrl }} style={styles.messageImage} />
-                    )}
-                    <Text
-                      style={[
-                        styles.messageText,
-                        message.sender === 'child'
-                          ? styles.childMessageText
-                          : styles.aiMessageText,
-                      ]}
-                    >
-                      {message.text}
-                    </Text>
-                    <Text
-                      style={[
-                        styles.messageTime,
-                        message.sender === 'child'
-                          ? styles.childMessageTime
-                          : styles.aiMessageTime,
-                      ]}
-                    >
-                      {message.timestamp.toLocaleTimeString('ko-KR', {
-                        hour: '2-digit',
-                        minute: '2-digit',
-                      })}
-                    </Text>
-                  </View>
+                      {message.imageUrl && (
+                        <Image source={{ uri: message.imageUrl }} style={styles.messageImage} />
+                      )}
+                      <Text style={[styles.messageText, styles.aiMessageText]}>
+                        {message.text}
+                      </Text>
+                      <Text style={[styles.messageTime, styles.aiMessageTime]}>
+                        {message.timestamp.toLocaleTimeString('ko-KR', {
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        })}
+                      </Text>
+                    </View>
+                  )}
                 </View>
               ))}
 
@@ -284,47 +291,42 @@ export default function ChildChatScreen() {
             </TouchableOpacity>
           </View>
         </View>
-      </LinearGradient>
-      </KeyboardAvoidingView>
-    </SafeAreaView>
+        </KeyboardAvoidingView>
+      </SafeAreaView>
+    </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
+  gradientContainer: {
+    flex: 1,
+  },
   safeArea: {
     flex: 1,
-    backgroundColor: '#FFE5E0',
   },
   container: {
     flex: 1,
   },
-  background: {
-    flex: 1,
-  },
   header: {
-    backgroundColor: '#FFFFFF',
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    ...shadows.md,
+    paddingHorizontal: 20,
   },
   backButton: {
-    padding: 8,
     borderRadius: 999,
   },
   headerContent: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginLeft: 12,
-    gap: 8,
+    marginLeft: 8,
+    gap: 5,
   },
   headerMascot: {
     width: 48,
     height: 48,
   },
   headerTitle: {
-    fontSize: 18,
+    fontSize: 17,
     fontWeight: '600',
     color: '#1F2937',
   },
@@ -336,8 +338,9 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   messagesContent: {
-    padding: 16,
-    paddingBottom: 32,
+    flexGrow: 1,
+    padding: 20,
+    marginTop: 10,
   },
   emptyState: {
     alignItems: 'center',
@@ -373,7 +376,7 @@ const styles = StyleSheet.create({
     ...shadows.md,
   },
   childBubble: {
-    backgroundColor: 'transparent',
+    // backgroundColor handled by LinearGradient
   },
   aiBubble: {
     backgroundColor: '#FFFFFF',
@@ -430,8 +433,8 @@ const styles = StyleSheet.create({
   inputContainer: {
     backgroundColor: '#FFFFFF',
     paddingHorizontal: 16,
-    paddingBottom: 16,
     paddingTop: 12,
+    paddingBottom: 12,
   },
   imagePreviewContainer: {
     position: 'relative',
@@ -473,8 +476,8 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     borderWidth: 2,
     borderColor: '#E5E7EB',
-    paddingHorizontal: 24,
-    paddingVertical: 20,
+    paddingHorizontal: 23,
+    paddingVertical: 10,
     fontSize: 16,
     maxHeight: 120,
   },

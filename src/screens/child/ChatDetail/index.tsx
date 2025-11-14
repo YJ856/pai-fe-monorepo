@@ -38,6 +38,9 @@ import {
   List,
 } from 'lucide-react-native';
 import * as ImagePicker from 'expo-image-picker';
+import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import type { ChildStackParamList } from '../../../app/navigation/ChildNavigator';
 import { Button } from '../../../design/components/Button';
 import { colors, spacing, typography, borderRadius } from '../../../design/tokens';
 
@@ -52,8 +55,10 @@ interface Message {
   timestamp: Date;
 }
 
+type ChatDetailNavigationProp = NativeStackNavigationProp<ChildStackParamList, 'ChatDetail'>;
+
 export default function ChildChatDetailScreen() {
-  const [mode, setMode] = useState<'focus' | 'list'>('focus');
+  const navigation = useNavigation<ChatDetailNavigationProp>();
   const [messages, setMessages] = useState<Message[]>([]);
   const [currentQuestion, setCurrentQuestion] = useState('');
   const [currentAnswer, setCurrentAnswer] = useState<Message | null>(null);
@@ -179,7 +184,7 @@ export default function ChildChatDetailScreen() {
           </TouchableOpacity>
 
           <TouchableOpacity
-            onPress={() => setMode('list')}
+            onPress={() => navigation.navigate('ChatList')}
             style={styles.chatListButton}
           >
             <LinearGradient
@@ -218,7 +223,10 @@ export default function ChildChatDetailScreen() {
               {/* Progress Bar */}
               <View style={styles.progressContainer}>
                 <View style={styles.progressBackground}>
-                  <View
+                  <LinearGradient
+                    colors={['#FF6B9D', '#FFA06B']}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
                     style={[styles.progressBar, { width: `${getProgress() * 100}%` }]}
                   />
                 </View>
@@ -227,8 +235,10 @@ export default function ChildChatDetailScreen() {
               {/* Question Section */}
               {currentQuestion && (
                 <View style={styles.section}>
-                  <View style={styles.badge}>
-                    <Text style={styles.badgeText}>질문</Text>
+                  <View style={styles.questionHeader}>
+                    <View style={styles.badge}>
+                      <Text style={styles.badgeText}>질문</Text>
+                    </View>
                   </View>
 
                   {currentImage && (
@@ -254,8 +264,29 @@ export default function ChildChatDetailScreen() {
               {/* Answer Section */}
               {(currentAnswer || (isLoading && currentQuestion)) && (
                 <View style={styles.section}>
-                  <View style={[styles.badge, styles.badgeAnswer]}>
-                    <Text style={styles.badgeText}>답변</Text>
+                  <View style={styles.answerHeader}>
+                    <View style={[styles.badge, styles.badgeAnswer]}>
+                      <Text style={styles.badgeText}>답변</Text>
+                    </View>
+                    {currentAnswer?.hasAudio && (
+                      <TouchableOpacity
+                        style={styles.audioButton}
+                        onPress={toggleAudioPlayback}
+                      >
+                        <LinearGradient
+                          colors={['#FF6B9D', '#FFA06B']}
+                          start={{ x: 0, y: 0 }}
+                          end={{ x: 1, y: 0 }}
+                          style={styles.audioGradient}
+                        >
+                          {isPlayingAudio ? (
+                            <VolumeX size={16} color="#fff" />
+                          ) : (
+                            <Volume2 size={16} color="#fff" />
+                          )}
+                        </LinearGradient>
+                      </TouchableOpacity>
+                    )}
                   </View>
 
                   {isLoading && !currentAnswer ? (
@@ -265,31 +296,7 @@ export default function ChildChatDetailScreen() {
                       <View style={[styles.loadingBar, { width: '70%' }]} />
                     </View>
                   ) : currentAnswer ? (
-                    <>
-                      <Text style={styles.answerText}>{currentAnswer.text}</Text>
-                      {currentAnswer.hasAudio && (
-                        <TouchableOpacity
-                          style={styles.audioButton}
-                          onPress={toggleAudioPlayback}
-                        >
-                          <LinearGradient
-                            colors={['#FF6B9D', '#FFA06B']}
-                            start={{ x: 0, y: 0 }}
-                            end={{ x: 1, y: 0 }}
-                            style={styles.audioGradient}
-                          >
-                            {isPlayingAudio ? (
-                              <VolumeX size={20} color="#fff" />
-                            ) : (
-                              <Volume2 size={20} color="#fff" />
-                            )}
-                            <Text style={styles.audioText}>
-                              {isPlayingAudio ? '멈추기' : '소리로 듣기'}
-                            </Text>
-                          </LinearGradient>
-                        </TouchableOpacity>
-                      )}
-                    </>
+                    <Text style={styles.answerText}>{currentAnswer.text}</Text>
                   ) : null}
                 </View>
               )}
@@ -424,8 +431,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
-    paddingTop: 40,
-    paddingBottom: 16,
+    paddingTop: 3,
+    paddingBottom: 5,
   },
   exitButton: {
     padding: 8,
@@ -457,14 +464,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 24,
-    paddingBottom: 180,
+    paddingBottom: 120,
   },
   mascotContainer: {
-    marginBottom: 32,
+    marginBottom: 16,
   },
   mascot: {
-    width: 192,
-    height: 192,
+    width: 120,
+    height: 120,
   },
   emptyState: {
     alignItems: 'center',
@@ -485,7 +492,7 @@ const styles = StyleSheet.create({
     maxWidth: 400,
     backgroundColor: '#fff',
     borderRadius: 24,
-    maxHeight: '50%',
+    maxHeight: '90%',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 10 },
     shadowOpacity: 0.3,
@@ -506,7 +513,6 @@ const styles = StyleSheet.create({
   },
   progressBar: {
     height: '100%',
-    backgroundColor: '#FFA06B',
     borderRadius: 999,
   },
   section: {
@@ -527,6 +533,15 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#4a4a4a',
   },
+  questionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  answerHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
   questionImage: {
     width: '100%',
     aspectRatio: 16 / 9,
@@ -537,7 +552,7 @@ const styles = StyleSheet.create({
     fontSize: 20,
     textAlign: 'center',
     color: '#333',
-    lineHeight: 32,
+    lineHeight: 28,
   },
   divider: {
     height: 2,
@@ -561,22 +576,15 @@ const styles = StyleSheet.create({
     lineHeight: 28,
   },
   audioButton: {
-    alignSelf: 'center',
-    marginTop: 16,
-    borderRadius: 999,
+    marginBottom: 15,
   },
   audioGradient: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 24,
-    paddingVertical: 12,
+    justifyContent: 'center',
+    width: 30,
+    height: 30,
     borderRadius: 999,
-    gap: 8,
-  },
-  audioText: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: '600',
   },
   inputContainer: {
     position: 'absolute',
@@ -631,8 +639,8 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     borderWidth: 2,
     borderColor: '#e5e7eb',
-    paddingHorizontal: 24,
-    paddingVertical: 20,
+    paddingHorizontal: 23,
+    paddingVertical: 10,
     fontSize: 16,
     maxHeight: 120,
   },
