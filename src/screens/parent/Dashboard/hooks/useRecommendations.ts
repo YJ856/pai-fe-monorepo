@@ -20,4 +20,48 @@
  * - fetchNextPage, hasNextPage, isFetchingNextPage
  */
 
-// TODO: 훅 구현 코드 삽입 위치
+import { useInfiniteQuery } from "@tanstack/react-query";
+import { getRecommendations } from "../../../../api/recommendations";
+
+interface UseRecommendationsParams {
+  childId: string;
+  category?: string;
+}
+
+export const useRecommendations = ({ childId, category }: UseRecommendationsParams) => {
+  const {
+    data,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+    isLoading,
+    isError,
+    error,
+  } = useInfiniteQuery({
+    queryKey: ["recommendations", childId, category],
+    queryFn: ({ pageParam = 1 }) =>
+      getRecommendations(childId, {
+        page: pageParam,
+        pageSize: 10,
+        category,
+      }),
+    getNextPageParam: (lastPage, allPages) => {
+      // hasMore가 true면 다음 페이지 번호 반환
+      return lastPage.hasMore ? allPages.length + 1 : undefined;
+    },
+    initialPageParam: 1,
+  });
+
+  // 모든 페이지의 recommendations를 평탄화
+  const recommendations = data?.pages.flatMap((page) => page.recommendations) ?? [];
+
+  return {
+    recommendations,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+    isLoading,
+    isError,
+    error,
+  };
+};
