@@ -223,7 +223,10 @@ export default function ChildChatDetailScreen() {
               {/* Progress Bar */}
               <View style={styles.progressContainer}>
                 <View style={styles.progressBackground}>
-                  <View
+                  <LinearGradient
+                    colors={['#FF6B9D', '#FFA06B']}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
                     style={[styles.progressBar, { width: `${getProgress() * 100}%` }]}
                   />
                 </View>
@@ -461,7 +464,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 24,
-    paddingBottom: 180,
+    paddingBottom: 120,
   },
   mascotContainer: {
     marginBottom: 16,
@@ -489,7 +492,7 @@ const styles = StyleSheet.create({
     maxWidth: 400,
     backgroundColor: '#fff',
     borderRadius: 24,
-    maxHeight: '80%',
+    maxHeight: '90%',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 10 },
     shadowOpacity: 0.3,
@@ -510,7 +513,6 @@ const styles = StyleSheet.create({
   },
   progressBar: {
     height: '100%',
-    backgroundColor: '#FFA06B',
     borderRadius: 999,
   },
   section: {
@@ -550,7 +552,7 @@ const styles = StyleSheet.create({
     fontSize: 20,
     textAlign: 'center',
     color: '#333',
-    lineHeight: 32,
+    lineHeight: 28,
   },
   divider: {
     height: 2,
@@ -574,14 +576,14 @@ const styles = StyleSheet.create({
     lineHeight: 28,
   },
   audioButton: {
-    borderRadius: 999,
+    marginBottom: 15,
   },
   audioGradient: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    width: 36,
-    height: 36,
+    width: 30,
+    height: 30,
     borderRadius: 999,
   },
   inputContainer: {

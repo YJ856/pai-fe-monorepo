@@ -178,45 +178,46 @@ export default function ChildChatScreen() {
                       : styles.aiMessageContainer,
                   ]}
                 >
-                  <View
-                    style={[
-                      styles.messageBubble,
-                      message.sender === 'child' ? styles.childBubble : styles.aiBubble,
-                    ]}
-                  >
-                    {message.sender === 'ai' && (
+                  {message.sender === 'child' ? (
+                    <LinearGradient
+                      colors={['#FF6B9D', '#FFA06B']}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 0 }}
+                      style={[styles.messageBubble, styles.childBubble]}
+                    >
+                      {message.imageUrl && (
+                        <Image source={{ uri: message.imageUrl }} style={styles.messageImage} />
+                      )}
+                      <Text style={[styles.messageText, styles.childMessageText]}>
+                        {message.text}
+                      </Text>
+                      <Text style={[styles.messageTime, styles.childMessageTime]}>
+                        {message.timestamp.toLocaleTimeString('ko-KR', {
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        })}
+                      </Text>
+                    </LinearGradient>
+                  ) : (
+                    <View style={[styles.messageBubble, styles.aiBubble]}>
                       <View style={styles.aiHeader}>
                         <Image source={mascotImage} style={styles.aiAvatar} />
                         <Text style={styles.aiName}>새싹</Text>
                       </View>
-                    )}
-                    {message.imageUrl && (
-                      <Image source={{ uri: message.imageUrl }} style={styles.messageImage} />
-                    )}
-                    <Text
-                      style={[
-                        styles.messageText,
-                        message.sender === 'child'
-                          ? styles.childMessageText
-                          : styles.aiMessageText,
-                      ]}
-                    >
-                      {message.text}
-                    </Text>
-                    <Text
-                      style={[
-                        styles.messageTime,
-                        message.sender === 'child'
-                          ? styles.childMessageTime
-                          : styles.aiMessageTime,
-                      ]}
-                    >
-                      {message.timestamp.toLocaleTimeString('ko-KR', {
-                        hour: '2-digit',
-                        minute: '2-digit',
-                      })}
-                    </Text>
-                  </View>
+                      {message.imageUrl && (
+                        <Image source={{ uri: message.imageUrl }} style={styles.messageImage} />
+                      )}
+                      <Text style={[styles.messageText, styles.aiMessageText]}>
+                        {message.text}
+                      </Text>
+                      <Text style={[styles.messageTime, styles.aiMessageTime]}>
+                        {message.timestamp.toLocaleTimeString('ko-KR', {
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        })}
+                      </Text>
+                    </View>
+                  )}
                 </View>
               ))}
 
@@ -375,7 +376,7 @@ const styles = StyleSheet.create({
     ...shadows.md,
   },
   childBubble: {
-    backgroundColor: 'transparent',
+    // backgroundColor handled by LinearGradient
   },
   aiBubble: {
     backgroundColor: '#FFFFFF',
