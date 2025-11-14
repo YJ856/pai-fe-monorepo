@@ -2,6 +2,7 @@
  * 자녀 앱 네비게이터
  * - 탭 네비게이션: 대화, 퀴즈
  * - 자녀용 화면 스택
+ * - 메인 대화 화면: ChatDetail (단일 대화 포커스 모드)
  */
 
 import React from 'react';
@@ -19,7 +20,8 @@ export type ChildTabParamList = {
 };
 
 export type ChildStackParamList = {
-  ChatDetail: { conversationId: string };
+  ChatDetail: undefined;
+  ChatList: undefined;
 };
 
 const Tab = createBottomTabNavigator<ChildTabParamList>();
@@ -28,8 +30,8 @@ const Stack = createNativeStackNavigator<ChildStackParamList>();
 function ChatStack() {
   return (
     <Stack.Navigator>
-      <Stack.Screen name="Chat" component={ChatScreen} options={{ headerShown: false }} />
-      <Stack.Screen name="ChatDetail" component={ChatDetailScreen} options={{ title: '대화 상세' }} />
+      <Stack.Screen name="ChatDetail" component={ChatDetailScreen} options={{ headerShown: false }} />
+      <Stack.Screen name="ChatList" component={ChatScreen} options={{ headerShown: false }} />
     </Stack.Navigator>
   );
 }
