@@ -14,7 +14,7 @@
  * - useRecommendations (Dashboard/hooks/)
  */
 
-import React, { useState } from 'react';
+import React, { useState } from "react";
 import {
   View,
   Text,
@@ -22,18 +22,28 @@ import {
   FlatList,
   TouchableOpacity,
   Image,
-} from 'react-native';
-import { Book, Video, Gamepad2, Music, ExternalLink } from 'lucide-react-native';
-import { colors, spacing, typography, borderRadius, shadows } from '../../../../design/tokens';
+  ActivityIndicator,
+} from "react-native";
+import {
+  colors,
+  spacing,
+  typography,
+  borderRadius,
+  shadows,
+} from "../../../../design/tokens";
+import { useRecommendations } from "../hooks/useRecommendations";
 
 interface Recommendation {
   id: string;
   title: string;
   description: string;
-  category: 'book' | 'video' | 'game' | 'music';
-  thumbnailUrl?: string;
-  url?: string;
-  matchedInterests: string[];
+  category: string;
+  location?: string;
+  startDate?: string;
+  endDate?: string;
+  imageUrl?: string;
+  link?: string;
+  relevantKeywords: string[]; // 백엔드 응답에 맞춤
 }
 
 interface RecommendationsTabProps {
@@ -41,75 +51,40 @@ interface RecommendationsTabProps {
 }
 
 const categories = [
-  { key: 'all', label: '전체', icon: null },
-  { key: 'book', label: '도서', icon: Book },
-  { key: 'video', label: '영상', icon: Video },
-  { key: 'game', label: '게임', icon: Gamepad2 },
-  { key: 'music', label: '음악', icon: Music },
+  { key: "all", label: "전체" },
+  { key: "book", label: "도서" },
+  { key: "video", label: "영상" },
+  { key: "game", label: "게임" },
+  { key: "music", label: "음악" },
 ];
 
-// Mock data
-const MOCK_RECOMMENDATIONS: Recommendation[] = [
-  {
-    id: '1',
-    title: '공룡 대탐험',
-    description: '공룡의 종류와 특징을 배울 수 있는 재미있는 책',
-    category: 'book',
-    matchedInterests: ['공룡', '과학'],
-  },
-  {
-    id: '2',
-    title: '우주의 신비',
-    description: '우주와 행성에 대해 알아보는 다큐멘터리',
-    category: 'video',
-    matchedInterests: ['우주', '과학'],
-  },
-  {
-    id: '3',
-    title: '해양 생물 퍼즐',
-    description: '바다 동물들을 배우며 놀 수 있는 교육 게임',
-    category: 'game',
-    matchedInterests: ['바다', '동물'],
-  },
-  {
-    id: '4',
-    title: '자연의 소리',
-    description: '숲과 바다의 자연 소리로 편안함을 주는 음악',
-    category: 'music',
-    matchedInterests: ['자연', '음악'],
-  },
-];
+export default function RecommendationsTab({
+  childId,
+}: RecommendationsTabProps) {
+  const [selectedCategory, setSelectedCategory] = useState("all");
 
-export default function RecommendationsTab({ childId }: RecommendationsTabProps) {
-  const [selectedCategory, setSelectedCategory] = useState('all');
-  const [recommendations] = useState<Recommendation[]>(MOCK_RECOMMENDATIONS);
+  // 실제 API 호출
+  const {
+    recommendations,
+    isLoading,
+    isError,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  } = useRecommendations({
+    childId,
+    category: selectedCategory === "all" ? undefined : selectedCategory,
+  });
 
-  const filteredRecommendations =
-    selectedCategory === 'all'
-      ? recommendations
-      : recommendations.filter((r) => r.category === selectedCategory);
+  const filteredRecommendations = recommendations;
 
-  const getCategoryIcon = (category: string) => {
-    switch (category) {
-      case 'book':
-        return <Book size={24} color={colors.parent.from} />;
-      case 'video':
-        return <Video size={24} color={colors.parent.from} />;
-      case 'game':
-        return <Gamepad2 size={24} color={colors.parent.from} />;
-      case 'music':
-        return <Music size={24} color={colors.parent.from} />;
-      default:
-        return null;
-    }
-  };
+  const renderHeader = () => null;
 
   const renderCategoryFilter = () => (
     <View style={styles.filterContainer}>
       <FlatList
         data={categories}
         renderItem={({ item }) => {
-          const Icon = item.icon;
           return (
             <TouchableOpacity
               style={[
@@ -118,16 +93,6 @@ export default function RecommendationsTab({ childId }: RecommendationsTabProps)
               ]}
               onPress={() => setSelectedCategory(item.key)}
             >
-              {Icon && (
-                <Icon
-                  size={16}
-                  color={
-                    selectedCategory === item.key
-                      ? colors.text.inverse
-                      : colors.text.secondary
-                  }
-                />
-              )}
               <Text
                 style={[
                   styles.filterText,
@@ -150,39 +115,63 @@ export default function RecommendationsTab({ childId }: RecommendationsTabProps)
   const renderRecommendationCard = ({ item }: { item: Recommendation }) => (
     <TouchableOpacity
       style={styles.recommendationCard}
-      onPress={() => console.log('Recommendation clicked:', item.id)}
+      onPress={() => console.log("Recommendation clicked:", item.id)}
     >
-      {item.thumbnailUrl ? (
-        <Image source={{ uri: item.thumbnailUrl }} style={styles.thumbnail} />
-      ) : (
-        <View style={styles.thumbnailPlaceholder}>
-          {getCategoryIcon(item.category)}
-        </View>
+      {item.imageUrl && (
+        <Image source={{ uri: item.imageUrl }} style={styles.thumbnail} />
       )}
 
       <View style={styles.recommendationInfo}>
-        <View style={styles.recommendationHeader}>
-          <Text style={styles.recommendationTitle}>{item.title}</Text>
-          {item.url && <ExternalLink size={16} color={colors.text.tertiary} />}
+        <View>
+          <Text style={styles.recommendationTitle} numberOfLines={2}>
+            {item.title}
+          </Text>
+          {item.relevantKeywords && item.relevantKeywords.length > 0 && (
+            <Text style={styles.cardKeyword} numberOfLines={1}>
+              관련 관심사: {item.relevantKeywords[0]}
+            </Text>
+          )}
         </View>
 
-        <Text style={styles.recommendationDescription} numberOfLines={2}>
-          {item.description}
+        <Text style={styles.recommendationAddress} numberOfLines={1}>
+          {item.location || item.description}
         </Text>
-
-        <View style={styles.interestTags}>
-          {item.matchedInterests.map((interest) => (
-            <View key={interest} style={styles.interestTag}>
-              <Text style={styles.interestTagText}>{interest}</Text>
-            </View>
-          ))}
-        </View>
       </View>
     </TouchableOpacity>
   );
 
+  // 로딩 상태 처리
+  if (isLoading) {
+    return (
+      <View style={styles.container}>
+        {renderHeader()}
+        {renderCategoryFilter()}
+        <View style={styles.emptyContainer}>
+          <ActivityIndicator size="large" color={colors.parent.from} />
+          <Text style={styles.emptyText}>추천 콘텐츠를 불러오는 중...</Text>
+        </View>
+      </View>
+    );
+  }
+
+  // 에러 상태 처리
+  if (isError) {
+    return (
+      <View style={styles.container}>
+        {renderHeader()}
+        {renderCategoryFilter()}
+        <View style={styles.emptyContainer}>
+          <Text style={styles.emptyText}>
+            추천 콘텐츠를 불러오지 못했습니다
+          </Text>
+        </View>
+      </View>
+    );
+  }
+
   return (
     <View style={styles.container}>
+      {renderHeader()}
       {renderCategoryFilter()}
 
       <FlatList
@@ -191,6 +180,19 @@ export default function RecommendationsTab({ childId }: RecommendationsTabProps)
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}
+        onEndReached={() => {
+          if (hasNextPage && !isFetchingNextPage) {
+            fetchNextPage();
+          }
+        }}
+        onEndReachedThreshold={0.5}
+        ListFooterComponent={
+          isFetchingNextPage ? (
+            <View style={styles.loadingFooter}>
+              <ActivityIndicator size="small" color={colors.parent.from} />
+            </View>
+          ) : null
+        }
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
             <Text style={styles.emptyText}>추천 콘텐츠가 없습니다</Text>
@@ -205,23 +207,43 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
+  headerContainer: {
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.md,
+    paddingBottom: spacing.sm,
+  },
+  headerTitleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.md,
+    flexWrap: "wrap",
+  },
+  headerTitle: {
+    ...typography.h3,
+    fontWeight: "700",
+  },
+  headerSubtitle: {
+    ...typography.body2,
+    color: colors.text.secondary,
+    fontWeight: "400",
+  },
   filterContainer: {
     paddingVertical: spacing.md,
     borderBottomWidth: 1,
-    borderBottomColor: colors.background.tertiary,
+    borderBottomColor: colors.background,
   },
   filterList: {
     paddingHorizontal: spacing.lg,
     gap: spacing.sm,
   },
   filterButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: spacing.xs,
     paddingVertical: spacing.sm,
     paddingHorizontal: spacing.md,
     borderRadius: borderRadius.full,
-    backgroundColor: colors.background.secondary,
+    backgroundColor: colors.background,
   },
   filterButtonActive: {
     backgroundColor: colors.parent.from,
@@ -232,19 +254,19 @@ const styles = StyleSheet.create({
   },
   filterTextActive: {
     color: colors.text.inverse,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   listContent: {
     padding: spacing.lg,
   },
   recommendationCard: {
-    flexDirection: 'row',
-    backgroundColor: colors.background.primary,
+    flexDirection: "row",
+    backgroundColor: colors.background,
     borderRadius: borderRadius.lg,
     padding: spacing.md,
     marginBottom: spacing.md,
     borderWidth: 1,
-    borderColor: colors.background.tertiary,
+    borderColor: colors.background,
     ...shadows.sm,
   },
   thumbnail: {
@@ -253,57 +275,34 @@ const styles = StyleSheet.create({
     borderRadius: borderRadius.md,
     marginRight: spacing.md,
   },
-  thumbnailPlaceholder: {
-    width: 100,
-    height: 100,
-    borderRadius: borderRadius.md,
-    backgroundColor: colors.background.secondary,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: spacing.md,
-  },
   recommendationInfo: {
     flex: 1,
-    justifyContent: 'space-between',
-  },
-  recommendationHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: spacing.xs,
+    justifyContent: "space-between",
   },
   recommendationTitle: {
     ...typography.h4,
-    flex: 1,
+    marginBottom: spacing.xs,
   },
-  recommendationDescription: {
+  cardKeyword: {
+    ...typography.caption,
+    color: colors.text.secondary,
+    marginTop: spacing.xs,
+  },
+  recommendationAddress: {
     ...typography.body2,
     color: colors.text.secondary,
-    marginBottom: spacing.sm,
-  },
-  interestTags: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.xs,
-  },
-  interestTag: {
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 4,
-    borderRadius: borderRadius.sm,
-    backgroundColor: `${colors.parent.from}20`,
-  },
-  interestTagText: {
-    ...typography.caption,
-    color: colors.parent.from,
-    fontWeight: '600',
   },
   emptyContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     paddingVertical: spacing.xl * 2,
   },
   emptyText: {
     ...typography.body1,
     color: colors.text.secondary,
+  },
+  loadingFooter: {
+    paddingVertical: spacing.lg,
+    alignItems: "center",
   },
 });

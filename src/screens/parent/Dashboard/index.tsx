@@ -43,7 +43,9 @@ import ActivityCalendar from "./components/ActivityCalendar";
 import {
   useInterestsData,
   useActivityData,
+  useRecommendations,
 } from "./hooks/useDashboardData";
+import { useProfileStore } from "../../../store/useProfileStore";
 
 type TabValue = "interests" | "calendar" | "recommendations";
 type RecommendationType = "관광지" | "문화시설" | "축제공연행사";
@@ -69,132 +71,89 @@ interface Child {
   avatar: string;
 }
 
-// Mock data
-const MOCK_INTERESTS: Interest[] = [
-  { topic: "공룡", count: 15, icon: "🦕" },
-  { topic: "우주", count: 12, icon: "🚀" },
-  { topic: "동물", count: 10, icon: "🐶" },
-  { topic: "바다", count: 8, icon: "🌊" },
-  { topic: "식물", count: 7, icon: "🌱" },
-  { topic: "곤충", count: 6, icon: "🦋" },
-  { topic: "날씨", count: 5, icon: "🌤️" },
-  { topic: "음악", count: 4, icon: "🎵" },
-  { topic: "미술", count: 3, icon: "🎨" },
-  { topic: "스포츠", count: 2, icon: "⚽" },
-];
-
-const MOCK_RECOMMENDATIONS: Recommendation[] = [
-  {
-    id: "1",
-    type: "문화시설",
-    title: "서울 자연사 박물관",
-    description: "공룡 화석과 다양한 생물 표본을 볼 수 있어요",
-    relatedInterest: "공룡",
-    icon: "🦕",
-  },
-  {
-    id: "2",
-    type: "문화시설",
-    title: "국립과천과학관",
-    description: "별자리와 행성을 직접 관측하고 다양한 과학 체험을 해보세요",
-    relatedInterest: "우주",
-    icon: "🔭",
-  },
-  {
-    id: "3",
-    type: "관광지",
-    title: "에버랜드",
-    description: "다양한 동물들을 직접 보고 체험할 수 있어요",
-    relatedInterest: "동물",
-    icon: "🦁",
-  },
-  {
-    id: "4",
-    type: "관광지",
-    title: "아쿠아리움",
-    description: "신비로운 바다 생물들을 가까이서 만나보세요",
-    relatedInterest: "바다",
-    icon: "🐠",
-  },
-  {
-    id: "5",
-    type: "축제공연행사",
-    title: "어린이 음악회",
-    description: "클래식부터 동요까지 다양한 음악을 즐겨보세요",
-    relatedInterest: "음악",
-    icon: "🎵",
-  },
-  {
-    id: "6",
-    type: "축제공연행사",
-    title: "키즈 아트 페스티벌",
-    description: "아이들을 위한 미술 체험과 전시회",
-    relatedInterest: "미술",
-    icon: "🎨",
-  },
-  {
-    id: "7",
-    type: "문화시설",
-    title: "어린이 도서관",
-    description: "다양한 책과 함께 독서의 즐거움을 느껴보세요",
-    relatedInterest: "동물",
-    icon: "📚",
-  },
-  {
-    id: "8",
-    type: "관광지",
-    title: "식물원",
-    description: "다양한 식물들을 관찰하고 자연을 배워요",
-    relatedInterest: "식물",
-    icon: "🌱",
-  },
-];
-
 const CHILDREN: Child[] = [
   { id: "3", name: "지우", avatar: "👧" },
   { id: "4", name: "민준", avatar: "👦" },
 ];
 
-// Mock activity data - 현재 월(11월) 기준
-// 빈 배열로 테스트: 데이터 없어도 달력이 보여야 함
-const MOCK_ACTIVITIES = [
-  { date: "2025-11-01", count: 3 },
-  { date: "2025-11-05", count: 5 },
-  { date: "2025-11-08", count: 2 },
-  { date: "2025-11-09", count: 4 },
-  { date: "2025-11-12", count: 3 },
-  { date: "2025-11-13", count: 2 },
-];
-// const MOCK_ACTIVITIES = []; // 빈 배열로 테스트하려면 이 줄 사용
-
 export default function ParentDashboard() {
   const [activeTab, setActiveTab] = useState<TabValue>("interests");
   const [selectedRecommendationType, setSelectedRecommendationType] =
-    useState<RecommendationType>("관광지");
+    useState<RecommendationType>("축제공연행사");
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
 
-  // TODO: 실제로는 자녀 선택 기능 추가 필요
-  const selectedChildId = "3"; // 임시 하드코딩
+  // Zustand store에서 자녀 프로필 가져오기
+  const { childProfiles } = useProfileStore();
+
+  // 첫 번째 자녀 프로필 선택 (나중에 선택 UI 추가 가능)
+  const selectedChildId = childProfiles[0]?.id || "3"; // 자녀가 없으면 기본값 "3"
+
+  console.log("[Dashboard] childProfiles:", childProfiles);
+  console.log("[Dashboard] selectedChildId:", selectedChildId);
 
   // API 데이터 조회
-  const { data: interestsData, isLoading: interestsLoading } = useInterestsData(selectedChildId);
-  const { data: activityData, isLoading: activityLoading } = useActivityData(selectedChildId);
+  const {
+    data: interestsData,
+    isLoading: interestsLoading,
+    error: interestsError,
+  } = useInterestsData(selectedChildId);
+  const { data: activityData, isLoading: activityLoading } =
+    useActivityData(selectedChildId);
 
-  // 관심사 데이터 (API 또는 Mock)
-  const interests = interestsData?.interests?.map((item: any) => ({
-    topic: item.keyword,
-    count: Math.round(item.rawScore * 10), // rawScore를 적절히 변환
-    icon: "💡", // 기본 아이콘
-  })) || MOCK_INTERESTS;
+  console.log("[Dashboard] interestsData:", interestsData);
+  console.log("[Dashboard] interestsLoading:", interestsLoading);
+  console.log("[Dashboard] interestsError:", interestsError);
 
-  // 활동 데이터 (API 또는 Mock)
-  const activities = activityData || MOCK_ACTIVITIES;
+  // 관심사 데이터 (API only)
+  const interests =
+    interestsData?.interests?.map((item: any) => ({
+      topic: item.keyword,
+      count: Math.round(item.rawScore * 10), // rawScore를 적절히 변환
+      icon: "💡", // 기본 아이콘
+    })) || [];
+
+  // 활동 데이터 (API only)
+  const activities = activityData || [];
+
+  // 최상위 관심사 키워드 추출 (가장 높은 rawScore)
+  const topKeyword = interestsData?.interests?.[0]?.keyword;
+
+  // 추천 콘텐츠 API 조회 (최상위 관심사 키워드 기반)
+  const { data: recommendationsData, isLoading: recommendationsLoading } =
+    useRecommendations(selectedChildId, topKeyword);
+
+  console.log("[Dashboard] topKeyword:", topKeyword);
+  console.log("[Dashboard] recommendationsData:", recommendationsData);
 
   const maxCount = Math.max(...interests.map((i: any) => i.count), 1);
 
-  // Filter recommendations by type
-  const filteredRecommendations = MOCK_RECOMMENDATIONS.filter(
-    (rec) => rec.type === selectedRecommendationType
+  // API 카테고리를 Dashboard 타입으로 매핑
+  const mapCategoryToType = (category: string): RecommendationType => {
+    if (category === "축제") return "축제공연행사";
+    if (category === "관광지") return "관광지";
+    if (category === "문화시설") return "문화시설";
+    return "관광지"; // 기본값
+  };
+
+  // 추천 콘텐츠 (API 또는 Mock)
+  const apiRecommendations =
+    recommendationsData?.recommendations?.map((item: any) => ({
+      id: item.id,
+      type: mapCategoryToType(item.category), // API의 category를 Dashboard type으로 매핑
+      title: item.title,
+      description: item.description,
+      relatedInterest: item.relevantKeywords?.join(", ") || topKeyword || "",
+      icon: "🎯", // 기본 아이콘
+      location: item.location,
+      startDate: item.startDate,
+      endDate: item.endDate,
+      imageUrl: item.imageUrl,
+      link: item.link,
+    })) || [];
+
+  // Filter recommendations by type (API only)
+  const filteredRecommendations = apiRecommendations.filter(
+    (rec: Recommendation) => rec.type === selectedRecommendationType
   );
 
   const getTypeIcon = (type: RecommendationType): string => {
@@ -297,36 +256,72 @@ export default function ParentDashboard() {
                 {/* Loading */}
                 {interestsLoading && (
                   <View style={styles.loadingContainer}>
-                    <ActivityIndicator size="large" color={colors.parent.from} />
-                    <Text style={styles.loadingText}>관심사 데이터 로딩 중...</Text>
+                    <ActivityIndicator
+                      size="large"
+                      color={colors.parent.from}
+                    />
+                    <Text style={styles.loadingText}>
+                      관심사 데이터 로딩 중...
+                    </Text>
                   </View>
                 )}
 
                 {/* Bubble Grid */}
                 {!interestsLoading && (
                   <View style={styles.bubbleGrid}>
-                    {interests.map((interest: any) => {
+                    {interests.map((interest: any, index: number) => {
                       const percentage = (interest.count / maxCount) * 100;
-                      const size = 80 + (percentage / 100) * 60; // 80-140px
+                      const size = 42.5 + (percentage / 100) * 32.5; // 42.5-75px (반으로 축소)
+
+                      // 예쁜 그라데이션 색상 팔레트 (10개)
+                      const colorPalettes = [
+                        ["#667eea", "#764ba2"], // 보라-파랑
+                        ["#f093fb", "#f5576c"], // 핑크-레드
+                        ["#4facfe", "#00f2fe"], // 하늘-청록
+                        ["#43e97b", "#38f9d7"], // 초록-민트
+                        ["#fa709a", "#fee140"], // 핑크-노랑
+                        ["#30cfd0", "#330867"], // 청록-남색
+                        ["#a8edea", "#fed6e3"], // 민트-핑크
+                        ["#ff9a9e", "#fecfef"], // 코랄-핑크
+                        ["#ffecd2", "#fcb69f"], // 피치-오렌지
+                        ["#ff6e7f", "#bfe9ff"], // 레드-스카이
+                      ];
+
+                      const colors = colorPalettes[index % colorPalettes.length];
 
                       return (
                         <View key={interest.topic} style={styles.bubbleItem}>
                           <LinearGradient
-                            colors={["#5B9BD5", "#4A8BC2"]}
+                            colors={colors as [string, string]}
                             start={{ x: 0, y: 0 }}
                             end={{ x: 1, y: 1 }}
-                            style={[styles.bubble, { width: size, height: size }]}
-                        >
-                          <Text style={styles.bubbleIcon}>{interest.icon}</Text>
-                          <Text style={styles.bubbleCount}>
-                            {interest.count}
+                            style={[
+                              styles.bubble,
+                              {
+                                width: size,
+                                height: size,
+                                shadowColor: colors[0],
+                                shadowOffset: { width: 0, height: 4 },
+                                shadowOpacity: 0.3,
+                                shadowRadius: 8,
+                                elevation: 6,
+                              },
+                            ]}
+                          >
+                            <Text style={styles.bubbleIcon}>
+                              {interest.icon}
+                            </Text>
+                            <Text style={styles.bubbleCount}>
+                              {interest.count}
+                            </Text>
+                          </LinearGradient>
+                          <Text style={styles.bubbleTopic}>
+                            {interest.topic}
                           </Text>
-                        </LinearGradient>
-                        <Text style={styles.bubbleTopic}>{interest.topic}</Text>
-                      </View>
-                    );
-                  })}
-                </View>
+                        </View>
+                      );
+                    })}
+                  </View>
                 )}
               </View>
             </Card>
@@ -379,8 +374,15 @@ export default function ParentDashboard() {
           {activeTab === "recommendations" && (
             <Card style={styles.contentCard}>
               <View style={styles.cardPadding}>
-                {/* Header */}
-                <Text style={styles.sectionTitle}>추천 콘텐츠</Text>
+                {/* Related Interest Header */}
+                {topKeyword && (
+                  <View style={styles.relatedInterestHeader}>
+                    <Text style={styles.relatedInterestIcon}>🎯</Text>
+                    <Text style={styles.relatedInterestText}>
+                      {childProfiles[0]?.name || "자녀"}님의 관심사 '{topKeyword}' 기반 추천
+                    </Text>
+                  </View>
+                )}
 
                 {/* Category Tabs */}
                 <View style={styles.categoryTabs}>
@@ -419,33 +421,20 @@ export default function ParentDashboard() {
 
                 {/* Recommendation List */}
                 <View style={styles.recommendationList}>
-                  {filteredRecommendations.map((rec) => (
+                  {filteredRecommendations.map((rec: Recommendation) => (
                     <TouchableOpacity
                       key={rec.id}
                       style={styles.recommendationCard}
                       activeOpacity={0.8}
                     >
                       <View style={styles.recommendationContent}>
-                        <Text style={styles.recommendationIcon}>
-                          {rec.icon}
-                        </Text>
                         <View style={styles.recommendationInfo}>
-                          <View style={styles.recommendationHeader}>
-                            <Text style={styles.typeIcon}>
-                              {getTypeIcon(rec.type)}
-                            </Text>
-                            <Text style={styles.recommendationTitle}>
-                              {rec.title}
-                            </Text>
-                          </View>
+                          <Text style={styles.recommendationTitle}>
+                            {rec.title}
+                          </Text>
                           <Text style={styles.recommendationDescription}>
                             {rec.description}
                           </Text>
-                          <View style={styles.relatedBadge}>
-                            <Text style={styles.relatedText}>
-                              관련 관심사: {rec.relatedInterest}
-                            </Text>
-                          </View>
                         </View>
                       </View>
                     </TouchableOpacity>
@@ -475,13 +464,13 @@ const styles = StyleSheet.create({
 
   content: {
     padding: spacing.lg,
-    paddingTop: spacing.xl,
+    paddingTop: spacing.sm,
     paddingBottom: spacing.xl * 2,
   },
 
   // Tab Navigation
   tabContainer: {
-    marginBottom: spacing.xl,
+    marginBottom: spacing.md,
   },
 
   tabList: {
@@ -669,12 +658,32 @@ const styles = StyleSheet.create({
   },
 
   // Recommendations
+  relatedInterestHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: spacing.md,
+    marginBottom: spacing.md,
+  },
+
+  relatedInterestIcon: {
+    fontSize: 20,
+    marginRight: spacing.sm,
+  },
+
+  relatedInterestText: {
+    ...typography.body1,
+    fontSize: 15,
+    color: "#5B9BD5",
+    fontWeight: "600" as const,
+  },
+
   categoryTabs: {
     flexDirection: "row",
     padding: spacing.sm,
     backgroundColor: "rgba(255, 255, 255, 0.5)",
     borderRadius: borderRadius.full,
-    marginTop: spacing.lg,
+    marginTop: 0,
     marginBottom: spacing.xl,
     ...shadows.lg,
   },

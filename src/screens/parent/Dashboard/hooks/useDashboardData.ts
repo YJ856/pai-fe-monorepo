@@ -10,6 +10,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { getTopInterests } from '../../../../api/insights';
 import { getConversations } from '../../../../api/conversations';
+import { getRecommendations } from '../../../../api/recommendations';
 
 /**
  * 관심사 데이터 조회
@@ -69,5 +70,22 @@ export const useRecentConversations = (childId: string, limit = 10) => {
     }),
     enabled: !!childId,
     staleTime: 1000 * 60 * 2, // 2분
+  });
+};
+
+/**
+ * 추천 콘텐츠 조회 (최상위 관심사 키워드 기반)
+ */
+export const useRecommendations = (childId: string, topKeyword?: string) => {
+  return useQuery({
+    queryKey: ['recommendations', childId, topKeyword],
+    queryFn: () => getRecommendations(childId, {
+      // category는 "축제", "관광지", "문화시설" 중 하나여야 하므로 전달하지 않음
+      // topKeyword는 백엔드에서 제목/설명에서 검색하는 용도로 사용됨
+      page: 1,
+      pageSize: 20,
+    }),
+    enabled: !!childId && !!topKeyword, // childId와 topKeyword가 있을 때만 조회
+    staleTime: 1000 * 60 * 10, // 10분
   });
 };

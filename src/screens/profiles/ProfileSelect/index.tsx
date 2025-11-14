@@ -49,6 +49,7 @@ import { Profile } from "../../../shared/types";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { logout } from "../../../api/auth";
 import { getProfiles, selectProfile } from "../../../api/profiles";
+import { useProfileStore } from "../../../store/useProfileStore";
 
 export default function ProfileSelectScreen() {
   const navigation = useNavigation<any>();
@@ -58,6 +59,9 @@ export default function ProfileSelectScreen() {
   const [showPinModal, setShowPinModal] = useState(false);
   const [pin, setPin] = useState("");
   const [pinError, setPinError] = useState("");
+
+  // Zustand store
+  const { setCurrentProfile, setProfiles: setStoreProfiles } = useProfileStore();
 
   // 화면에 포커스될 때마다 프로필 목록 새로고침
   useFocusEffect(
@@ -85,14 +89,16 @@ export default function ProfileSelectScreen() {
           gender: profile.gender?.toLowerCase() || "other",
           avatar: profile.avatar || "👤",
           avatarUrl: profile.avatarUrl,
-          pin: profile.pin,
+          // pin은 백엔드에서 제공하지 않음 (보안상 제외)
         }));
 
         setProfiles(transformedProfiles);
+        setStoreProfiles(transformedProfiles); // Zustand store에 저장
         console.log("변환된 프로필:", transformedProfiles);
       } else {
         console.error("프로필 목록이 배열이 아닙니다:", profileList);
         setProfiles([]);
+        setStoreProfiles([]); // 빈 배열로 초기화
       }
     } catch (error: any) {
       console.error("프로필 목록 로드 오류:", error);
@@ -127,10 +133,16 @@ export default function ProfileSelectScreen() {
         // 토큰 저장
         if (result.accessToken) {
           await AsyncStorage.setItem("accessToken", result.accessToken);
+          console.log('[ProfileSelect-Child] AccessToken saved:', result.accessToken.substring(0, 20) + '...');
+        } else {
+          console.warn('[ProfileSelect-Child] No accessToken in response!');
         }
         if (result.refreshToken) {
           await AsyncStorage.setItem("refreshToken", result.refreshToken);
         }
+
+        // Zustand store에 현재 프로필 저장
+        setCurrentProfile(profile);
 
         // 자녀용 앱으로 네비게이션
         navigation.reset({
@@ -156,10 +168,16 @@ export default function ProfileSelectScreen() {
       // PIN이 맞으면 토큰 저장
       if (result.accessToken) {
         await AsyncStorage.setItem("accessToken", result.accessToken);
+        console.log('[ProfileSelect-Parent] AccessToken saved:', result.accessToken.substring(0, 20) + '...');
+      } else {
+        console.warn('[ProfileSelect-Parent] No accessToken in response!');
       }
       if (result.refreshToken) {
         await AsyncStorage.setItem("refreshToken", result.refreshToken);
       }
+
+      // Zustand store에 현재 프로필 저장
+      setCurrentProfile(selectedProfile);
 
       setShowPinModal(false);
 

@@ -73,9 +73,13 @@ const addAuthInterceptor = (client: any) => {
       if (!isPublicEndpoint) {
         // AsyncStorage에서 토큰 가져오기
         const accessToken = await AsyncStorage.getItem('accessToken');
+        console.log('[AUTH-INTERCEPTOR] AccessToken from AsyncStorage:', accessToken ? `${accessToken.substring(0, 20)}...` : 'NULL');
 
         if (accessToken) {
           config.headers.Authorization = `Bearer ${accessToken}`;
+          console.log('[AUTH-INTERCEPTOR] Authorization header set successfully');
+        } else {
+          console.warn('[AUTH-INTERCEPTOR] No accessToken found in AsyncStorage!');
         }
       }
 
