@@ -27,8 +27,10 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Lightbulb, Trophy, Lock } from 'lucide-react-native';
+import { Lightbulb, Trophy, Lock, CheckCircle, Calendar } from 'lucide-react-native';
 import { spacing, typography, borderRadius, shadows } from '../../../design/tokens';
+import { useTodayQuizzes } from './_tabs/useTodayQuizzes';
+import { usePastQuizzes } from './_tabs/usePastQuizzes';
 
 interface Quiz {
   id: string;
@@ -42,72 +44,29 @@ interface Quiz {
   childAnswer?: string;
 }
 
-const MOCK_TODAY_QUIZZES: Quiz[] = [
-  {
-    id: '1',
-    question: '공룡은 왜 멸종했을까?',
-    answer: '운석충돌',
-    hint: '하늘에서 큰 돌덩어리가 떨어졌어요',
-    reward: '스티커 3개 🌟',
-    author: '엄마',
-    date: new Date(),
-    solved: false,
-  },
-  {
-    id: '2',
-    question: '바다에서 가장 큰 동물은?',
-    answer: '고래',
-    hint: '아주 아주 크고 물을 뿜어요',
-    reward: '스티커 2개 ⭐',
-    author: '아빠',
-    date: new Date(),
-    solved: false,
-  },
-];
-
-const MOCK_PAST_QUIZZES: Quiz[] = [
-  {
-    id: '3',
-    question: '태양계에서 가장 큰 행성은?',
-    answer: '목성',
-    reward: '스티커 5개 🌟',
-    author: '엄마',
-    date: new Date(Date.now() - 86400000),
-    solved: true,
-    childAnswer: '목성',
-  },
-  {
-    id: '4',
-    question: '나비는 무엇을 먹을까?',
-    answer: '꿀',
-    reward: '스티커 3개 ⭐',
-    author: '아빠',
-    date: new Date(Date.now() - 86400000),
-    solved: true,
-    childAnswer: '꿀',
-  },
-  {
-    id: '5',
-    question: '비가 오는 이유는?',
-    answer: '구름의 물방울',
-    reward: '스티커 4개 🌟',
-    author: '엄마',
-    date: new Date(Date.now() - 172800000),
-    solved: true,
-    childAnswer: '구름의 물방울',
-  },
-];
-
 type TabKey = 'today' | 'history';
 
 export default function ChildQuizScreen() {
   const [activeTab, setActiveTab] = useState<TabKey>('today');
-  const [todayQuizzes, setTodayQuizzes] = useState<Quiz[]>(MOCK_TODAY_QUIZZES);
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [showHints, setShowHints] = useState<Record<string, boolean>>({});
   const [showResultModal, setShowResultModal] = useState(false);
   const [resultType, setResultType] = useState<'success' | 'failure'>('success');
   const [resultReward, setResultReward] = useState('');
+
+  // Custom Hook으로 오늘의 퀴즈 데이터 가져오기
+  const {
+    todayQuizzes,
+    isLoading: isLoadingTodayQuizzes,
+    submitAnswer,
+    submitResult,
+  } = useTodayQuizzes();
+
+  // Custom Hook으로 완료한 퀴즈 데이터 가져오기
+  const {
+    pastQuizzesByDate,
+    isLoading: isLoadingPastQuizzes,
+  } = usePastQuizzes();
 
   const handleAnswerChange = (quizId: string, value: string) => {
     setAnswers((prev) => ({ ...prev, [quizId]: value }));
@@ -118,39 +77,31 @@ export default function ChildQuizScreen() {
   };
 
   const handleSubmit = (quiz: Quiz) => {
-    const userAnswer = answers[quiz.id]?.trim().toLowerCase();
-    const correctAnswer = quiz.answer.toLowerCase();
+    const userAnswer = answers[quiz.id]?.trim();
 
-    if (userAnswer === correctAnswer) {
-      setResultType('success');
-      setResultReward(quiz.reward);
-      setShowResultModal(true);
-
-      // Mark as solved
-      setTodayQuizzes((prev) =>
-        prev.map((q) =>
-          q.id === quiz.id ? { ...q, solved: true, childAnswer: answers[quiz.id] } : q
-        )
-      );
-    } else {
-      setResultType('failure');
-      setShowResultModal(true);
+    if (!userAnswer) {
+      return; // 답변이 비어있으면 제출하지 않음
     }
-  };
 
-  const groupQuizzesByDate = (quizzes: Quiz[]) => {
-    const grouped: Record<string, Quiz[]> = {};
-    quizzes.forEach((quiz) => {
-      const dateKey = quiz.date.toLocaleDateString('ko-KR');
-      if (!grouped[dateKey]) {
-        grouped[dateKey] = [];
+    // 백엔드로 정답 제출
+    submitAnswer(
+      { quizId: quiz.id, answer: userAnswer },
+      {
+        onSuccess: (result) => {
+          if (result.isSolved) {
+            // 정답!
+            setResultType('success');
+            setResultReward(result.reward || quiz.reward);
+            setShowResultModal(true);
+          } else {
+            // 오답!
+            setResultType('failure');
+            setShowResultModal(true);
+          }
+        },
       }
-      grouped[dateKey].push(quiz);
-    });
-    return grouped;
+    );
   };
-
-  const pastQuizzesByDate = groupQuizzesByDate(MOCK_PAST_QUIZZES);
 
   const renderQuizCard = (quiz: Quiz, isPastTab: boolean = false) => (
     <View
@@ -186,7 +137,7 @@ export default function ChildQuizScreen() {
       {quiz.solved || isPastTab ? (
         <View style={styles.solvedContainer}>
           <View style={styles.solvedHeader}>
-            <Text style={styles.checkmark}>✅</Text>
+            <CheckCircle size={24} color="#FF6B9D" />
             <Text style={styles.solvedLabel}>정답!</Text>
           </View>
           <Text style={styles.solvedAnswer}>{quiz.childAnswer || quiz.answer}</Text>
@@ -301,7 +252,8 @@ export default function ChildQuizScreen() {
           Object.entries(pastQuizzesByDate).map(([date, quizzes]) => (
             <View key={date} style={styles.dateGroup}>
               <View style={styles.dateBadge}>
-                <Text style={styles.dateText}>📅 {date}</Text>
+                <Calendar size={16} color="#FF6B9D" />
+                <Text style={styles.dateText}>{date}</Text>
               </View>
               <ScrollView
                 horizontal
@@ -575,6 +527,9 @@ const styles = StyleSheet.create({
     marginBottom: spacing.xl,
   },
   dateBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
     backgroundColor: 'rgba(255, 255, 255, 0.5)',
     borderRadius: 100,
     paddingVertical: spacing.xs,
@@ -583,7 +538,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
   },
   dateText: {
-    ...typography.body1,
+    ...typography.body2,
     color: '#374151',
   },
   horizontalScroll: {
