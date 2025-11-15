@@ -29,6 +29,7 @@ import {
   Image,
   Alert,
   ActivityIndicator,
+  RefreshControl,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation, useFocusEffect } from "@react-navigation/native";
@@ -55,6 +56,7 @@ export default function ProfileSelectScreen() {
   const navigation = useNavigation<any>();
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [selectedProfile, setSelectedProfile] = useState<Profile | null>(null);
   const [showPinModal, setShowPinModal] = useState(false);
   const [pin, setPin] = useState("");
@@ -116,7 +118,13 @@ export default function ProfileSelectScreen() {
       );
     } finally {
       setIsLoading(false);
+      setRefreshing(false);
     }
+  };
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await loadProfiles();
   };
 
   const handleProfileClick = async (profile: Profile) => {
@@ -333,6 +341,13 @@ export default function ProfileSelectScreen() {
                         columnWrapperStyle={styles.row}
                         contentContainerStyle={styles.gridContent}
                         scrollEnabled={false}
+                        refreshControl={
+                          <RefreshControl
+                            refreshing={refreshing}
+                            onRefresh={onRefresh}
+                            tintColor="#5B9BD5"
+                          />
+                        }
                       />
                     )}
 

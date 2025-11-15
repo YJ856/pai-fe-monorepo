@@ -8,6 +8,9 @@
     "assetBundlePatterns": [
       "**/*"
     ],
+    "updates": {
+      "enabled": false
+    },
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.pai.app"
