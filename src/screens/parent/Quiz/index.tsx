@@ -23,12 +23,17 @@ import {
   TouchableOpacity,
   ScrollView,
   Modal,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
-import { CheckCircle, XCircle, Gift, Plus, Edit, Trash2 } from 'lucide-react-native';
+import { CheckCircle, XCircle, Gift, Plus, Edit, Trash2, Calendar } from 'lucide-react-native';
 import { spacing, typography, borderRadius, shadows } from '../../../design/tokens';
 import { Button } from '../../../design/components/Button';
+import { useTodayQuizzes } from './_tabs/useTodayQuizzes';
+import { usePastQuizzes } from './_tabs/usePastQuizzes';
+import { useScheduledQuizzes } from './_tabs/useScheduledQuizzes';
+import { QuizCreationModal } from './QuizCreationModal';
 
 interface Quiz {
   id: string;
@@ -37,83 +42,18 @@ interface Quiz {
   hint?: string;
   reward?: string;
   author: string;
+  authorAvatar?: string;
   date: Date;
+  childSolutions: ChildSolution[];
 }
 
 interface ChildSolution {
   childId: string;
   childName: string;
-  childAvatar: string;
+  childAvatar?: string;
   solved: boolean;
   rewardGiven?: boolean;
 }
-
-const CHILDREN = [
-  { id: '3', name: '지우', avatar: '👧' },
-  { id: '4', name: '민준', avatar: '👦' },
-];
-
-const PARENTS = [
-  { name: '엄마', avatar: '👩' },
-  { name: '아빠', avatar: '👨' },
-];
-
-const getParentAvatar = (authorName: string) => {
-  const parent = PARENTS.find((p) => p.name === authorName);
-  return parent?.avatar || '👤';
-};
-
-const MOCK_TODAY_QUIZZES: Quiz[] = [
-  {
-    id: '1',
-    question: '공룡은 왜 멸종했을까?',
-    answer: '운석충돌',
-    hint: '하늘에서 큰 돌덩어리가 떨어졌어요',
-    reward: '스티커 3개 🌟',
-    author: '엄마',
-    date: new Date(),
-  },
-  {
-    id: '2',
-    question: '바다에서 가장 큰 동물은?',
-    answer: '고래',
-    hint: '아주 아주 크고 물을 뿜어요',
-    reward: '스티커 2개 ⭐',
-    author: '아빠',
-    date: new Date(),
-  },
-];
-
-const MOCK_PAST_QUIZZES: Quiz[] = [
-  {
-    id: '3',
-    question: '태양계에서 가장 큰 행성은?',
-    answer: '목성',
-    reward: '스티커 5개 🌟',
-    author: '엄마',
-    date: new Date(Date.now() - 86400000),
-  },
-  {
-    id: '4',
-    question: '나비는 무엇을 먹을까?',
-    answer: '꿀',
-    reward: '스티커 3개 ⭐',
-    author: '아빠',
-    date: new Date(Date.now() - 86400000),
-  },
-];
-
-const MOCK_SCHEDULED_QUIZZES: Quiz[] = [
-  {
-    id: '5',
-    question: '구름은 무엇으로 만들어질까?',
-    answer: '물방울',
-    hint: '하늘에 떠있는 물이에요',
-    reward: '스티커 4개 🌟',
-    author: '엄마',
-    date: new Date(Date.now() + 86400000),
-  },
-];
 
 type TabKey = 'today' | 'history' | 'scheduled';
 
@@ -121,37 +61,24 @@ export default function ParentQuizScreen() {
   const [activeTab, setActiveTab] = useState<TabKey>('today');
   const [selectedQuiz, setSelectedQuiz] = useState<Quiz | null>(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [editingQuiz, setEditingQuiz] = useState<Quiz | null>(null);
 
-  const getChildSolutions = (quizId: string): ChildSolution[] => {
-    // Mock data - in real app, would fetch from database
-    const solutions: Record<string, ChildSolution[]> = {
-      '1': [
-        { childId: '3', childName: '지우', childAvatar: '👧', solved: true, rewardGiven: false },
-        { childId: '4', childName: '민준', childAvatar: '👦', solved: false },
-      ],
-      '2': [
-        { childId: '3', childName: '지우', childAvatar: '👧', solved: false },
-        { childId: '4', childName: '민준', childAvatar: '👦', solved: true, rewardGiven: false },
-      ],
-      '3': [
-        { childId: '3', childName: '지우', childAvatar: '👧', solved: true, rewardGiven: true },
-        { childId: '4', childName: '민준', childAvatar: '👦', solved: true, rewardGiven: true },
-      ],
-      '4': [
-        { childId: '3', childName: '지우', childAvatar: '👧', solved: true, rewardGiven: true },
-        { childId: '4', childName: '민준', childAvatar: '👦', solved: false },
-      ],
-    };
-    return (
-      solutions[quizId] ||
-      CHILDREN.map((child) => ({
-        childId: child.id,
-        childName: child.name,
-        childAvatar: child.avatar,
-        solved: false,
-      }))
-    );
-  };
+  // Custom Hook으로 퀴즈 데이터 가져오기
+  const {
+    todayQuizzes,
+    isLoading: isLoadingTodayQuizzes,
+  } = useTodayQuizzes();
+
+  const {
+    pastQuizzes,
+    isLoading: isLoadingPastQuizzes,
+  } = usePastQuizzes();
+
+  const {
+    scheduledQuizzes,
+    isLoading: isLoadingScheduledQuizzes,
+  } = useScheduledQuizzes();
 
   const groupQuizzesByDate = (quizzes: Quiz[]) => {
     const grouped: Record<string, Quiz[]> = {};
@@ -165,11 +92,11 @@ export default function ParentQuizScreen() {
     return grouped;
   };
 
-  const pastQuizzesByDate = groupQuizzesByDate(MOCK_PAST_QUIZZES);
-  const scheduledQuizzesByDate = groupQuizzesByDate(MOCK_SCHEDULED_QUIZZES);
+  const pastQuizzesByDate = groupQuizzesByDate(pastQuizzes);
+  const scheduledQuizzesByDate = groupQuizzesByDate(scheduledQuizzes);
 
   const renderQuizCard = (quiz: Quiz, showActions: boolean = false) => {
-    const solutions = getChildSolutions(quiz.id);
+    const solutions = quiz.childSolutions;
 
     return (
       <TouchableOpacity
@@ -204,7 +131,6 @@ export default function ParentQuizScreen() {
         {/* Author Badge */}
         <View style={styles.authorBadgeContainer}>
           <View style={styles.authorBadge}>
-            <Text style={styles.authorEmoji}>{getParentAvatar(quiz.author)}</Text>
             <Text style={styles.authorName}>{quiz.author}</Text>
           </View>
         </View>
@@ -223,7 +149,6 @@ export default function ParentQuizScreen() {
                   ]}
                 >
                   <View style={styles.solutionInfo}>
-                    <Text style={styles.solutionAvatar}>{solution.childAvatar}</Text>
                     <Text style={styles.solutionName}>{solution.childName}</Text>
                   </View>
                   {solution.solved ? (
@@ -323,12 +248,23 @@ export default function ParentQuizScreen() {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {activeTab === 'today' && MOCK_TODAY_QUIZZES.map((quiz) => renderQuizCard(quiz, false))}
+        {activeTab === 'today' && (
+          isLoadingTodayQuizzes ? (
+            <View style={styles.centerContainer}>
+              <ActivityIndicator size="large" />
+            </View>
+          ) : (
+            todayQuizzes.map((quiz) => renderQuizCard(quiz, false))
+          )
+        )}
 
         {activeTab === 'history' &&
           Object.entries(pastQuizzesByDate).map(([date, quizzes]) => (
             <View key={date} style={styles.dateGroup}>
-              <Text style={styles.dateLabel}>{date}</Text>
+              <View style={styles.dateBadge}>
+                <Calendar size={16} color="#667BC6" />
+                <Text style={styles.dateText}>{date}</Text>
+              </View>
               <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                 <View style={styles.horizontalCards}>
                   {quizzes.map((quiz) => (
@@ -344,7 +280,10 @@ export default function ParentQuizScreen() {
         {activeTab === 'scheduled' &&
           Object.entries(scheduledQuizzesByDate).map(([date, quizzes]) => (
             <View key={date} style={styles.dateGroup}>
-              <Text style={styles.dateLabel}>{date}</Text>
+              <View style={styles.dateBadge}>
+                <Calendar size={16} color="#667BC6" />
+                <Text style={styles.dateText}>{date}</Text>
+              </View>
               <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                 <View style={styles.horizontalCards}>
                   {quizzes.map((quiz) => (
@@ -362,7 +301,7 @@ export default function ParentQuizScreen() {
       <TouchableOpacity
         style={styles.floatingButton}
         activeOpacity={0.9}
-        onPress={() => console.log('Add quiz')}
+        onPress={() => setShowCreateModal(true)}
       >
         <LinearGradient
           colors={['#5B9BD5', '#667BC6']}
@@ -373,6 +312,12 @@ export default function ParentQuizScreen() {
           <Plus size={32} color="#FFFFFF" />
         </LinearGradient>
       </TouchableOpacity>
+
+      {/* Quiz Creation Modal */}
+      <QuizCreationModal
+        visible={showCreateModal}
+        onClose={() => setShowCreateModal(false)}
+      />
 
       {/* Detail Modal */}
       {selectedQuiz && (
@@ -388,7 +333,7 @@ export default function ParentQuizScreen() {
               <Text style={styles.modalQuestion}>{selectedQuiz.question}</Text>
 
               <View style={styles.modalSolutions}>
-                {getChildSolutions(selectedQuiz.id).map((solution) => (
+                {selectedQuiz.childSolutions.map((solution) => (
                   <View
                     key={solution.childId}
                     style={[
@@ -400,7 +345,6 @@ export default function ParentQuizScreen() {
                   >
                     <View style={styles.modalSolutionHeader}>
                       <View style={styles.modalSolutionInfo}>
-                        <Text style={styles.modalSolutionAvatar}>{solution.childAvatar}</Text>
                         <Text style={styles.modalSolutionName}>{solution.childName}</Text>
                       </View>
                       {solution.solved ? (
@@ -411,15 +355,17 @@ export default function ParentQuizScreen() {
                     </View>
                     {solution.solved && selectedQuiz.reward && (
                       <Button
-                        variant={solution.rewardGiven ? 'outline' : 'primary'}
+                        variant={solution.rewardGiven ? 'outline' : 'default'}
                         onPress={() => console.log('Give reward')}
                         disabled={solution.rewardGiven}
                         style={styles.rewardButton}
                       >
-                        <Gift size={16} color={solution.rewardGiven ? '#6B7280' : '#FFFFFF'} />
-                        <Text style={styles.rewardButtonText}>
-                          {solution.rewardGiven ? '보상 지급 완료' : '보상 지급'}
-                        </Text>
+                        <View style={styles.rewardButtonContent}>
+                          <Gift size={16} color={solution.rewardGiven ? '#6B7280' : '#FFFFFF'} />
+                          <Text style={[styles.rewardButtonText, { color: solution.rewardGiven ? '#6B7280' : '#FFFFFF' }]}>
+                            {solution.rewardGiven ? '보상 지급 완료' : '보상 지급'}
+                          </Text>
+                        </View>
                       </Button>
                     )}
                   </View>
@@ -607,11 +553,20 @@ const styles = StyleSheet.create({
   dateGroup: {
     marginBottom: spacing.xl,
   },
-  dateLabel: {
-    ...typography.body1,
-    color: '#6B7280',
-    marginBottom: spacing.sm,
-    paddingHorizontal: spacing.xs,
+  dateBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    backgroundColor: 'rgba(255, 255, 255, 0.5)',
+    borderRadius: 100,
+    paddingVertical: spacing.xs,
+    paddingHorizontal: spacing.md,
+    alignSelf: 'flex-start',
+    marginBottom: spacing.md,
+  },
+  dateText: {
+    ...typography.body2,
+    color: '#374151',
   },
   horizontalCards: {
     flexDirection: 'row',
@@ -699,7 +654,18 @@ const styles = StyleSheet.create({
   rewardButton: {
     marginTop: spacing.sm,
   },
+  rewardButtonContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.xs,
+  },
   rewardButtonText: {
-    marginLeft: spacing.xs,
+    ...typography.body2,
+  },
+  centerContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 });
