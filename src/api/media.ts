@@ -83,3 +83,14 @@ export const getMedia = async (params?: {
   });
   return response.data.data;
 };
+
+/**
+ * DELETE /api/media/:mediaId
+ * 미디어 삭제
+ *
+ * @param mediaId - 삭제할 미디어 ID
+ */
+export const deleteMedia = async (mediaId: string) => {
+  const response = await mediaServiceClient.delete(`/api/media/${mediaId}`);
+  return response.data;
+};

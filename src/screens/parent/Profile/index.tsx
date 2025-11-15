@@ -19,7 +19,6 @@ import {
   View,
   Text,
   StyleSheet,
-  ScrollView,
   TouchableOpacity,
   Alert,
   ActivityIndicator,
@@ -27,12 +26,15 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
-import { LogOut, User, Users, Mic } from 'lucide-react-native';
+import { LogOut, User, Users, Mic, Camera } from 'lucide-react-native';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as ImagePicker from 'expo-image-picker';
 import { spacing, typography, borderRadius, shadows } from '../../../design/tokens';
+import { RefreshableScrollView } from '../../../design/components/RefreshableScrollView';
 import VoiceRegistrationScreen from './VoiceRegistration';
-import { getProfiles } from '../../../api/profiles';
+import { getProfiles, updateProfile } from '../../../api/profiles';
+import { uploadMedia, deleteMedia } from '../../../api/media';
 import { logout } from '../../../api/auth';
 
 interface FamilyMember {
@@ -43,6 +45,7 @@ interface FamilyMember {
   birthDate?: string;
   gender?: string;
   avatarUrl?: string;
+  avatarMediaId?: number;
 }
 
 export default function ParentProfileScreen() {
@@ -51,6 +54,7 @@ export default function ParentProfileScreen() {
   const [currentProfile, setCurrentProfile] = useState<FamilyMember | null>(null);
   const [familyMembers, setFamilyMembers] = useState<FamilyMember[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
   // 프로필 데이터 로드
   useFocusEffect(
@@ -74,6 +78,7 @@ export default function ParentProfileScreen() {
           birthDate: profile.birthDate || profile.birthdate,
           gender: profile.gender?.toLowerCase(),
           avatarUrl: profile.avatarUrl,
+          avatarMediaId: profile.avatarMediaId,
         }));
         console.log('🔄 변환된 프로필:', JSON.stringify(transformedProfiles, null, 2));
 
@@ -92,6 +97,82 @@ export default function ParentProfileScreen() {
     } catch (error: any) {
       console.error('프로필 로드 오류:', error);
       Alert.alert('오류', '프로필 정보를 불러오는 중 오류가 발생했습니다.');
+    } finally {
+      setIsLoading(false);
+      setRefreshing(false);
+    }
+  };
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await loadProfiles();
+  };
+
+  const handleChangeProfileImage = async () => {
+    try {
+      // 이미지 선택 권한 요청
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('권한 필요', '갤러리 접근 권한이 필요합니다.');
+        return;
+      }
+
+      // 이미지 선택
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.8,
+      });
+
+      if (result.canceled || !result.assets || result.assets.length === 0) {
+        return;
+      }
+
+      const selectedImage = result.assets[0];
+      setIsLoading(true);
+
+      // 기존 이미지 ID 저장 (삭제용)
+      const oldAvatarMediaId = currentProfile?.avatarMediaId;
+
+      // 1. 이미지 업로드
+      const formData = new FormData();
+      formData.append('file', {
+        uri: selectedImage.uri,
+        type: 'image/jpeg',
+        name: 'avatar.jpg',
+      } as any);
+
+      const uploadResult = await uploadMedia(formData);
+      console.log('✅ 이미지 업로드 성공:', uploadResult);
+
+      // 2. 프로필 업데이트
+      if (currentProfile) {
+        await updateProfile(currentProfile.id, {
+          avatarMediaId: uploadResult.mediaId.toString(),
+        });
+
+        // 3. 기존 이미지 삭제 (있는 경우)
+        if (oldAvatarMediaId) {
+          try {
+            await deleteMedia(oldAvatarMediaId.toString());
+            console.log('✅ 기존 이미지 삭제 완료:', oldAvatarMediaId);
+          } catch (deleteError) {
+            console.error('기존 이미지 삭제 실패 (무시):', deleteError);
+            // 삭제 실패해도 프로필 업데이트는 성공했으므로 무시
+          }
+        }
+
+        // 4. 프로필 정보 새로고침
+        await loadProfiles();
+        Alert.alert('성공', '프로필 사진이 변경되었습니다.');
+      }
+    } catch (error: any) {
+      console.error('프로필 사진 변경 오류:', error);
+      console.error('에러 상세:', JSON.stringify(error, null, 2));
+      console.error('에러 메시지:', error.message);
+      console.error('에러 응답:', error.response);
+      Alert.alert('오류', `프로필 사진 변경에 실패했습니다.\n${error.message}`);
     } finally {
       setIsLoading(false);
     }
@@ -153,47 +234,57 @@ export default function ParentProfileScreen() {
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.container}>
-        <ScrollView
+        <RefreshableScrollView
           style={styles.scroll}
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
+          refreshing={refreshing}
+          onRefresh={onRefresh}
         >
-        {/* Profile Header */}
-        <View style={styles.header}>
-          {currentProfile?.avatarUrl ? (
-            <Image
-              source={{ uri: currentProfile.avatarUrl }}
-              style={styles.avatarImage}
-            />
-          ) : (
-            <Text style={styles.avatarLarge}>{currentProfile?.avatar || '👤'}</Text>
-          )}
-          <Text style={styles.headerName}>{currentProfile?.name || '사용자'}</Text>
-          <Text style={styles.headerRole}>
-            {currentProfile?.profileType === 'parent' ? '부모' : '자녀'}
-          </Text>
-        </View>
-
         {/* Profile Info Card */}
         <View style={styles.card}>
           <View style={styles.cardHeader}>
-            <View style={styles.iconCircle}>
-              <User size={24} color="#FFFFFF" />
+            <View style={styles.avatarContainer}>
+              {currentProfile?.avatarUrl ? (
+                <Image
+                  source={{ uri: currentProfile.avatarUrl }}
+                  style={styles.avatarImage}
+                />
+              ) : (
+                <View style={styles.avatarPlaceholder}>
+                  <User size={32} color="#5B9BD5" />
+                </View>
+              )}
+              <TouchableOpacity
+                style={styles.cameraButton}
+                onPress={handleChangeProfileImage}
+                activeOpacity={0.8}
+              >
+                <Camera size={16} color="#FFFFFF" />
+              </TouchableOpacity>
             </View>
-            <Text style={styles.cardTitle}>프로필 정보</Text>
+            <Text style={styles.cardTitle}>{currentProfile?.name || '사용자'}</Text>
           </View>
 
           <View style={styles.infoList}>
-            <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>이름</Text>
-              <Text style={styles.infoValue}>{currentProfile?.name || '-'}</Text>
-            </View>
             <View style={styles.infoRow}>
               <Text style={styles.infoLabel}>역할</Text>
               <Text style={styles.infoValue}>
                 {currentProfile?.profileType === 'parent' ? '부모' : '자녀'}
               </Text>
             </View>
+            {currentProfile?.birthDate && (
+              <View style={styles.infoRow}>
+                <Text style={styles.infoLabel}>생년월일</Text>
+                <Text style={styles.infoValue}>
+                  {new Date(currentProfile.birthDate).toLocaleDateString('ko-KR', {
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric',
+                  })}
+                </Text>
+              </View>
+            )}
             {currentProfile?.gender && (
               <View style={styles.infoRow}>
                 <Text style={styles.infoLabel}>성별</Text>
@@ -277,7 +368,7 @@ export default function ParentProfileScreen() {
           <LogOut size={20} color="#6B7280" />
           <Text style={styles.logoutText}>로그아웃</Text>
         </TouchableOpacity>
-      </ScrollView>
+      </RefreshableScrollView>
     </View>
     </SafeAreaView>
   );
@@ -299,29 +390,36 @@ const styles = StyleSheet.create({
     padding: spacing.md,
     paddingTop: spacing.xl,
   },
-  header: {
-    alignItems: 'center',
-    marginBottom: spacing.xl,
-  },
-  avatarLarge: {
-    fontSize: 96,
-    marginBottom: spacing.md,
+  avatarContainer: {
+    position: 'relative',
+    marginRight: spacing.md,
   },
   avatarImage: {
-    width: 96,
-    height: 96,
-    borderRadius: 48,
-    marginBottom: spacing.md,
+    width: 80,
+    height: 80,
+    borderRadius: 40,
   },
-  headerName: {
-    fontSize: 28,
-    fontWeight: '700',
-    color: '#111827',
-    marginBottom: spacing.xs,
+  avatarPlaceholder: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: '#EFF6FF',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  headerRole: {
-    ...typography.body1,
-    color: '#6B7280',
+  cameraButton: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#5B9BD5',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 3,
+    borderColor: '#FFFFFF',
+    ...shadows.sm,
   },
   card: {
     backgroundColor: '#F9FAFB',
@@ -345,8 +443,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   cardTitle: {
-    fontSize: 18,
-    fontWeight: '600',
+    fontSize: 24,
+    fontWeight: '700',
     color: '#111827',
   },
   infoList: {

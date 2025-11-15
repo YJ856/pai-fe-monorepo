@@ -78,6 +78,11 @@ const setupResponseInterceptor = (client: AxiosInstance) => {
     async (error: AxiosError) => {
       const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
 
+      // refresh 엔드포인트는 재시도하지 않음 (무한 루프 방지)
+      if (originalRequest.url?.includes('/api/auth/refresh')) {
+        return Promise.reject(error);
+      }
+
       // 401 에러이고 아직 재시도하지 않은 경우
       if (error.response?.status === 401 && !originalRequest._retry) {
         originalRequest._retry = true;
@@ -89,9 +94,18 @@ const setupResponseInterceptor = (client: AxiosInstance) => {
           }
 
           // pai-service-user의 /api/auth/refresh 호출
-          const response = await userServiceClient.post('/api/auth/refresh', {
-            refreshToken,
-          });
+          // 인터셉터를 거치지 않도록 직접 호출
+          const response = await userServiceClient.post(
+            '/api/auth/refresh',
+            { refreshToken },
+            {
+              headers: {
+                // refresh 요청에는 Authorization 헤더를 추가하지 않음
+              },
+              // 재시도 플래그를 설정하여 인터셉터에서 다시 처리하지 않도록 함
+              _retry: true,
+            } as any
+          );
 
           const { accessToken, refreshToken: newRefreshToken } = response.data.data;
 
