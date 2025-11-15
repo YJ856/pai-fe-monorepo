@@ -19,6 +19,24 @@
  */
 
 import { quizServiceClient } from './client/axios';
+import type {
+  BaseResponse,
+  ChildrenTodayQueryParam,
+  ChildrenTodayResponseData,
+  AnswerQuizResponseData,
+  ChildrenCompletedQueryParam,
+  ChildrenCompletedResponseData,
+  ParentsTodayQueryParam,
+  ParentsTodayResponseData,
+  ParentsCompletedQueryParam,
+  ParentsCompletedResponseData,
+  ParentsScheduledQueryParam,
+  ParentsScheduledResponseData,
+  CreateQuizRequestDto,
+  CreateQuizResponseData,
+  NextPublishDateData,
+} from 'pai-shared-types';
+
 
 // ========== 부모용 API ==========
 
@@ -28,9 +46,9 @@ import { quizServiceClient } from './client/axios';
  *
  * 퀴즈 생성 시 기본 출제일로 사용
  */
-export const getNextPublishDate = async () => {
-  const response = await quizServiceClient.get('/api/quiz/next-publish-date');
-  return response.data.data;
+export const getNextPublishDate = async (): Promise<string> => {
+  const response = await quizServiceClient.get<BaseResponse<NextPublishDateData>>('/api/quiz/next-publish-date');
+  return response.data.data!.defaultPublishDate;
 };
 
 /**
@@ -38,85 +56,109 @@ export const getNextPublishDate = async () => {
  * 퀴즈 생성 (부모가 자녀에게 출제)
  *
  * Request:
- * - question: string
- * - answer: string
- * - reward?: string (보상 설명)
- * - hint?: string
- * - publishDate: string (YYYY-MM-DD)
- * - childProfileIds: string[] (출제할 자녀 프로필 ID 목록)
+ * - question: string (필수)
+ * - answer: string (필수)
+ * - hint?: string | null
+ * - reward?: string | null
+ * - publishDate?: string | null (null이면 오늘 날짜로 설정됨)
  */
-export const createQuiz = async (data: {
-  question: string;
-  answer: string;
-  reward?: string;
-  hint?: string;
-  publishDate: string;
-  childProfileIds: string[];
-}) => {
-  const response = await quizServiceClient.post('/api/quiz', data);
-  return response.data.data;
+export const createQuiz = async (
+  data: CreateQuizRequestDto,
+): Promise<CreateQuizResponseData> => {
+  const response = await quizServiceClient.post<
+    BaseResponse<CreateQuizResponseData>
+  >('/api/quiz', data);
+  return response.data.data!;
 };
 
 /**
- * GET /api/quiz/parents/today?childProfileId=
- * 부모용: 오늘의 퀴즈 조회
+ * GET /api/quiz/parents/today?limit=10&cursor=xxx
+ * 부모용: 오늘의 퀴즈 조회 (cursor 기반 페이지네이션)
  *
  * Query:
- * - childProfileId: string (선택적, 특정 자녀 필터링)
+ * - limit?: number  // 페이지 크기(기본 20, 최대 50)
+ * - cursor?: string // Base64("quizId")
  */
-export const getParentTodayQuizzes = async (childProfileId?: string) => {
-  const response = await quizServiceClient.get('/api/quiz/parents/today', {
-    params: { childProfileId },
+export const getParentTodayQuizzes = async (
+  params?: ParentsTodayQueryParam,
+): Promise<ParentsTodayResponseData> => {
+  const response = await quizServiceClient.get<
+    BaseResponse<ParentsTodayResponseData>
+  >('/api/quiz/parents/today', {
+    params,
   });
-  return response.data.data;
+
+  const data = response.data.data;
+
+  if (!data) {
+    return {
+      items: [],
+      nextCursor: null,
+      hasNext: false,
+    };
+  }
+
+  return data;
 };
 
 /**
- * GET /api/quiz/parents/completed?childProfileId=&page=1&limit=10
- * 부모용: 완료된 퀴즈 조회
+ * GET /api/quiz/parents/completed?limit=10&cursor=xxx
+ * 부모용: 완료된 퀴즈 조회 (cursor 기반 페이지네이션)
  *
  * Query:
- * - childProfileId: string (선택적)
- * - page: number
- * - limit: number
+ * - limit?: number  // 페이지 크기(기본 20, 최대 50)
+ * - cursor?: string // Base64("publishDate|quizId")
  */
-export const getParentCompletedQuizzes = async (params: {
-  childProfileId?: string;
-  page?: number;
-  limit?: number;
-}) => {
-  const response = await quizServiceClient.get('/api/quiz/parents/completed', {
-    params: {
-      page: 1,
-      limit: 10,
-      ...params,
-    },
+export const getParentCompletedQuizzes = async (
+  params?: ParentsCompletedQueryParam,
+): Promise<ParentsCompletedResponseData> => {
+  const response = await quizServiceClient.get<
+    BaseResponse<ParentsCompletedResponseData>
+  >('/api/quiz/parents/completed', {
+    params,
   });
-  return response.data.data;
+
+  const data = response.data.data;
+
+  if (!data) {
+    return {
+      items: [],
+      nextCursor: null,
+      hasNext: false,
+    };
+  }
+
+  return data;
 };
 
 /**
- * GET /api/quiz/parents/scheduled?childProfileId=&page=1&limit=10
- * 부모용: 예정된 퀴즈 조회
+ * GET /api/quiz/parents/scheduled?limit=10&cursor=xxx
+ * 부모용: 예정된 퀴즈 조회 (cursor 기반 페이지네이션)
  *
  * Query:
- * - childProfileId: string (선택적)
- * - page: number
- * - limit: number
+ * - limit?: number  // 페이지 크기(기본 20, 최대 50)
+ * - cursor?: string // Base64("publishDate|quizId")
  */
-export const getParentScheduledQuizzes = async (params: {
-  childProfileId?: string;
-  page?: number;
-  limit?: number;
-}) => {
-  const response = await quizServiceClient.get('/api/quiz/parents/scheduled', {
-    params: {
-      page: 1,
-      limit: 10,
-      ...params,
-    },
+export const getParentScheduledQuizzes = async (
+  params?: ParentsScheduledQueryParam,
+): Promise<ParentsScheduledResponseData> => {
+  const response = await quizServiceClient.get<
+    BaseResponse<ParentsScheduledResponseData>
+  >('/api/quiz/parents/scheduled', {
+    params,
   });
-  return response.data.data;
+
+  const data = response.data.data;
+
+  if (!data) {
+    return {
+      items: [],
+      nextCursor: null,
+      hasNext: false,
+    };
+  }
+
+  return data;
 };
 
 /**
@@ -165,56 +207,79 @@ export const deleteQuiz = async (quizId: string) => {
 // ========== 자녀용 API ==========
 
 /**
- * GET /api/quiz/children/today?limit=10
- * 자녀용: 오늘의 퀴즈 조회
+ * GET /api/quiz/children/today?limit=10&cursor=xxx
+ * 자녀용: 오늘의 퀴즈 조회 (cursor 기반 페이지네이션)
  *
  * Query:
- * - limit: number (기본값: 10)
+ * - limit?: number  // 페이지 크기(기본 20, 최대 50)
+ * - cursor?: string // Base64("quizId")
  */
-export const getChildTodayQuizzes = async (limit = 10) => {
-  const response = await quizServiceClient.get('/api/quiz/children/today', {
-    params: { limit },
+export const getChildTodayQuizzes = async (
+  params?: ChildrenTodayQueryParam,
+): Promise<ChildrenTodayResponseData> => {
+  const response = await quizServiceClient.get<
+    BaseResponse<ChildrenTodayResponseData>
+  >('/api/quiz/children/today', {
+    params,
   });
-  return response.data.data;
-};
 
-/**
- * GET /api/quiz/children/completed?page=1&limit=10
- * 자녀용: 완료된 퀴즈 조회
- *
- * Query:
- * - page: number
- * - limit: number
- */
-export const getChildCompletedQuizzes = async (params?: {
-  page?: number;
-  limit?: number;
-}) => {
-  const response = await quizServiceClient.get('/api/quiz/children/completed', {
-    params: {
-      page: 1,
-      limit: 10,
-      ...params,
-    },
-  });
-  return response.data.data;
+  const data = response.data.data;
+
+  // 혹시라도 null이면 "빈 페이지"로 처리
+  if (!data) {
+    return {
+      items: [],
+      nextCursor: null,
+      hasNext: false,
+    };
+  }
+
+  return data;
 };
 
 /**
  * POST /api/quiz/children/:quizId/answer
  * 자녀용: 퀴즈 답변 제출
- *
- * Request:
- * - answer: string
- *
- * Response:
- * - isCorrect: boolean
- * - correctAnswer?: string (틀린 경우)
- * - rewardGranted: boolean
  */
-export const answerQuiz = async (quizId: string, answer: string) => {
-  const response = await quizServiceClient.post(`/api/quiz/children/${quizId}/answer`, {
+export const answerQuiz = async (
+  quizId: string,
+  answer: string,
+): Promise<AnswerQuizResponseData> => {
+  const response = await quizServiceClient.post<
+    BaseResponse<AnswerQuizResponseData>
+  >(`/api/quiz/children/${quizId}/answer`, {
     answer,
   });
-  return response.data.data;
+
+  // 필요하면 여기서도 null 방어 로직 넣어도 됨
+  return response.data.data!;
+};
+
+/**
+ * GET /api/quiz/children/completed?limit=10&cursor=xxx
+ * 자녀용: 완료된 퀴즈 조회 (cursor 기반 페이지네이션)
+ *
+ * Query:
+ * - limit?: number  // 페이지 크기
+ * - cursor?: string // Base64("publishDate|quizId")
+ */ 
+export const getChildCompletedQuizzes = async (
+  params?: ChildrenCompletedQueryParam,
+): Promise<ChildrenCompletedResponseData> => {
+  const response = await quizServiceClient.get<BaseResponse<ChildrenCompletedResponseData>>('/api/quiz/children/completed', {
+    params,
+  });
+
+  const data = response.data.data;
+
+  // 혹시라도 null이면 "빈 페이지"로 처리
+  if (!data) {
+    return {
+      items: [],
+      nextCursor: null,
+      hasNext: false,
+    };
+  }
+
+  return data; 
 };

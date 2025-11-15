@@ -67,8 +67,10 @@ export function Button({
 
   const content = loading ? (
     <ActivityIndicator color={getActivityIndicatorColor()} />
-  ) : (
+  ) : typeof children === 'string' ? (
     <Text style={[styles.text, styles[`${variant}Text`], styles[`${size}Text`]]}>{children}</Text>
+  ) : (
+    children
   );
 
   // Sparkle 효과 렌더링
