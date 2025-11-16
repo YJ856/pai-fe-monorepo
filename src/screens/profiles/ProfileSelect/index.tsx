@@ -46,15 +46,15 @@ import {
   borderRadius,
   shadows,
 } from "../../../design/tokens";
-import { Profile } from "../../../shared/types";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { logout } from "../../../api/auth";
 import { getProfiles, selectProfile } from "../../../api/profiles";
+import { getMedia } from '../../../api/media'
 import { useProfileStore } from "../../../store/useProfileStore";
+import { Profile } from "pai-shared-types";
 
 export default function ProfileSelectScreen() {
   const navigation = useNavigation<any>();
-  const [profiles, setProfiles] = useState<Profile[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [selectedProfile, setSelectedProfile] = useState<Profile | null>(null);
@@ -63,7 +63,8 @@ export default function ProfileSelectScreen() {
   const [pinError, setPinError] = useState("");
 
   // Zustand store
-  const { setCurrentProfile, setProfiles: setStoreProfiles } = useProfileStore();
+  const { profiles, setCurrentProfile, setProfiles: setProfiles } =
+    useProfileStore();
 
   // 화면에 포커스될 때마다 프로필 목록 새로고침
   useFocusEffect(
@@ -76,31 +77,52 @@ export default function ProfileSelectScreen() {
     setIsLoading(true);
     try {
       console.log("프로필 목록 로드 시작...");
-      const profileList = await getProfiles();
+      const profileList = await getProfiles('all');
       console.log("프로필 목록 로드 완료:", profileList);
       console.log("프로필 개수:", profileList?.length || 0);
 
       // 배열인지 확인 및 데이터 변환
       if (Array.isArray(profileList)) {
         // API 응답 데이터를 앱 타입으로 변환
-        const transformedProfiles = profileList.map((profile: any) => ({
-          id: profile.profileId || profile.id,
-          profileType: profile.profileType?.toLowerCase() || "child",
+        const baseProfiles = profileList.map((profile: any) => ({
+
+          profileId: Number(profile.profileId || profile.id),
+          userId: Number(profile.userId),
+          profileType: profile.profileType,
           name: profile.name,
-          birthdate: profile.birthDate || profile.birthdate,
-          gender: profile.gender?.toLowerCase() || "other",
-          avatar: profile.avatar || "👤",
-          avatarUrl: profile.avatarUrl,
-          // pin은 백엔드에서 제공하지 않음 (보안상 제외)
+          birthDate: profile.birthDate || profile.birthdate,
+          gender: profile.gender?.toLowerCase(),
+
+          avatarMediaId: profile.avatarMediaId ? BigInt(profile.avatarMediaId) : undefined,
+          voiceMediaId: profile.voiceMediaId ? BigInt(profile.voiceMediaId) : undefined,
+          avatarUrl: undefined,
+
+          createdAt: profile.createdAt || profile.createAt, // 오타 가능성 고려
+
         }));
 
-        setProfiles(transformedProfiles);
-        setStoreProfiles(transformedProfiles); // Zustand store에 저장
+        const addUrlProfiles = baseProfiles.map(async (profile) => {
+          let avatarUrl = undefined;
+          if (profile.avatarMediaId) {
+            try {
+              const mediaId = String(profile.avatarMediaId)
+              const mediaResponse = await getMedia({ mediaIds: mediaId });
+              avatarUrl = mediaResponse?.[0].cdnUrl;
+            } catch (error) {
+              console.error(`Failed to fetch media URL for ID ${profile.avatarMediaId}:`, error);
+            }
+
+          }
+          return { ...profile, avatarUrl };
+        })
+
+        const transformedProfiles = await Promise.all(addUrlProfiles);
+
+        setProfiles(transformedProfiles); // Zustand store에 저장
         console.log("변환된 프로필:", transformedProfiles);
       } else {
         console.error("프로필 목록이 배열이 아닙니다:", profileList);
-        setProfiles([]);
-        setStoreProfiles([]); // 빈 배열로 초기화
+        setProfiles([]); // 빈 배열로 초기화
       }
     } catch (error: any) {
       console.error("프로필 목록 로드 오류:", error);
@@ -110,7 +132,7 @@ export default function ProfileSelectScreen() {
         status: error.response?.status,
       });
 
-      setProfiles([]);
+      setProfiles([]); // 오류 발생 시 스토어도 비웁니다.
 
       Alert.alert(
         "오류",
@@ -136,7 +158,7 @@ export default function ProfileSelectScreen() {
     } else {
       // 자녀 프로필 선택 (PIN 불필요)
       try {
-        const result = await selectProfile(profile.id);
+        const result = await selectProfile(String(profile.profileId));
 
         // 토큰 저장
         if (result.accessToken) {
@@ -171,7 +193,7 @@ export default function ProfileSelectScreen() {
       setPinError("");
 
       // 백엔드에서 PIN 검증
-      const result = await selectProfile(selectedProfile.id, pin);
+      const result = await selectProfile(String(selectedProfile.profileId), pin);
 
       // PIN이 맞으면 토큰 저장
       if (result.accessToken) {
@@ -260,7 +282,7 @@ export default function ProfileSelectScreen() {
         {item.avatarUrl ? (
           <Image source={{ uri: item.avatarUrl }} style={styles.avatarImage} />
         ) : (
-          <Avatar emoji={item.avatar || "👤"} size="lg" />
+          <Avatar emoji={"👤"} size="lg" />
         )}
         {isParent && (
           <View style={styles.lockBadge}>
@@ -336,7 +358,7 @@ export default function ProfileSelectScreen() {
                       <FlatList
                         data={profiles}
                         renderItem={renderProfileCard}
-                        keyExtractor={(item) => item.id}
+                        keyExtractor={(item) => String(item.profileId)}
                         numColumns={2}
                         columnWrapperStyle={styles.row}
                         contentContainerStyle={styles.gridContent}

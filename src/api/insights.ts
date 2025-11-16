@@ -13,7 +13,13 @@
  * - 워드클라우드, 트렌드 차트 표시
  */
 
-import { insightServiceClient } from './client/axios';
+import {
+  GetTopInterestsResponseData,
+  type BaseResponse,
+  type CreateAnalyticsRequestDto,
+  type CreateAnalyticsResponseData,
+} from "pai-shared-types";
+import { insightServiceClient } from "./client/axios";
 
 /**
  * POST /api/insights/analytics
@@ -26,13 +32,13 @@ import { insightServiceClient } from './client/axios';
  *
  * Note: 대화 종료 후 백그라운드에서 자동 호출 예정
  */
-export const createAnalytics = async (data: {
-  childId: string;
-  conversationId: string;
-  extractedKeywords: string[];
-}) => {
-  const response = await insightServiceClient.post('/api/insights/analytics', data);
-  return response.data.data;
+export const createAnalytics = async (
+  data: CreateAnalyticsRequestDto
+): Promise<CreateAnalyticsResponseData> => {
+  const response = await insightServiceClient.post<
+    BaseResponse<CreateAnalyticsResponseData>
+  >("/api/insights/analytics", data);
+  return response.data.data!;
 };
 
 /**
@@ -54,7 +60,9 @@ export const createAnalytics = async (data: {
  * - 관심사 트렌드 차트
  */
 export const getTopInterests = async (childId: string, limit = 10) => {
-  const response = await insightServiceClient.get(`/api/insights/interests/${childId}/top`, {
+  const response = await insightServiceClient.get<
+    BaseResponse<GetTopInterestsResponseData>
+  >(`/api/insights/interests/${childId}/top`, {
     params: { limit },
   });
   return response.data.data;
@@ -74,12 +82,15 @@ export const pruneOldInterests = async (params?: {
   minDays?: number;
   maxScore?: number;
 }) => {
-  const response = await insightServiceClient.delete('/api/insights/interests/prune', {
-    params: {
-      minDays: 14,
-      maxScore: 1.0,
-      ...params,
-    },
-  });
+  const response = await insightServiceClient.delete(
+    "/api/insights/interests/prune",
+    {
+      params: {
+        minDays: 14,
+        maxScore: 1.0,
+        ...params,
+      },
+    }
+  );
   return response.data;
 };

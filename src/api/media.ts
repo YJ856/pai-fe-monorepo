@@ -14,7 +14,13 @@
  * - 대화 중 이미지 업로드
  */
 
-import { mediaServiceClient } from './client/axios';
+import {
+  BaseResponse,
+  GetMediaRequestDto,
+  GetMediaResponseData,
+  UploadMediaResponseData,
+} from "pai-shared-types";
+import { mediaServiceClient } from "./client/axios";
 
 /**
  * POST /api/media/upload
@@ -40,20 +46,22 @@ import { mediaServiceClient } from './client/axios';
  * const { mediaId, cdnUrl } = await uploadMedia(formData);
  */
 export const uploadMedia = async (formData: FormData) => {
-  console.log('[MEDIA] 업로드 요청 시작');
-  console.log('[MEDIA] FormData 내용:', {
+  console.log("[MEDIA] 업로드 요청 시작");
+  console.log("[MEDIA] FormData 내용:", {
     // FormData는 직접 출력 불가하므로 설명만
-    note: 'FormData에는 file만 포함됨'
+    note: "FormData에는 file만 포함됨",
   });
 
-  const response = await mediaServiceClient.post('/api/media/upload', formData, {
+  const response = await mediaServiceClient.post<
+    BaseResponse<UploadMediaResponseData>
+  >("/api/media/upload", formData, {
     headers: {
-      'Content-Type': 'multipart/form-data',
+      "Content-Type": "multipart/form-data",
     },
   });
 
-  console.log('[MEDIA] 업로드 응답:', response.data);
-  return response.data.data;
+  console.log("[MEDIA] 업로드 응답:", response.data);
+  return response.data.data!;
 };
 
 /**
@@ -75,10 +83,10 @@ export const uploadMedia = async (formData: FormData) => {
  * 사용 예시:
  * const { media } = await getMedia();
  */
-export const getMedia = async (params?: {
-  // 향후 필터링 파라미터가 추가될 수 있음
-}) => {
-  const response = await mediaServiceClient.get('/api/media', {
+export const getMedia = async (params: GetMediaRequestDto) => {
+  const response = await mediaServiceClient.get<
+    BaseResponse<GetMediaResponseData[]>
+  >("/api/media", {
     params,
   });
   return response.data.data;

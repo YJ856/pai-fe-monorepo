@@ -10,7 +10,7 @@
   },
   "dependencies": {
     "@react-native-async-storage/async-storage": "2.2.0",
-    "@react-native-community/datetimepicker": "^8.5.0",
+    "@react-native-community/datetimepicker": "8.4.4",
     "@react-native-community/netinfo": "^11.4.1",
     "@react-navigation/bottom-tabs": "^6.5.11",
     "@react-navigation/native": "^6.1.9",
@@ -24,7 +24,7 @@
     "expo-linear-gradient": "~15.0.7",
     "expo-status-bar": "~3.0.8",
     "lucide-react-native": "^0.553.0",
-    "pai-shared-types": "^2.0.24",
+    "pai-shared-types": "^2.0.31",
     "react": "19.1.0",
     "react-native": "0.81.5",
     "react-native-calendars": "^1.1313.0",
