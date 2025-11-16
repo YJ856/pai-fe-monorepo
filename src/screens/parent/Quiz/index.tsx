@@ -30,10 +30,11 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { CheckCircle, XCircle, Gift, Plus, Edit, Trash2, Calendar } from 'lucide-react-native';
 import { spacing, typography, borderRadius, shadows } from '../../../design/tokens';
 import { Button } from '../../../design/components/Button';
-import { useTodayQuizzes } from './_tabs/useTodayQuizzes';
-import { usePastQuizzes } from './_tabs/usePastQuizzes';
-import { useScheduledQuizzes } from './_tabs/useScheduledQuizzes';
-import { QuizCreationModal } from './QuizCreationModal';
+import { useTodayQuizzes } from './_hooks/useTodayQuizzes';
+import { usePastQuizzes } from './_hooks/usePastQuizzes';
+import { useScheduledQuizzes } from './_hooks/useScheduledQuizzes';
+import { QuizFormModal } from './QuizFormModal';
+import { getQuizDetail } from '../../../api/quizzes';
 
 interface Quiz {
   id: string;
@@ -45,6 +46,7 @@ interface Quiz {
   authorAvatar?: string;
   date: Date;
   childSolutions: ChildSolution[];
+  isEditable?: boolean;
 }
 
 interface ChildSolution {
@@ -162,10 +164,33 @@ export default function ParentQuizScreen() {
           </View>
         )}
 
-        {/* Scheduled Tab: Show Actions */}
-        {showActions && (
+        {/* Scheduled Tab: Show Actions (본인 작성자일 때만) */}
+        {showActions && quiz.isEditable && (
           <View style={styles.actionsContainer}>
-            <TouchableOpacity style={styles.actionButton} activeOpacity={0.7}>
+            <TouchableOpacity
+              style={styles.actionButton}
+              activeOpacity={0.7}
+              onPress={async () => {
+                try {
+                  // 세부 조회 API로 최신 데이터 가져오기
+                  const detailData = await getQuizDetail(quiz.id);
+
+                  // 모달에 전달할 퀴즈 데이터 설정
+                  setEditingQuiz({
+                    ...quiz,
+                    question: detailData.question,
+                    answer: detailData.answer,
+                    hint: detailData.hint || undefined,
+                    reward: detailData.reward || undefined,
+                    date: new Date(detailData.publishDate),
+                  });
+                  setShowCreateModal(true);
+                } catch (error) {
+                  console.error('Failed to fetch quiz detail:', error);
+                  alert('퀴즈 정보를 불러오는데 실패했습니다.');
+                }
+              }}
+            >
               <Edit size={16} color="#5B9BD5" />
               <Text style={styles.actionButtonText}>수정</Text>
             </TouchableOpacity>
@@ -313,10 +338,21 @@ export default function ParentQuizScreen() {
         </LinearGradient>
       </TouchableOpacity>
 
-      {/* Quiz Creation Modal */}
-      <QuizCreationModal
+      {/* Quiz Form Modal */}
+      <QuizFormModal
         visible={showCreateModal}
-        onClose={() => setShowCreateModal(false)}
+        onClose={() => {
+          setShowCreateModal(false);
+          setEditingQuiz(null);
+        }}
+        editQuiz={editingQuiz ? {
+          id: editingQuiz.id,
+          question: editingQuiz.question,
+          answer: editingQuiz.answer,
+          hint: editingQuiz.hint,
+          reward: editingQuiz.reward,
+          date: editingQuiz.date.toISOString().split('T')[0],
+        } : undefined}
       />
 
       {/* Detail Modal */}
