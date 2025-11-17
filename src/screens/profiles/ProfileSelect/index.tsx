@@ -75,7 +75,18 @@ export default function ProfileSelectScreen() {
 
   const loadProfiles = async () => {
     setIsLoading(true);
+
     try {
+      // Zustand store에 이미 프로필 목록이 있는지 확인
+      const storeProfiles = useProfileStore.getState().profiles;
+
+      if (storeProfiles.length > 0) {
+        console.log("Zustand store에 저장된 프로필 사용 (API 호출 생략):", storeProfiles.length);
+        setIsLoading(false);
+        return;
+      }
+
+      // Store에 프로필이 없을 때만 API 호출
       console.log("프로필 목록 로드 시작...");
       const profileList = await getProfiles('all');
       console.log("프로필 목록 로드 완료:", profileList);
@@ -125,6 +136,15 @@ export default function ProfileSelectScreen() {
         setProfiles([]); // 빈 배열로 초기화
       }
     } catch (error: any) {
+      // 401 에러는 axios 인터셉터에서 자동으로 처리하여 로그인 화면으로 이동하므로
+      // 여기서는 사용자에게 에러 Alert을 표시하지 않음
+      if (error.response?.status === 401) {
+        console.log("[ProfileSelect] 401 Unauthorized - 로그인 화면으로 리다이렉트됩니다.");
+        setProfiles([]); // 스토어 비우기
+        return; // Alert 표시하지 않고 조용히 종료
+      }
+
+      // 401이 아닌 다른 에러는 로그 출력 및 Alert 표시
       console.error("프로필 목록 로드 오류:", error);
       console.error("에러 상세:", {
         message: error.message,
@@ -258,6 +278,9 @@ export default function ProfileSelectScreen() {
               "refreshToken",
               "userId",
             ]);
+
+            // Zustand store 프로필 데이터 삭제
+            useProfileStore.getState().clearProfile();
 
             console.log("로그아웃 완료 - 로그인 화면으로 이동");
 

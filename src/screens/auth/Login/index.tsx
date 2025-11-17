@@ -46,17 +46,12 @@ import {
   borderRadius,
   shadows,
 } from "../../../design/tokens";
-import { login, signup } from "../../../api/auth";
+import { login, signup, checkEmail } from "../../../api/auth";
 import type { LoginRequestDto, SignupRequestDto } from "../../../api/types";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 // 이메일 도메인 목록
-const EMAIL_DOMAINS = [
-  "@  gmail.com",
-  "@  naver.com",
-  "@  kakao.com",
-  "직접 입력",
-];
+const EMAIL_DOMAINS = ["gmail.com", "naver.com", "kakao.com", "직접 입력"];
 
 export default function LoginScreen() {
   const navigation = useNavigation<any>();
@@ -75,7 +70,13 @@ export default function LoginScreen() {
   const [signupCustomDomain, setSignupCustomDomain] = useState("");
   const [signupPassword, setSignupPassword] = useState("");
   const [signupAddress, setSignupAddress] = useState("");
-  const [signupDomainModalVisible, setSignupDomainModalVisible] = useState(false);
+  const [signupDomainModalVisible, setSignupDomainModalVisible] =
+    useState(false);
+
+  // 이메일 중복 체크 상태
+  const [emailCheckStatus, setEmailCheckStatus] = useState<
+    "unchecked" | "checking" | "available" | "unavailable"
+  >("unchecked");
 
   // 로그인 Mutation
   const loginMutation = useMutation({
@@ -119,13 +120,71 @@ export default function LoginScreen() {
 
   // 이메일 조합 함수
   const getLoginEmail = () => {
-    const domain = loginEmailDomain === "직접 입력" ? loginCustomDomain : loginEmailDomain;
-    return loginEmailUsername + domain.replace(/\s+/g, "");
+    const domain =
+      loginEmailDomain === "직접 입력" ? loginCustomDomain : loginEmailDomain;
+    return loginEmailUsername + "@" + domain;
   };
 
   const getSignupEmail = () => {
-    const domain = signupEmailDomain === "직접 입력" ? signupCustomDomain : signupEmailDomain;
-    return signupEmailUsername + domain.replace(/\s+/g, "");
+    const domain =
+      signupEmailDomain === "직접 입력"
+        ? signupCustomDomain
+        : signupEmailDomain;
+    return signupEmailUsername + "@" + domain;
+  };
+
+  // 이메일 중복 체크 함수
+  const handleCheckEmail = async () => {
+    const signupEmail = getSignupEmail();
+
+    // 유효성 검사
+    if (!signupEmailUsername || !signupEmail.includes("@")) {
+      Alert.alert("입력 오류", "올바른 이메일을 입력해주세요");
+      return;
+    }
+
+    setEmailCheckStatus("checking");
+
+    try {
+      const response = await checkEmail(signupEmail);
+
+      if (response.success && response.data) {
+        setEmailCheckStatus("available");
+        Alert.alert("확인 완료", "사용 가능한 이메일입니다");
+      } else {
+        setEmailCheckStatus("unavailable");
+        Alert.alert(
+          "사용 불가",
+          response.message || "이미 사용 중인 이메일입니다"
+        );
+      }
+    } catch (error: any) {
+      setEmailCheckStatus("unavailable");
+      Alert.alert(
+        "오류",
+        error.message || "이메일 확인 중 오류가 발생했습니다"
+      );
+    }
+  };
+
+  // 이메일 변경 시 체크 상태 초기화
+  const handleSignupEmailUsernameChange = (text: string) => {
+    setSignupEmailUsername(text);
+    setEmailCheckStatus("unchecked");
+  };
+
+  const handleSignupDomainChange = (domain: string) => {
+    setSignupEmailDomain(domain);
+    setSignupDomainModalVisible(false);
+    setEmailCheckStatus("unchecked");
+    if (domain === "직접 입력") {
+      setSignupCustomDomain("");
+    }
+  };
+
+  const handleSignupCustomDomainChange = (text: string) => {
+    setSignupCustomDomain(text);
+    setEmailCheckStatus("unchecked");
   };
 
   const handleLogin = () => {
@@ -147,8 +206,19 @@ export default function LoginScreen() {
   const handleSignup = () => {
     const signupEmail = getSignupEmail();
 
+    // 이메일 중복 체크 확인
+    if (emailCheckStatus !== "available") {
+      Alert.alert("이메일 확인 필요", "이메일 중복 확인을 먼저 진행해주세요");
+      return;
+    }
+
     // 유효성 검사
-    if (!signupEmailUsername || !signupEmail.includes("@") || !signupPassword || !signupAddress) {
+    if (
+      !signupEmailUsername ||
+      !signupEmail.includes("@") ||
+      !signupPassword ||
+      !signupAddress
+    ) {
       Alert.alert("입력 오류", "모든 필드를 입력해주세요");
       return;
     }
@@ -170,11 +240,7 @@ export default function LoginScreen() {
   };
 
   const handleSelectSignupDomain = (domain: string) => {
-    setSignupEmailDomain(domain);
-    setSignupDomainModalVisible(false);
-    if (domain === "직접 입력") {
-      setSignupCustomDomain("");
-    }
+    handleSignupDomainChange(domain);
   };
 
   return (
@@ -242,11 +308,15 @@ export default function LoginScreen() {
                           <View style={styles.domainSelectWrapper}>
                             <TouchableOpacity
                               style={styles.domainButton}
-                              onPress={() => setLoginDomainModalVisible(!loginDomainModalVisible)}
+                              onPress={() =>
+                                setLoginDomainModalVisible(
+                                  !loginDomainModalVisible
+                                )
+                              }
                               activeOpacity={0.7}
                             >
                               <Text style={styles.domainButtonText}>
-                                {loginEmailDomain.replace('@', '')}
+                                {loginEmailDomain.replace("@", "")}
                               </Text>
                               <Text style={styles.dropdownIcon}>▼</Text>
                             </TouchableOpacity>
@@ -258,14 +328,18 @@ export default function LoginScreen() {
                                     key={item}
                                     style={[
                                       styles.dropdownItem,
-                                      loginEmailDomain === item && styles.dropdownItemSelected,
+                                      loginEmailDomain === item &&
+                                        styles.dropdownItemSelected,
                                     ]}
-                                    onPress={() => handleSelectLoginDomain(item)}
+                                    onPress={() =>
+                                      handleSelectLoginDomain(item)
+                                    }
                                   >
                                     <Text
                                       style={[
                                         styles.dropdownItemText,
-                                        loginEmailDomain === item && styles.dropdownItemTextSelected,
+                                        loginEmailDomain === item &&
+                                          styles.dropdownItemTextSelected,
                                       ]}
                                     >
                                       {item}
@@ -276,7 +350,6 @@ export default function LoginScreen() {
                             )}
                           </View>
                         </View>
-
                       </View>
                       {loginEmailDomain === "직접 입력" && (
                         <Input
@@ -311,7 +384,7 @@ export default function LoginScreen() {
                       sparkle
                       onPress={handleLogin}
                       style={styles.submitButton}
-                    // loading={loginMutation.isPending}
+                      // loading={loginMutation.isPending}
                     >
                       로그인
                     </Button>
@@ -322,14 +395,41 @@ export default function LoginScreen() {
                 {activeTab === "signup" && (
                   <View style={styles.form}>
                     <View>
-                      <Label>이메일</Label>
+                      <View style={styles.labelWithButtonRow}>
+                        <Label>이메일</Label>
+
+                        {/* 이메일 중복 확인 버튼 */}
+                        <TouchableOpacity
+                          style={[
+                            styles.checkEmailButton,
+                            emailCheckStatus === "available" &&
+                              styles.checkEmailButtonSuccess,
+                            emailCheckStatus === "unavailable" &&
+                              styles.checkEmailButtonError,
+                          ]}
+                          onPress={handleCheckEmail}
+                          disabled={emailCheckStatus === "checking"}
+                          activeOpacity={0.7}
+                        >
+                          <Text style={styles.checkEmailButtonText}>
+                            {emailCheckStatus === "checking"
+                              ? "확인 중..."
+                              : emailCheckStatus === "available"
+                              ? "✓ 사용 가능"
+                              : emailCheckStatus === "unavailable"
+                              ? "✗ 사용 불가"
+                              : "중복 확인"}
+                          </Text>
+                        </TouchableOpacity>
+                      </View>
+
                       <View style={styles.emailContainer}>
                         <View style={styles.emailInputWrapper}>
                           <View style={styles.emailUsernameWrapper}>
                             <Input
                               placeholder="아이디"
                               value={signupEmailUsername}
-                              onChangeText={setSignupEmailUsername}
+                              onChangeText={handleSignupEmailUsernameChange}
                               keyboardType="email-address"
                               autoCapitalize="none"
                               style={[styles.input, styles.emailUsernameInput]}
@@ -339,11 +439,15 @@ export default function LoginScreen() {
                           <View style={styles.domainSelectWrapper}>
                             <TouchableOpacity
                               style={styles.domainButton}
-                              onPress={() => setSignupDomainModalVisible(!signupDomainModalVisible)}
+                              onPress={() =>
+                                setSignupDomainModalVisible(
+                                  !signupDomainModalVisible
+                                )
+                              }
                               activeOpacity={0.7}
                             >
                               <Text style={styles.domainButtonText}>
-                                {signupEmailDomain.replace('@', '')}
+                                {signupEmailDomain.replace("@", "")}
                               </Text>
                               <Text style={styles.dropdownIcon}>▼</Text>
                             </TouchableOpacity>
@@ -355,14 +459,18 @@ export default function LoginScreen() {
                                     key={item}
                                     style={[
                                       styles.dropdownItem,
-                                      signupEmailDomain === item && styles.dropdownItemSelected,
+                                      signupEmailDomain === item &&
+                                        styles.dropdownItemSelected,
                                     ]}
-                                    onPress={() => handleSelectSignupDomain(item)}
+                                    onPress={() =>
+                                      handleSelectSignupDomain(item)
+                                    }
                                   >
                                     <Text
                                       style={[
                                         styles.dropdownItemText,
-                                        signupEmailDomain === item && styles.dropdownItemTextSelected,
+                                        signupEmailDomain === item &&
+                                          styles.dropdownItemTextSelected,
                                       ]}
                                     >
                                       {item}
@@ -374,11 +482,12 @@ export default function LoginScreen() {
                           </View>
                         </View>
                       </View>
+
                       {signupEmailDomain === "직접 입력" && (
                         <Input
                           placeholder="example.com"
                           value={signupCustomDomain}
-                          onChangeText={setSignupCustomDomain}
+                          onChangeText={handleSignupCustomDomainChange}
                           keyboardType="email-address"
                           autoCapitalize="none"
                           style={[styles.input, { marginTop: spacing.xs }]}
@@ -413,7 +522,7 @@ export default function LoginScreen() {
                       sparkle
                       onPress={handleSignup}
                       style={styles.submitButton}
-                    // loading={signupMutation.isPending}
+                      // loading={signupMutation.isPending}
                     >
                       회원가입
                     </Button>
@@ -501,13 +610,18 @@ const styles = StyleSheet.create({
     width: "100%",
     marginTop: spacing.xs,
   },
+  labelWithButtonRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: spacing.xs,
+  },
   emailContainer: {
     position: "relative",
   },
   emailInputWrapper: {
     flexDirection: "row",
     alignItems: "center",
-    marginTop: spacing.xs,
     height: 36,
     borderWidth: 1,
     borderColor: colors.border,
@@ -587,5 +701,31 @@ const styles = StyleSheet.create({
   dropdownItemTextSelected: {
     color: colors.auth.from,
     fontWeight: "600",
+  },
+  checkEmailButton: {
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.sm + 2,
+    borderRadius: borderRadius.md,
+    borderWidth: 1,
+    borderColor: colors.auth.from,
+    backgroundColor: colors.card,
+    alignItems: "center",
+    justifyContent: "center",
+    minWidth: 90,
+    height: 36,
+  },
+  checkEmailButtonSuccess: {
+    borderColor: "#10B981",
+    backgroundColor: "rgba(16, 185, 129, 0.1)",
+  },
+  checkEmailButtonError: {
+    borderColor: "#EF4444",
+    backgroundColor: "rgba(239, 68, 68, 0.1)",
+  },
+  checkEmailButtonText: {
+    ...typography.body2,
+    fontSize: 13,
+    fontWeight: "600",
+    color: colors.auth.from,
   },
 });

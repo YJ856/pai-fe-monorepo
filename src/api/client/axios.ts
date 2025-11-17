@@ -122,6 +122,19 @@ const addDebugInterceptor = (client: any, serviceName: string) => {
       return response;
     },
     async (error: any) => {
+      // 401 에러 발생 시 자동 로그아웃
+      if (error.response?.status === 401) {
+        console.log('[AUTH] 401 Unauthorized - Clearing tokens and redirecting to login');
+        // AsyncStorage에서 토큰 삭제
+        await AsyncStorage.multiRemove(['accessToken', 'refreshToken', 'userId']);
+        // 인증 이벤트 발생 (RootNavigator가 감지하여 로그인 화면으로 이동)
+        authEvents.emit();
+
+        // 401 에러는 자동 처리되므로 상세 로그를 출력하지 않음
+        return Promise.reject(error);
+      }
+
+      // 401이 아닌 다른 에러만 상세 로그 출력
       console.error(`[${serviceName}] Response Error:`, {
         message: error.message,
         code: error.code,
@@ -134,15 +147,6 @@ const addDebugInterceptor = (client: any, serviceName: string) => {
           data: error.response.data,
         } : null,
       });
-
-      // 401 에러 발생 시 자동 로그아웃
-      if (error.response?.status === 401) {
-        console.log('[AUTH] 401 Unauthorized - Clearing tokens and redirecting to login');
-        // AsyncStorage에서 토큰 삭제
-        await AsyncStorage.multiRemove(['accessToken', 'refreshToken', 'userId']);
-        // 인증 이벤트 발생 (RootNavigator가 감지하여 로그인 화면으로 이동)
-        authEvents.emit();
-      }
 
       return Promise.reject(error);
     }
