@@ -27,6 +27,7 @@ export function useCreateQuiz() {
     } = useQuery<NextPublishDateData, Error>({
         queryKey: ['parent-quizzes', 'next-publish-date'],
         queryFn: () => getNextPublishDate(),
+        staleTime: 1000 * 60 * 5, // 5분간 캐시 유지
     });
 
     // 2. 퀴즈 생성 Mutation
@@ -39,6 +40,8 @@ export function useCreateQuiz() {
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['parent-quizzes', 'today']});
             queryClient.invalidateQueries({ queryKey: ['parent-quizzes', 'scheduled']});
+            // 퀴즈 생성 시 다음 출제일이 변경될 수 있으므로 캐시 무효화
+            queryClient.invalidateQueries({ queryKey: ['parent-quizzes', 'next-publish-date']});
         },
     });
 

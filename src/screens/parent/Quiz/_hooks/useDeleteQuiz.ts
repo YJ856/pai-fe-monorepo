@@ -27,10 +27,13 @@ export function useDeleteQuiz() {
             return deleteQuiz(path);
         },
         onSuccess: (result, variables) => {
+            queryClient.invalidateQueries({ queryKey: ['parent-quizzes', 'today']});
             queryClient.invalidateQueries({ queryKey: ['parent-quizzes', 'scheduled']});
             queryClient.invalidateQueries({
                 queryKey: ['parent-quizzes', 'detail', variables.quizId],
             });
+            // 퀴즈 삭제 시 다음 출제일이 변경될 수 있으므로 캐시 무효화
+            queryClient.invalidateQueries({ queryKey: ['parent-quizzes', 'next-publish-date']});
         },
     });
 

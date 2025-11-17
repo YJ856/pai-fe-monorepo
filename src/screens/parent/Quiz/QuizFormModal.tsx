@@ -21,13 +21,12 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { X } from 'lucide-react-native';
 import { spacing, typography, borderRadius } from '../../../design/tokens';
-import { Button } from '../../../design/components/Button';
 import DateTimePicker from '@react-native-community/datetimepicker';
 
 interface QuizFormModalProps {
   visible: boolean;
   onClose: () => void;
-  authorName: string;
+  defaultPublishDate?: string | null; // 'yyyy-MM-dd' format
   editQuiz?: {
     id: string;
     question: string;
@@ -48,7 +47,7 @@ interface QuizFormModalProps {
 export function QuizFormModal({
   visible,
   onClose,
-  authorName,
+  defaultPublishDate,
   editQuiz,
   onSubmit,
 }: QuizFormModalProps) {
@@ -73,9 +72,18 @@ export function QuizFormModal({
       setAnswer('');
       setHint('');
       setReward('');
-      setPublishDate(new Date());
+
+      // defaultPublishDate가 있으면 사용, 없으면 현재 날짜
+      if (defaultPublishDate) {
+        // 'yyyy-MM-dd' 문자열을 Date 객체로 변환 (정오로 설정하여 타임존 문제 방지)
+        const [year, month, day] = defaultPublishDate.split('-').map(Number);
+        const newDate = new Date(year, month - 1, day, 12, 0, 0, 0);
+        setPublishDate(newDate);
+      } else {
+        setPublishDate(new Date());
+      }
     }
-  }, [editQuiz, visible]);
+  }, [editQuiz, visible, defaultPublishDate]);
 
   const handleSubmit = () => {
     if (!question.trim() || !answer.trim()) {
@@ -200,12 +208,6 @@ export function QuizFormModal({
                 />
               )}
             </View>
-
-            {/* 작성자 표시 */}
-            <View style={styles.authorInfo}>
-              <Text style={styles.authorLabel}>작성자:</Text>
-              <Text style={styles.authorName}>{authorName}</Text>
-            </View>
           </ScrollView>
 
           {/* Footer Buttons */}
@@ -311,25 +313,6 @@ const styles = StyleSheet.create({
   dateText: {
     ...typography.body1,
     color: '#111827',
-  },
-  authorInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#EFF6FF',
-    borderRadius: borderRadius.md,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    marginTop: spacing.md,
-  },
-  authorLabel: {
-    ...typography.body2,
-    color: '#6B7280',
-    marginRight: spacing.xs,
-  },
-  authorName: {
-    ...typography.body1,
-    color: '#5B9BD5',
-    fontWeight: '600',
   },
   modalFooter: {
     flexDirection: 'row',
