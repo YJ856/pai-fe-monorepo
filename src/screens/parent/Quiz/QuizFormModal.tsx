@@ -1,96 +1,139 @@
 /**
- * 퀴즈 생성/수정 모달 (UI)
- *
- * 디자인 참고: Parent-Child AI App Design_v2/src/components/parent/QuizCreationModal.tsx
+ * 퀴즈 생성/수정 모달
  *
  * 기능:
- * - 새 퀴즈 생성
- * - 기존 퀴즈 수정 (editQuiz prop 전달 시)
- * - 필수 입력: 질문, 정답, 출제일
- * - 선택 입력: 힌트, 보상
+ * - 퀴즈 생성 (질문, 정답, 힌트, 보상, 출제일)
+ * - 퀴즈 수정 (기존 데이터 불러오기)
+ * - useCreateQuiz, useUpdateQuiz hook 연동
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
-  Modal,
   View,
   Text,
-  TextInput,
   StyleSheet,
-  Platform,
-  KeyboardAvoidingView,
+  Modal,
+  ScrollView,
+  TextInput,
   TouchableOpacity,
+  Platform,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import DateTimePicker from '@react-native-community/datetimepicker';
+import { LinearGradient } from 'expo-linear-gradient';
+import { X } from 'lucide-react-native';
+import { spacing, typography, borderRadius } from '../../../design/tokens';
 import { Button } from '../../../design/components/Button';
-import { colors, spacing, borderRadius } from '../../../design/tokens';
-import { useQuizForm } from './_hooks/useQuizForm';
+import DateTimePicker from '@react-native-community/datetimepicker';
 
 interface QuizFormModalProps {
   visible: boolean;
   onClose: () => void;
+  authorName: string;
   editQuiz?: {
     id: string;
     question: string;
     answer: string;
     hint?: string;
     reward?: string;
-    date: string;
-  };
+    date: Date;
+  } | null;
+  onSubmit: (data: {
+    question: string;
+    answer: string;
+    hint?: string;
+    reward?: string;
+    publishDate: Date;
+  }) => void;
 }
 
 export function QuizFormModal({
   visible,
   onClose,
+  authorName,
   editQuiz,
+  onSubmit,
 }: QuizFormModalProps) {
+  const [question, setQuestion] = useState('');
+  const [answer, setAnswer] = useState('');
+  const [hint, setHint] = useState('');
+  const [reward, setReward] = useState('');
+  const [publishDate, setPublishDate] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
 
-  const {
-    question,
-    setQuestion,
-    answer,
-    setAnswer,
-    hint,
-    setHint,
-    reward,
-    setReward,
-    publishDate,
-    setPublishDate,
-    handleSubmit,
-    handleClose,
-    isLoading,
-    isEditMode,
-  } = useQuizForm({ editQuiz, onClose });
+  // editQuiz가 변경될 때마다 폼 초기화
+  useEffect(() => {
+    if (editQuiz) {
+      setQuestion(editQuiz.question);
+      setAnswer(editQuiz.answer);
+      setHint(editQuiz.hint || '');
+      setReward(editQuiz.reward || '');
+      setPublishDate(editQuiz.date);
+    } else {
+      // 새로 생성할 때는 빈 값으로 초기화
+      setQuestion('');
+      setAnswer('');
+      setHint('');
+      setReward('');
+      setPublishDate(new Date());
+    }
+  }, [editQuiz, visible]);
+
+  const handleSubmit = () => {
+    if (!question.trim() || !answer.trim()) {
+      alert('질문과 정답은 필수입니다.');
+      return;
+    }
+
+    onSubmit({
+      question: question.trim(),
+      answer: answer.trim(),
+      hint: hint.trim() || undefined,
+      reward: reward.trim() || undefined,
+      publishDate,
+    });
+
+    // 폼 초기화
+    setQuestion('');
+    setAnswer('');
+    setHint('');
+    setReward('');
+    setPublishDate(new Date());
+  };
+
+  const onDateChange = (event: any, selectedDate?: Date) => {
+    setShowDatePicker(Platform.OS === 'ios');
+    if (selectedDate) {
+      setPublishDate(selectedDate);
+    }
+  };
 
   return (
     <Modal
       visible={visible}
       animationType="slide"
       transparent={true}
-      onRequestClose={handleClose}
+      onRequestClose={onClose}
     >
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={styles.overlay}
-      >
-        <SafeAreaView style={styles.safeArea} edges={['top']}>
-          <View style={styles.modalContainer}>
-            {/* Header */}
-            <Text style={styles.title}>
-              {isEditMode ? '퀴즈 수정하기' : '새로운 퀴즈 만들기'}
+      <View style={styles.modalOverlay}>
+        <View style={styles.modalContainer}>
+          {/* Header */}
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>
+              {editQuiz ? '퀴즈 수정하기' : '새로운 퀴즈 만들기'}
             </Text>
+            <TouchableOpacity onPress={onClose} style={styles.closeButton}>
+              <X size={24} color="#6B7280" />
+            </TouchableOpacity>
+          </View>
 
-            {/* Question */}
-            <View style={styles.fieldContainer}>
+          <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+            {/* 질문 */}
+            <View style={styles.formGroup}>
               <Text style={styles.label}>
                 퀴즈 질문 <Text style={styles.required}>*</Text>
               </Text>
               <TextInput
-                style={styles.textarea}
+                style={[styles.textarea, styles.input]}
                 placeholder="아이에게 물어볼 질문을 입력하세요"
-                placeholderTextColor="#9CA3AF"
                 value={question}
                 onChangeText={setQuestion}
                 multiline
@@ -99,196 +142,225 @@ export function QuizFormModal({
               />
             </View>
 
-            {/* Answer */}
-            <View style={styles.fieldContainer}>
+            {/* 정답 */}
+            <View style={styles.formGroup}>
               <Text style={styles.label}>
                 정답 <Text style={styles.required}>*</Text>
               </Text>
               <TextInput
                 style={styles.input}
                 placeholder="정답을 입력하세요"
-                placeholderTextColor="#9CA3AF"
                 value={answer}
                 onChangeText={setAnswer}
               />
             </View>
 
-            {/* Hint */}
-            <View style={styles.fieldContainer}>
+            {/* 힌트 */}
+            <View style={styles.formGroup}>
               <Text style={styles.label}>힌트 (선택사항)</Text>
               <TextInput
                 style={styles.input}
                 placeholder="힌트를 입력하세요"
-                placeholderTextColor="#9CA3AF"
                 value={hint}
                 onChangeText={setHint}
               />
             </View>
 
-            {/* Reward */}
-            <View style={styles.fieldContainer}>
+            {/* 보상 */}
+            <View style={styles.formGroup}>
               <Text style={styles.label}>보상 (선택사항)</Text>
               <TextInput
                 style={styles.input}
-                placeholder="예: 스티커 3개 🌟"
-                placeholderTextColor="#9CA3AF"
+                placeholder="예: 스티커 3개"
                 value={reward}
                 onChangeText={setReward}
               />
             </View>
 
-            {/* Publish Date */}
-            <View style={styles.fieldContainer}>
+            {/* 출제일 */}
+            <View style={styles.formGroup}>
               <Text style={styles.label}>
                 출제일 <Text style={styles.required}>*</Text>
               </Text>
               <TouchableOpacity
-                style={styles.dateInput}
+                style={styles.dateButton}
                 onPress={() => setShowDatePicker(true)}
               >
-                <Text style={[styles.dateText, !publishDate && styles.placeholder]}>
-                  {publishDate || 'YYYY-MM-DD'}
+                <Text style={styles.dateText}>
+                  {publishDate.toLocaleDateString('ko-KR')}
                 </Text>
               </TouchableOpacity>
-
               {showDatePicker && (
                 <DateTimePicker
-                  value={publishDate ? new Date(publishDate) : new Date()}
+                  value={publishDate}
                   mode="date"
                   display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-                  onChange={(event, selectedDate) => {
-                    setShowDatePicker(Platform.OS === 'ios');
-                    if (selectedDate) {
-                      const formattedDate = selectedDate.toISOString().split('T')[0];
-                      setPublishDate(formattedDate);
-                    }
-                  }}
+                  onChange={onDateChange}
                   minimumDate={new Date()}
                 />
               )}
             </View>
 
-          {/* Action Buttons */}
-          <View style={styles.buttonContainer}>
-            <Button
-              variant="outline"
-              onPress={handleClose}
-              disabled={isLoading}
-              style={styles.button}
+            {/* 작성자 표시 */}
+            <View style={styles.authorInfo}>
+              <Text style={styles.authorLabel}>작성자:</Text>
+              <Text style={styles.authorName}>{authorName}</Text>
+            </View>
+          </ScrollView>
+
+          {/* Footer Buttons */}
+          <View style={styles.modalFooter}>
+            <TouchableOpacity
+              style={styles.cancelButton}
+              onPress={onClose}
+              activeOpacity={0.7}
             >
-              취소
-            </Button>
-            <Button
+              <Text style={styles.cancelButtonText}>취소</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.submitButtonContainer}
               onPress={handleSubmit}
-              loading={isLoading}
-              style={styles.submitButton}
+              activeOpacity={0.9}
             >
-              {isEditMode ? '수정하기' : '만들기'}
-            </Button>
+              <LinearGradient
+                colors={['#5B9BD5', '#667BC6']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={styles.submitButton}
+              >
+                <Text style={styles.submitButtonText}>
+                  {editQuiz ? '수정하기' : '만들기'}
+                </Text>
+              </LinearGradient>
+            </TouchableOpacity>
           </View>
-          </View>
-        </SafeAreaView>
-      </KeyboardAvoidingView>
+        </View>
+      </View>
     </Modal>
   );
 }
 
 const styles = StyleSheet.create({
-  overlay: {
+  modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
     justifyContent: 'flex-end',
   },
-  safeArea: {
-    flex: 0,
-  },
   modalContainer: {
-    backgroundColor: colors.background,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    width: '100%',
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    maxHeight: '90%',
+    paddingBottom: spacing.xl,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     paddingHorizontal: spacing.lg,
     paddingTop: spacing.lg,
     paddingBottom: spacing.md,
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: -2 },
-        shadowOpacity: 0.25,
-        shadowRadius: 4,
-      },
-      android: {
-        elevation: 5,
-      },
-    }),
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
   },
-  title: {
-    fontSize: 22,
-    fontWeight: '700',
+  modalTitle: {
+    ...typography.h3,
     color: '#5B9BD5',
-    marginBottom: spacing.md,
   },
-  fieldContainer: {
-    marginBottom: spacing.md,
+  closeButton: {
+    padding: spacing.xs,
+  },
+  scrollView: {
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+  },
+  formGroup: {
+    marginBottom: spacing.lg,
   },
   label: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: colors.foreground,
+    ...typography.body1,
+    color: '#111827',
     marginBottom: spacing.xs,
+    fontWeight: '600',
   },
   required: {
-    color: colors.destructive,
+    color: '#EF4444',
   },
   input: {
+    backgroundColor: '#F9FAFB',
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: '#E5E7EB',
     borderRadius: borderRadius.md,
-    padding: spacing.sm,
     paddingHorizontal: spacing.md,
-    fontSize: 15,
-    color: colors.foreground,
-    backgroundColor: colors.background,
-    height: 40,
+    paddingVertical: spacing.sm,
+    ...typography.body1,
+    color: '#111827',
   },
   textarea: {
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: borderRadius.md,
-    padding: spacing.sm,
-    paddingHorizontal: spacing.md,
-    fontSize: 15,
-    color: colors.foreground,
-    backgroundColor: colors.background,
-    minHeight: 70,
+    minHeight: 100,
+    textAlignVertical: 'top',
   },
-  dateInput: {
+  dateButton: {
+    backgroundColor: '#F9FAFB',
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: '#E5E7EB',
     borderRadius: borderRadius.md,
-    paddingVertical: spacing.sm,
     paddingHorizontal: spacing.md,
-    backgroundColor: colors.background,
-    height: 40,
-    justifyContent: 'center',
+    paddingVertical: spacing.sm,
   },
   dateText: {
-    fontSize: 15,
-    color: colors.foreground,
+    ...typography.body1,
+    color: '#111827',
   },
-  placeholder: {
-    color: '#9CA3AF',
-  },
-  buttonContainer: {
+  authorInfo: {
     flexDirection: 'row',
-    gap: spacing.md,
+    alignItems: 'center',
+    backgroundColor: '#EFF6FF',
+    borderRadius: borderRadius.md,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
     marginTop: spacing.md,
   },
-  button: {
+  authorLabel: {
+    ...typography.body2,
+    color: '#6B7280',
+    marginRight: spacing.xs,
+  },
+  authorName: {
+    ...typography.body1,
+    color: '#5B9BD5',
+    fontWeight: '600',
+  },
+  modalFooter: {
+    flexDirection: 'row',
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.md,
+    gap: spacing.sm,
+  },
+  cancelButton: {
     flex: 1,
+    backgroundColor: '#F3F4F6',
+    borderRadius: borderRadius.lg,
+    paddingVertical: spacing.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cancelButtonText: {
+    ...typography.button,
+    color: '#6B7280',
+  },
+  submitButtonContainer: {
+    flex: 1,
+    borderRadius: borderRadius.lg,
+    overflow: 'hidden',
   },
   submitButton: {
-    flex: 1,
-    backgroundColor: '#5B9BD5',
+    paddingVertical: spacing.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  submitButtonText: {
+    ...typography.button,
+    color: '#FFFFFF',
   },
 });

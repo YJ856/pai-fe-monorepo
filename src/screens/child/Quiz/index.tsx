@@ -23,10 +23,11 @@ import {
   ScrollView,
   Modal,
   TextInput,
+  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Lightbulb, Trophy, Lock, CheckCircle, Calendar } from 'lucide-react-native';
+import { Lightbulb, Trophy, Lock, CheckCircle, Calendar, User } from 'lucide-react-native';
 import { spacing, typography, borderRadius, shadows } from '../../../design/tokens';
 import { useTodayQuizzes } from './_hooks/useTodayQuizzes';
 import { usePastQuizzes } from './_hooks/usePastQuizzes';
@@ -99,14 +100,21 @@ export default function ChildQuizScreen() {
       {/* Author and Reward */}
       <View style={styles.cardHeader}>
         <View style={styles.authorContainer}>
-          <LinearGradient
-            colors={['#FF6B9D', '#FFA06B']}
-            style={styles.authorAvatar}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-          >
-            <Text style={styles.authorEmoji}>{quiz.authorName === '엄마' ? '👩' : '👨'}</Text>
-          </LinearGradient>
+          {quiz.authorAvatarUrl ? (
+            <Image
+              source={{ uri: quiz.authorAvatarUrl }}
+              style={styles.authorAvatarImage}
+            />
+          ) : (
+            <LinearGradient
+              colors={['#FF6B9D', '#FFA06B']}
+              style={styles.authorAvatar}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+            >
+              <User size={20} color="#FFFFFF" />
+            </LinearGradient>
+          )}
           <Text style={styles.authorName}>{quiz.authorName}</Text>
         </View>
         <View style={styles.rewardContainer}>
@@ -406,6 +414,12 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  authorAvatarImage: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#F3F4F6',
   },
   authorEmoji: {
     fontSize: 18,

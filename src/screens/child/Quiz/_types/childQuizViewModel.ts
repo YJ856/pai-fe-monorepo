@@ -6,6 +6,7 @@ export interface ChildQuizViewModel {
     reward: string;
     authorName: string;
     authorAvatarMediaId: string | null;
+    authorAvatarUrl?: string;
     date: Date;
     solved?: boolean;
     childAnswer?: string;
