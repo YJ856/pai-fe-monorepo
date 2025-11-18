@@ -23,26 +23,15 @@ import {
   ScrollView,
   Modal,
   TextInput,
-  FlatList,
+  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Lightbulb, Trophy, Lock, CheckCircle, Calendar } from 'lucide-react-native';
+import { Lightbulb, Trophy, Lock, CheckCircle, Calendar, User } from 'lucide-react-native';
 import { spacing, typography, borderRadius, shadows } from '../../../design/tokens';
-import { useTodayQuizzes } from './_tabs/useTodayQuizzes';
-import { usePastQuizzes } from './_tabs/usePastQuizzes';
-
-interface Quiz {
-  id: string;
-  question: string;
-  answer: string;
-  hint?: string;
-  reward: string;
-  author: string;
-  date: Date;
-  solved?: boolean;
-  childAnswer?: string;
-}
+import { useTodayQuizzes } from './_hooks/useTodayQuizzes';
+import { usePastQuizzes } from './_hooks/usePastQuizzes';
+import type { ChildQuizViewModel } from './_types/childQuizViewModel';
 
 type TabKey = 'today' | 'history';
 
@@ -76,7 +65,7 @@ export default function ChildQuizScreen() {
     setShowHints((prev) => ({ ...prev, [quizId]: !prev[quizId] }));
   };
 
-  const handleSubmit = (quiz: Quiz) => {
+  const handleSubmit = (quiz: ChildQuizViewModel) => {
     const userAnswer = answers[quiz.id]?.trim();
 
     if (!userAnswer) {
@@ -103,7 +92,7 @@ export default function ChildQuizScreen() {
     );
   };
 
-  const renderQuizCard = (quiz: Quiz, isPastTab: boolean = false) => (
+  const renderQuizCard = (quiz: ChildQuizViewModel, isPastTab: boolean = false) => (
     <View
       key={quiz.id}
       style={[styles.quizCard, quiz.solved && !isPastTab && styles.quizCardSolved]}
@@ -111,15 +100,22 @@ export default function ChildQuizScreen() {
       {/* Author and Reward */}
       <View style={styles.cardHeader}>
         <View style={styles.authorContainer}>
-          <LinearGradient
-            colors={['#FF6B9D', '#FFA06B']}
-            style={styles.authorAvatar}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-          >
-            <Text style={styles.authorEmoji}>{quiz.author === '엄마' ? '👩' : '👨'}</Text>
-          </LinearGradient>
-          <Text style={styles.authorName}>{quiz.author}</Text>
+          {quiz.authorAvatarUrl ? (
+            <Image
+              source={{ uri: quiz.authorAvatarUrl }}
+              style={styles.authorAvatarImage}
+            />
+          ) : (
+            <LinearGradient
+              colors={['#FF6B9D', '#FFA06B']}
+              style={styles.authorAvatar}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+            >
+              <User size={20} color="#FFFFFF" />
+            </LinearGradient>
+          )}
+          <Text style={styles.authorName}>{quiz.authorName}</Text>
         </View>
         <View style={styles.rewardContainer}>
           <Trophy size={16} color="#FFA06B" />
@@ -418,6 +414,12 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  authorAvatarImage: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#F3F4F6',
   },
   authorEmoji: {
     fontSize: 18,

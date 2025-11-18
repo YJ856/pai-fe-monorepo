@@ -24,16 +24,23 @@ import {
   ScrollView,
   Modal,
   ActivityIndicator,
+  Image,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
-import { CheckCircle, XCircle, Gift, Plus, Edit, Trash2, Calendar } from 'lucide-react-native';
+import { CheckCircle, XCircle, Gift, Calendar, User, Edit, Trash2 } from 'lucide-react-native';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { spacing, typography, borderRadius, shadows } from '../../../design/tokens';
 import { Button } from '../../../design/components/Button';
-import { useTodayQuizzes } from './_tabs/useTodayQuizzes';
-import { usePastQuizzes } from './_tabs/usePastQuizzes';
-import { useScheduledQuizzes } from './_tabs/useScheduledQuizzes';
-import { QuizCreationModal } from './QuizCreationModal';
+import { useTodayQuizzes } from './_hooks/useTodayQuizzes';
+import { usePastQuizzes } from './_hooks/usePastQuizzes';
+import { useScheduledQuizzes } from './_hooks/useScheduledQuizzes';
+import { useCreateQuiz } from './_hooks/useCreateQuiz';
+import { useDeleteQuiz } from './_hooks/useDeleteQuiz';
+import { useGrantQuizReward } from './_hooks/useGrantQuizReward';
+import { updateQuiz } from '../../../api/quizzes';
+import { QuizFormModal } from './QuizFormModal';
 
 interface Quiz {
   id: string;
@@ -45,6 +52,7 @@ interface Quiz {
   authorAvatar?: string;
   date: Date;
   childSolutions: ChildSolution[];
+  isEditable?: boolean;
 }
 
 interface ChildSolution {
@@ -66,19 +74,203 @@ export default function ParentQuizScreen() {
 
   // Custom Hook으로 퀴즈 데이터 가져오기
   const {
-    todayQuizzes,
+    todayQuizzes: todayQuizzesData,
     isLoading: isLoadingTodayQuizzes,
   } = useTodayQuizzes();
 
   const {
-    pastQuizzes,
+    pastQuizzes: pastQuizzesData,
     isLoading: isLoadingPastQuizzes,
   } = usePastQuizzes();
 
   const {
-    scheduledQuizzes,
+    scheduledQuizzes: scheduledQuizzesData,
     isLoading: isLoadingScheduledQuizzes,
   } = useScheduledQuizzes();
+
+  const queryClient = useQueryClient();
+
+  // Mutation hooks
+  const { createQuiz, isCreating, nextPublishDate } = useCreateQuiz();
+  const { deleteQuiz, isDeleting } = useDeleteQuiz();
+  const { grantReward, isGranting } = useGrantQuizReward();
+
+  // 퀴즈 수정 mutation
+  const updateQuizMutation = useMutation({
+    mutationFn: ({ quizId, data }: {
+      quizId: string;
+      data: {
+        question: string;
+        answer: string;
+        hint: string | null;
+        reward: string | null;
+        publishDate: string;
+      }
+    }) => {
+      return updateQuiz({ quizId }, data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['parent-quizzes', 'today'] });
+      queryClient.invalidateQueries({ queryKey: ['parent-quizzes', 'scheduled'] });
+      // 퀴즈 수정 시 출제일이 변경될 수 있으므로 캐시 무효화
+      queryClient.invalidateQueries({ queryKey: ['parent-quizzes', 'next-publish-date'] });
+    },
+  });
+
+  // ViewModel → UI 형식으로 변환
+  const todayQuizzes: Quiz[] = todayQuizzesData.map((quiz) => ({
+    id: quiz.id,
+    question: quiz.question,
+    answer: quiz.answer,
+    hint: quiz.hint,
+    reward: quiz.reward,
+    author: quiz.authorName,
+    authorAvatar: quiz.authorAvatarUrl,
+    date: quiz.publishDate,
+    isEditable: quiz.isEditable,
+    childSolutions: quiz.children.map((child) => ({
+      childId: String(child.childProfileId),
+      childName: child.childName,
+      childAvatar: child.childAvatarUrl,
+      solved: child.isSolved ?? false,
+      rewardGiven: child.rewardGranted,
+    })),
+  }));
+
+  const pastQuizzes: Quiz[] = pastQuizzesData.map((quiz) => ({
+    id: quiz.id,
+    question: quiz.question,
+    answer: quiz.answer,
+    hint: quiz.hint,
+    reward: quiz.reward,
+    author: quiz.authorName,
+    authorAvatar: quiz.authorAvatarUrl,
+    date: quiz.publishDate,
+    isEditable: quiz.isEditable,
+    childSolutions: quiz.children.map((child) => ({
+      childId: String(child.childProfileId),
+      childName: child.childName,
+      childAvatar: child.childAvatarUrl,
+      solved: child.isSolved ?? false,
+      rewardGiven: child.rewardGranted,
+    })),
+  }));
+
+  const scheduledQuizzes: Quiz[] = scheduledQuizzesData.map((quiz) => ({
+    id: quiz.id,
+    question: quiz.question,
+    answer: quiz.answer,
+    hint: quiz.hint,
+    reward: quiz.reward,
+    author: quiz.authorName,
+    authorAvatar: quiz.authorAvatarUrl,
+    date: quiz.publishDate,
+    isEditable: quiz.isEditable,
+    childSolutions: [],
+  }));
+
+  // 핸들러 함수들
+  const handleCreateQuiz = (data: {
+    question: string;
+    answer: string;
+    hint?: string;
+    reward?: string;
+    publishDate: Date;
+  }) => {
+    const payload = {
+      question: data.question,
+      answer: data.answer,
+      hint: data.hint || null,
+      reward: data.reward || null,
+      publishDate: formatDateToYYYYMMDD(data.publishDate),
+    };
+
+    createQuiz(
+      payload,
+      {
+        onSuccess: () => {
+          setShowCreateModal(false);
+          setEditingQuiz(null);
+        },
+        onError: (error: any) => {
+          console.error('퀴즈 생성 실패:', error);
+          alert('퀴즈 생성에 실패했습니다.');
+        },
+      }
+    );
+  };
+
+  const handleUpdateQuiz = (data: {
+    question: string;
+    answer: string;
+    hint?: string;
+    reward?: string;
+    publishDate: Date;
+  }) => {
+    if (!editingQuiz) return;
+
+    updateQuizMutation.mutate(
+      {
+        quizId: editingQuiz.id,
+        data: {
+          question: data.question,
+          answer: data.answer,
+          hint: data.hint || null,
+          reward: data.reward || null,
+          publishDate: formatDateToYYYYMMDD(data.publishDate),
+        },
+      },
+      {
+        onSuccess: () => {
+          setShowCreateModal(false);
+          setEditingQuiz(null);
+        },
+        onError: (error: any) => {
+          console.error('퀴즈 수정 실패:', error);
+          alert('퀴즈 수정에 실패했습니다.');
+        },
+      }
+    );
+  };
+
+  const handleDeleteQuiz = (quizId: string) => {
+    deleteQuiz(
+      { quizId },
+      {
+        onSuccess: () => {
+          console.log('퀴즈 삭제 성공');
+        },
+        onError: (error) => {
+          console.error('퀴즈 삭제 실패:', error);
+          alert('퀴즈 삭제에 실패했습니다.');
+        },
+      }
+    );
+  };
+
+  const handleEditQuiz = (quiz: Quiz) => {
+    setEditingQuiz(quiz);
+    setShowCreateModal(true);
+  };
+
+  const handleGrantReward = (quizId: string, childId: string) => {
+    grantReward(
+      {
+        quizId,
+        childProfileId: Number(childId),
+        payload: { grant: true },
+      },
+      {
+        onSuccess: () => {
+          console.log('보상 지급 성공');
+        },
+        onError: (error) => {
+          console.error('보상 지급 실패:', error);
+          alert('보상 지급에 실패했습니다.');
+        },
+      }
+    );
+  };
 
   const groupQuizzesByDate = (quizzes: Quiz[]) => {
     const grouped: Record<string, Quiz[]> = {};
@@ -95,8 +287,24 @@ export default function ParentQuizScreen() {
   const pastQuizzesByDate = groupQuizzesByDate(pastQuizzes);
   const scheduledQuizzesByDate = groupQuizzesByDate(scheduledQuizzes);
 
-  const renderQuizCard = (quiz: Quiz, showActions: boolean = false) => {
+  // 탭 전환 핸들러
+  const handleTabChange = (tab: TabKey) => {
+    setActiveTab(tab);
+    // 탭 전환 시 next-publish-date 캐시 무효화하여 항상 최신 출제일 가져오기
+    queryClient.invalidateQueries({ queryKey: ['parent-quizzes', 'next-publish-date'] });
+  };
+
+  // Date를 'yyyy-MM-dd' 형식으로 변환
+  const formatDateToYYYYMMDD = (date: Date): string => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
+  const renderQuizCard = (quiz: Quiz) => {
     const solutions = quiz.childSolutions;
+    const showActions = activeTab === 'scheduled';
 
     return (
       <TouchableOpacity
@@ -131,6 +339,16 @@ export default function ParentQuizScreen() {
         {/* Author Badge */}
         <View style={styles.authorBadgeContainer}>
           <View style={styles.authorBadge}>
+            {quiz.authorAvatar ? (
+              <Image
+                source={{ uri: quiz.authorAvatar }}
+                style={styles.authorAvatar}
+              />
+            ) : (
+              <View style={styles.authorAvatarPlaceholder}>
+                <User size={16} color="#9CA3AF" />
+              </View>
+            )}
             <Text style={styles.authorName}>{quiz.author}</Text>
           </View>
         </View>
@@ -149,6 +367,16 @@ export default function ParentQuizScreen() {
                   ]}
                 >
                   <View style={styles.solutionInfo}>
+                    {solution.childAvatar ? (
+                      <Image
+                        source={{ uri: solution.childAvatar }}
+                        style={styles.childAvatar}
+                      />
+                    ) : (
+                      <View style={styles.childAvatarPlaceholder}>
+                        <User size={14} color="#9CA3AF" />
+                      </View>
+                    )}
                     <Text style={styles.solutionName}>{solution.childName}</Text>
                   </View>
                   {solution.solved ? (
@@ -162,14 +390,35 @@ export default function ParentQuizScreen() {
           </View>
         )}
 
-        {/* Scheduled Tab: Show Actions */}
-        {showActions && (
+        {/* Scheduled Tab: Show Actions (본인 작성자일 때만) */}
+        {showActions && quiz.isEditable && (
           <View style={styles.actionsContainer}>
-            <TouchableOpacity style={styles.actionButton} activeOpacity={0.7}>
+            <TouchableOpacity
+              style={styles.actionButton}
+              activeOpacity={0.7}
+              onPress={() => handleEditQuiz(quiz)}
+            >
               <Edit size={16} color="#5B9BD5" />
               <Text style={styles.actionButtonText}>수정</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={[styles.actionButton, styles.deleteButton]} activeOpacity={0.7}>
+            <TouchableOpacity
+              style={[styles.actionButton, styles.deleteButton]}
+              activeOpacity={0.7}
+              onPress={() => {
+                Alert.alert(
+                  '퀴즈 삭제',
+                  '정말 이 퀴즈를 삭제하시겠습니까?',
+                  [
+                    { text: '취소', style: 'cancel' },
+                    {
+                      text: '삭제',
+                      style: 'destructive',
+                      onPress: () => handleDeleteQuiz(quiz.id),
+                    },
+                  ]
+                );
+              }}
+            >
               <Trash2 size={16} color="#EF4444" />
               <Text style={[styles.actionButtonText, styles.deleteButtonText]}>삭제</Text>
             </TouchableOpacity>
@@ -187,7 +436,7 @@ export default function ParentQuizScreen() {
         <View style={styles.tabsList}>
           <TouchableOpacity
             style={styles.tabTrigger}
-            onPress={() => setActiveTab('today')}
+            onPress={() => handleTabChange('today')}
             activeOpacity={0.8}
           >
             {activeTab === 'today' ? (
@@ -205,7 +454,7 @@ export default function ParentQuizScreen() {
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.tabTrigger}
-            onPress={() => setActiveTab('history')}
+            onPress={() => handleTabChange('history')}
             activeOpacity={0.8}
           >
             {activeTab === 'history' ? (
@@ -223,7 +472,7 @@ export default function ParentQuizScreen() {
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.tabTrigger}
-            onPress={() => setActiveTab('scheduled')}
+            onPress={() => handleTabChange('scheduled')}
             activeOpacity={0.8}
           >
             {activeTab === 'scheduled' ? (
@@ -254,7 +503,7 @@ export default function ParentQuizScreen() {
               <ActivityIndicator size="large" />
             </View>
           ) : (
-            todayQuizzes.map((quiz) => renderQuizCard(quiz, false))
+            todayQuizzes.map((quiz) => renderQuizCard(quiz))
           )
         )}
 
@@ -269,7 +518,7 @@ export default function ParentQuizScreen() {
                 <View style={styles.horizontalCards}>
                   {quizzes.map((quiz) => (
                     <View key={quiz.id} style={styles.horizontalCard}>
-                      {renderQuizCard(quiz, false)}
+                      {renderQuizCard(quiz)}
                     </View>
                   ))}
                 </View>
@@ -288,7 +537,7 @@ export default function ParentQuizScreen() {
                 <View style={styles.horizontalCards}>
                   {quizzes.map((quiz) => (
                     <View key={quiz.id} style={styles.horizontalCard}>
-                      {renderQuizCard(quiz, true)}
+                      {renderQuizCard(quiz)}
                     </View>
                   ))}
                 </View>
@@ -296,28 +545,6 @@ export default function ParentQuizScreen() {
             </View>
           ))}
       </ScrollView>
-
-      {/* Floating Add Button */}
-      <TouchableOpacity
-        style={styles.floatingButton}
-        activeOpacity={0.9}
-        onPress={() => setShowCreateModal(true)}
-      >
-        <LinearGradient
-          colors={['#5B9BD5', '#667BC6']}
-          style={styles.floatingButtonGradient}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 0 }}
-        >
-          <Plus size={32} color="#FFFFFF" />
-        </LinearGradient>
-      </TouchableOpacity>
-
-      {/* Quiz Creation Modal */}
-      <QuizCreationModal
-        visible={showCreateModal}
-        onClose={() => setShowCreateModal(false)}
-      />
 
       {/* Detail Modal */}
       {selectedQuiz && (
@@ -356,14 +583,17 @@ export default function ParentQuizScreen() {
                     {solution.solved && selectedQuiz.reward && (
                       <Button
                         variant={solution.rewardGiven ? 'outline' : 'default'}
-                        onPress={() => console.log('Give reward')}
-                        disabled={solution.rewardGiven}
-                        style={styles.rewardButton}
+                        onPress={() => handleGrantReward(selectedQuiz.id, solution.childId)}
+                        disabled={solution.rewardGiven || isGranting}
+                        style={{
+                          ...styles.rewardButton,
+                          ...(!solution.rewardGiven && { backgroundColor: '#10B981' })
+                        }}
                       >
                         <View style={styles.rewardButtonContent}>
                           <Gift size={16} color={solution.rewardGiven ? '#6B7280' : '#FFFFFF'} />
                           <Text style={[styles.rewardButtonText, { color: solution.rewardGiven ? '#6B7280' : '#FFFFFF' }]}>
-                            {solution.rewardGiven ? '보상 지급 완료' : '보상 지급'}
+                            {isGranting ? '처리 중...' : solution.rewardGiven ? '보상 지급 완료' : '보상 지급'}
                           </Text>
                         </View>
                       </Button>
@@ -379,6 +609,44 @@ export default function ParentQuizScreen() {
           </View>
         </Modal>
       )}
+
+      {/* Quiz Form Modal */}
+      <QuizFormModal
+        visible={showCreateModal}
+        onClose={() => {
+          setShowCreateModal(false);
+          setEditingQuiz(null);
+        }}
+        defaultPublishDate={nextPublishDate}
+        editQuiz={editingQuiz ? {
+          id: editingQuiz.id,
+          question: editingQuiz.question,
+          answer: editingQuiz.answer,
+          hint: editingQuiz.hint,
+          reward: editingQuiz.reward,
+          date: editingQuiz.date,
+        } : null}
+        onSubmit={editingQuiz ? handleUpdateQuiz : handleCreateQuiz}
+      />
+
+      {/* Floating Add Button */}
+      <TouchableOpacity
+        style={styles.fab}
+        onPress={() => {
+          setEditingQuiz(null);
+          setShowCreateModal(true);
+        }}
+        activeOpacity={0.9}
+      >
+        <LinearGradient
+          colors={['#5B9BD5', '#667BC6']}
+          style={styles.fabGradient}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+        >
+          <Text style={styles.fabText}>+</Text>
+        </LinearGradient>
+      </TouchableOpacity>
     </LinearGradient>
     </SafeAreaView>
   );
@@ -477,6 +745,20 @@ const styles = StyleSheet.create({
     ...typography.caption,
     color: '#374151',
   },
+  authorAvatar: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: '#E5E7EB',
+  },
+  authorAvatarPlaceholder: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: '#F3F4F6',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   solutionsContainer: {
     borderTopWidth: 1,
     borderTopColor: '#E5E7EB',
@@ -519,6 +801,20 @@ const styles = StyleSheet.create({
   solutionName: {
     ...typography.body2,
     color: '#111827',
+  },
+  childAvatar: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: '#E5E7EB',
+  },
+  childAvatarPlaceholder: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: '#F3F4F6',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   actionsContainer: {
     flexDirection: 'row',
@@ -667,5 +963,27 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  fab: {
+    position: 'absolute',
+    right: spacing.lg,
+    bottom: spacing.xl * 2,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    ...shadows.lg,
+  },
+  fabGradient: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  fabText: {
+    fontSize: 32,
+    color: '#FFFFFF',
+    fontWeight: '300',
+    lineHeight: 36,
   },
 });
