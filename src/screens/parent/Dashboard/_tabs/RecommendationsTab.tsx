@@ -43,7 +43,7 @@ interface Recommendation {
   endDate?: string;
   imageUrl?: string;
   link?: string;
-  relevantKeywords: string[]; // 백엔드 응답에 맞춤
+  relevantKeywords: string[];
 }
 
 interface RecommendationsTabProps {

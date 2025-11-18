@@ -49,7 +49,7 @@ import {
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { logout } from "../../../api/auth";
 import { getProfiles, selectProfile } from "../../../api/profiles";
-import { getMedia } from '../../../api/media'
+import { getMedia } from "../../../api/media";
 import { useProfileStore } from "../../../store/useProfileStore";
 import { Profile } from "pai-shared-types";
 
@@ -63,8 +63,11 @@ export default function ProfileSelectScreen() {
   const [pinError, setPinError] = useState("");
 
   // Zustand store
-  const { profiles, setCurrentProfile, setProfiles: setProfiles } =
-    useProfileStore();
+  const {
+    profiles,
+    setCurrentProfile,
+    setProfiles: setProfiles,
+  } = useProfileStore();
 
   // 화면에 포커스될 때마다 프로필 목록 새로고침
   useFocusEffect(
@@ -81,14 +84,17 @@ export default function ProfileSelectScreen() {
       const storeProfiles = useProfileStore.getState().profiles;
 
       if (storeProfiles.length > 0) {
-        console.log("Zustand store에 저장된 프로필 사용 (API 호출 생략):", storeProfiles.length);
+        console.log(
+          "Zustand store에 저장된 프로필 사용 (API 호출 생략):",
+          storeProfiles.length
+        );
         setIsLoading(false);
         return;
       }
 
       // Store에 프로필이 없을 때만 API 호출
       console.log("프로필 목록 로드 시작...");
-      const profileList = await getProfiles('all');
+      const profileList = await getProfiles("all");
       console.log("프로필 목록 로드 완료:", profileList);
       console.log("프로필 개수:", profileList?.length || 0);
 
@@ -96,7 +102,6 @@ export default function ProfileSelectScreen() {
       if (Array.isArray(profileList)) {
         // API 응답 데이터를 앱 타입으로 변환
         const baseProfiles = profileList.map((profile: any) => ({
-
           profileId: Number(profile.profileId || profile.id),
           userId: Number(profile.userId),
           profileType: profile.profileType,
@@ -104,28 +109,33 @@ export default function ProfileSelectScreen() {
           birthDate: profile.birthDate || profile.birthdate,
           gender: profile.gender?.toLowerCase(),
 
-          avatarMediaId: profile.avatarMediaId ? BigInt(profile.avatarMediaId) : undefined,
-          voiceMediaId: profile.voiceMediaId ? BigInt(profile.voiceMediaId) : undefined,
+          avatarMediaId: profile.avatarMediaId
+            ? BigInt(profile.avatarMediaId)
+            : undefined,
+          voiceMediaId: profile.voiceMediaId
+            ? BigInt(profile.voiceMediaId)
+            : undefined,
           avatarUrl: undefined,
 
           createdAt: profile.createdAt || profile.createAt, // 오타 가능성 고려
-
         }));
 
         const addUrlProfiles = baseProfiles.map(async (profile) => {
           let avatarUrl = undefined;
           if (profile.avatarMediaId) {
             try {
-              const mediaId = String(profile.avatarMediaId)
+              const mediaId = String(profile.avatarMediaId);
               const mediaResponse = await getMedia({ mediaIds: mediaId });
               avatarUrl = mediaResponse?.[0].cdnUrl;
             } catch (error) {
-              console.error(`Failed to fetch media URL for ID ${profile.avatarMediaId}:`, error);
+              console.error(
+                `Failed to fetch media URL for ID ${profile.avatarMediaId}:`,
+                error
+              );
             }
-
           }
           return { ...profile, avatarUrl };
-        })
+        });
 
         const transformedProfiles = await Promise.all(addUrlProfiles);
 
@@ -139,7 +149,9 @@ export default function ProfileSelectScreen() {
       // 401 에러는 axios 인터셉터에서 자동으로 처리하여 로그인 화면으로 이동하므로
       // 여기서는 사용자에게 에러 Alert을 표시하지 않음
       if (error.response?.status === 401) {
-        console.log("[ProfileSelect] 401 Unauthorized - 로그인 화면으로 리다이렉트됩니다.");
+        console.log(
+          "[ProfileSelect] 401 Unauthorized - 로그인 화면으로 리다이렉트됩니다."
+        );
         setProfiles([]); // 스토어 비우기
         return; // Alert 표시하지 않고 조용히 종료
       }
@@ -156,7 +168,8 @@ export default function ProfileSelectScreen() {
 
       Alert.alert(
         "오류",
-        error.response?.data?.message || "프로필 목록을 불러오는 중 오류가 발생했습니다."
+        error.response?.data?.message ||
+          "프로필 목록을 불러오는 중 오류가 발생했습니다."
       );
     } finally {
       setIsLoading(false);
@@ -183,9 +196,12 @@ export default function ProfileSelectScreen() {
         // 토큰 저장
         if (result.accessToken) {
           await AsyncStorage.setItem("accessToken", result.accessToken);
-          console.log('[ProfileSelect-Child] AccessToken saved:', result.accessToken.substring(0, 20) + '...');
+          console.log(
+            "[ProfileSelect-Child] AccessToken saved:",
+            result.accessToken.substring(0, 20) + "..."
+          );
         } else {
-          console.warn('[ProfileSelect-Child] No accessToken in response!');
+          console.warn("[ProfileSelect-Child] No accessToken in response!");
         }
         if (result.refreshToken) {
           await AsyncStorage.setItem("refreshToken", result.refreshToken);
@@ -213,14 +229,20 @@ export default function ProfileSelectScreen() {
       setPinError("");
 
       // 백엔드에서 PIN 검증
-      const result = await selectProfile(String(selectedProfile.profileId), pin);
+      const result = await selectProfile(
+        String(selectedProfile.profileId),
+        pin
+      );
 
       // PIN이 맞으면 토큰 저장
       if (result.accessToken) {
         await AsyncStorage.setItem("accessToken", result.accessToken);
-        console.log('[ProfileSelect-Parent] AccessToken saved:', result.accessToken.substring(0, 20) + '...');
+        console.log(
+          "[ProfileSelect-Parent] AccessToken saved:",
+          result.accessToken.substring(0, 20) + "..."
+        );
       } else {
-        console.warn('[ProfileSelect-Parent] No accessToken in response!');
+        console.warn("[ProfileSelect-Parent] No accessToken in response!");
       }
       if (result.refreshToken) {
         await AsyncStorage.setItem("refreshToken", result.refreshToken);
@@ -685,7 +707,7 @@ const styles = StyleSheet.create({
   // Modal styles
   modalOverlay: {
     flex: 1,
-    backgroundColor: "rgba(0, 0, 0, 0.6)",
+    // backgroundColor: "rgba(0, 0, 0, 0.6)",
     justifyContent: "center",
     alignItems: "center",
     padding: spacing.lg,

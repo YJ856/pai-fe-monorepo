@@ -26,12 +26,11 @@ import {
   ScrollView,
   TouchableOpacity,
   ActivityIndicator,
+  Linking,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import { Card } from "../../../design/components/Card";
-import { Badge } from "../../../design/components/Badge";
-import { Avatar } from "../../../design/components/Avatar";
 import {
   colors,
   spacing,
@@ -40,12 +39,14 @@ import {
   shadows,
 } from "../../../design/tokens";
 import ActivityCalendar from "./components/ActivityCalendar";
+import BubbleChart from "./components/BubbleChart";
 import {
   useInterestsData,
   useActivityData,
   useRecommendations,
 } from "./hooks/useDashboardData";
 import { useProfileStore } from "../../../store/useProfileStore";
+import { Image } from "react-native";
 
 type TabValue = "interests" | "calendar" | "recommendations";
 type RecommendationType = "관광지" | "문화시설" | "축제공연행사";
@@ -63,6 +64,8 @@ interface Recommendation {
   description: string;
   relatedInterest: string;
   icon: string;
+  imageUrl?: string;
+  link?: string;
 }
 
 interface Child {
@@ -81,12 +84,16 @@ export default function ParentDashboard() {
   const [selectedRecommendationType, setSelectedRecommendationType] =
     useState<RecommendationType>("축제공연행사");
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  const [showChildDropdown, setShowChildDropdown] = useState(false);
 
   // Zustand store에서 자녀 프로필 가져오기
   const { childProfiles } = useProfileStore();
 
-  // 첫 번째 자녀 프로필 선택 (나중에 선택 UI 추가 가능)
-  const selectedChildId = childProfiles[0]?.id || "3"; // 자녀가 없으면 기본값 "3"
+  // 자녀 선택 state (기본값: 첫 번째 자녀)
+  const [selectedChildIndex, setSelectedChildIndex] = useState(0);
+  const selectedChildId = String(
+    childProfiles[selectedChildIndex]?.profileId || childProfiles[0]?.profileId
+  );
 
   console.log("[Dashboard] childProfiles:", childProfiles);
   console.log("[Dashboard] selectedChildId:", selectedChildId);
@@ -125,8 +132,6 @@ export default function ParentDashboard() {
   console.log("[Dashboard] topKeyword:", topKeyword);
   console.log("[Dashboard] recommendationsData:", recommendationsData);
 
-  const maxCount = Math.max(...interests.map((i: any) => i.count), 1);
-
   // API 카테고리를 Dashboard 타입으로 매핑
   const mapCategoryToType = (category: string): RecommendationType => {
     if (category === "축제") return "축제공연행사";
@@ -156,19 +161,8 @@ export default function ParentDashboard() {
     (rec: Recommendation) => rec.type === selectedRecommendationType
   );
 
-  const getTypeIcon = (type: RecommendationType): string => {
-    switch (type) {
-      case "관광지":
-        return "🗺️";
-      case "문화시설":
-        return "📚";
-      case "축제공연행사":
-        return "🎬";
-    }
-  };
-
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView style={styles.safeArea} edges={["top"]}>
       <LinearGradient
         colors={["#eff6ff", "#e0e7ff"]} // from-blue-50 to-indigo-50
         style={styles.container}
@@ -178,7 +172,7 @@ export default function ParentDashboard() {
           contentContainerStyle={styles.content}
           showsVerticalScrollIndicator={false}
         >
-          {/* Tab Navigation */}
+          {/* Tab Navigation with Child Selector */}
           <View style={styles.tabContainer}>
             <LinearGradient
               colors={["rgba(255, 255, 255, 0.5)", "rgba(255, 255, 255, 0.3)"]}
@@ -196,10 +190,10 @@ export default function ParentDashboard() {
                     end={{ x: 1, y: 0 }}
                     style={styles.tabActive}
                   >
-                    <Text style={styles.tabTextActive}>관심사 분석</Text>
+                    <Text style={styles.tabTextActive}>관심사</Text>
                   </LinearGradient>
                 ) : (
-                  <Text style={styles.tabTextInactive}>관심사 분석</Text>
+                  <Text style={styles.tabTextInactive}>관심사</Text>
                 )}
               </TouchableOpacity>
 
@@ -215,10 +209,10 @@ export default function ParentDashboard() {
                     end={{ x: 1, y: 0 }}
                     style={styles.tabActive}
                   >
-                    <Text style={styles.tabTextActive}>활동 캘린더</Text>
+                    <Text style={styles.tabTextActive}>캘린더</Text>
                   </LinearGradient>
                 ) : (
-                  <Text style={styles.tabTextInactive}>활동 캘린더</Text>
+                  <Text style={styles.tabTextInactive}>캘린더</Text>
                 )}
               </TouchableOpacity>
 
@@ -234,13 +228,89 @@ export default function ParentDashboard() {
                     end={{ x: 1, y: 0 }}
                     style={styles.tabActive}
                   >
-                    <Text style={styles.tabTextActive}>추천 콘텐츠</Text>
+                    <Text style={styles.tabTextActive}>추천</Text>
                   </LinearGradient>
                 ) : (
-                  <Text style={styles.tabTextInactive}>추천 콘텐츠</Text>
+                  <Text style={styles.tabTextInactive}>추천</Text>
                 )}
               </TouchableOpacity>
             </LinearGradient>
+
+            {/* Child Selector - Same Row */}
+            {childProfiles.length > 1 && (
+              <View style={styles.childSelector}>
+                <TouchableOpacity
+                  style={styles.childDropdownButton}
+                  onPress={() => setShowChildDropdown(!showChildDropdown)}
+                  activeOpacity={0.8}
+                >
+                  <LinearGradient
+                    colors={[
+                      "rgba(91, 155, 213, 0.1)",
+                      "rgba(102, 123, 198, 0.1)",
+                    ]}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                    style={styles.childDropdownGradient}
+                  >
+                    <Image
+                      source={{
+                        uri: childProfiles[selectedChildIndex]?.avatarUrl,
+                      }}
+                      style={{
+                        width: 28,
+                        height: 28,
+                        borderRadius: 14,
+                      }}
+                    />
+
+                    <Text style={styles.childDropdownName}>
+                      {childProfiles[selectedChildIndex]?.name || "자녀"}
+                    </Text>
+                  </LinearGradient>
+                </TouchableOpacity>
+
+                {/* Dropdown Menu */}
+                {showChildDropdown && (
+                  <View style={styles.childDropdownMenu}>
+                    {childProfiles.map((child, index) => (
+                      <TouchableOpacity
+                        key={child.profileId}
+                        style={styles.childDropdownItem}
+                        onPress={() => {
+                          setSelectedChildIndex(index);
+                          setShowChildDropdown(false);
+                        }}
+                        activeOpacity={0.8}
+                      >
+                        {child.avatarUrl ? (
+                          <Image
+                            source={{ uri: child.avatarUrl }}
+                            style={styles.childDropdownItemAvatarImage}
+                          />
+                        ) : (
+                          <Text style={styles.childDropdownItemAvatar}>
+                            {child.gender === "male" ? "👦" : "👧"}
+                          </Text>
+                        )}
+                        <Text
+                          style={[
+                            styles.childDropdownItemName,
+                            selectedChildIndex === index &&
+                              styles.childDropdownItemNameActive,
+                          ]}
+                        >
+                          {child.name}
+                        </Text>
+                        {selectedChildIndex === index && (
+                          <Text style={styles.childDropdownItemCheck}>✓</Text>
+                        )}
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                )}
+              </View>
+            )}
           </View>
 
           {/* Interests Tab */}
@@ -266,63 +336,8 @@ export default function ParentDashboard() {
                   </View>
                 )}
 
-                {/* Bubble Grid */}
-                {!interestsLoading && (
-                  <View style={styles.bubbleGrid}>
-                    {interests.map((interest: any, index: number) => {
-                      const percentage = (interest.count / maxCount) * 100;
-                      const size = 42.5 + (percentage / 100) * 32.5; // 42.5-75px (반으로 축소)
-
-                      // 예쁜 그라데이션 색상 팔레트 (10개)
-                      const colorPalettes = [
-                        ["#667eea", "#764ba2"], // 보라-파랑
-                        ["#f093fb", "#f5576c"], // 핑크-레드
-                        ["#4facfe", "#00f2fe"], // 하늘-청록
-                        ["#43e97b", "#38f9d7"], // 초록-민트
-                        ["#fa709a", "#fee140"], // 핑크-노랑
-                        ["#30cfd0", "#330867"], // 청록-남색
-                        ["#a8edea", "#fed6e3"], // 민트-핑크
-                        ["#ff9a9e", "#fecfef"], // 코랄-핑크
-                        ["#ffecd2", "#fcb69f"], // 피치-오렌지
-                        ["#ff6e7f", "#bfe9ff"], // 레드-스카이
-                      ];
-
-                      const colors = colorPalettes[index % colorPalettes.length];
-
-                      return (
-                        <View key={interest.topic} style={styles.bubbleItem}>
-                          <LinearGradient
-                            colors={colors as [string, string]}
-                            start={{ x: 0, y: 0 }}
-                            end={{ x: 1, y: 1 }}
-                            style={[
-                              styles.bubble,
-                              {
-                                width: size,
-                                height: size,
-                                shadowColor: colors[0],
-                                shadowOffset: { width: 0, height: 4 },
-                                shadowOpacity: 0.3,
-                                shadowRadius: 8,
-                                elevation: 6,
-                              },
-                            ]}
-                          >
-                            <Text style={styles.bubbleIcon}>
-                              {interest.icon}
-                            </Text>
-                            <Text style={styles.bubbleCount}>
-                              {interest.count}
-                            </Text>
-                          </LinearGradient>
-                          <Text style={styles.bubbleTopic}>
-                            {interest.topic}
-                          </Text>
-                        </View>
-                      );
-                    })}
-                  </View>
-                )}
+                {/* Bubble Chart */}
+                {!interestsLoading && <BubbleChart data={interests} />}
               </View>
             </Card>
           )}
@@ -377,9 +392,9 @@ export default function ParentDashboard() {
                 {/* Related Interest Header */}
                 {topKeyword && (
                   <View style={styles.relatedInterestHeader}>
-                    <Text style={styles.relatedInterestIcon}>🎯</Text>
                     <Text style={styles.relatedInterestText}>
-                      {childProfiles[0]?.name || "자녀"}님의 관심사 '{topKeyword}' 기반 추천
+                      {childProfiles[selectedChildIndex]?.name || "자녀"}님의
+                      관심사 '{topKeyword}' 기반 추천
                     </Text>
                   </View>
                 )}
@@ -426,7 +441,21 @@ export default function ParentDashboard() {
                       key={rec.id}
                       style={styles.recommendationCard}
                       activeOpacity={0.8}
+                      onPress={() => {
+                        if (rec.link) {
+                          Linking.openURL(rec.link).catch((err) =>
+                            console.error("링크 열기 실패:", err)
+                          );
+                        }
+                      }}
                     >
+                      {rec.imageUrl && (
+                        <Image
+                          source={{ uri: rec.imageUrl }}
+                          style={styles.recommendationImage}
+                          resizeMode="cover"
+                        />
+                      )}
                       <View style={styles.recommendationContent}>
                         <View style={styles.recommendationInfo}>
                           <Text style={styles.recommendationTitle}>
@@ -468,12 +497,98 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.xl * 2,
   },
 
+  // Child Selector
+  childSelector: {
+    position: "relative" as const,
+    zIndex: 1000,
+  },
+
+  childDropdownButton: {
+    borderRadius: borderRadius.full,
+    overflow: "hidden",
+    ...shadows.md,
+  },
+
+  childDropdownGradient: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    gap: 6,
+  },
+
+  childDropdownAvatar: {
+    fontSize: 24,
+  },
+
+  childDropdownName: {
+    fontSize: 14,
+    color: "#5B9BD5",
+    fontWeight: "600" as const,
+  },
+
+  childDropdownArrow: {
+    fontSize: 12,
+    color: "#5B9BD5",
+  },
+
+  childDropdownMenu: {
+    position: "absolute" as const,
+    top: 38,
+    right: 0,
+    minWidth: 120,
+    backgroundColor: "white",
+    borderRadius: borderRadius.xl,
+    ...shadows.xl,
+    zIndex: 1001,
+  },
+
+  childDropdownItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    gap: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: "#f3f4f6",
+  },
+
+  childDropdownItemAvatar: {
+    fontSize: 18,
+  },
+
+  childDropdownItemAvatarImage: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+  },
+
+  childDropdownItemName: {
+    fontSize: 14,
+    color: "#374151",
+    flex: 1,
+  },
+
+  childDropdownItemNameActive: {
+    color: "#5B9BD5",
+    fontWeight: "600" as const,
+  },
+
+  childDropdownItemCheck: {
+    fontSize: 14,
+    color: "#5B9BD5",
+  },
+
   // Tab Navigation
   tabContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.md,
     marginBottom: spacing.md,
   },
 
   tabList: {
+    flex: 1,
     flexDirection: "row",
     padding: spacing.sm,
     borderRadius: borderRadius.full,
@@ -538,45 +653,6 @@ const styles = StyleSheet.create({
     ...typography.h2,
     fontSize: 24,
     color: "#111827", // text-gray-900
-  },
-
-  // Interests - Bubble Grid
-  bubbleGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    justifyContent: "space-around",
-    gap: spacing.lg,
-  },
-
-  bubbleItem: {
-    width: "18%",
-    alignItems: "center",
-    marginBottom: spacing.lg,
-  },
-
-  bubble: {
-    borderRadius: borderRadius.full,
-    alignItems: "center",
-    justifyContent: "center",
-    ...shadows.lg,
-    marginBottom: spacing.sm,
-  },
-
-  bubbleIcon: {
-    fontSize: 30,
-    marginBottom: 4,
-  },
-
-  bubbleCount: {
-    fontSize: 14,
-    color: colors.primaryForeground,
-    fontWeight: "500",
-  },
-
-  bubbleTopic: {
-    fontSize: 12,
-    color: "#1f2937", // text-gray-800
-    textAlign: "center",
   },
 
   // Loading
@@ -721,13 +797,18 @@ const styles = StyleSheet.create({
   recommendationCard: {
     backgroundColor: colors.card,
     borderRadius: borderRadius.xl,
-    padding: spacing.lg,
+    overflow: "hidden",
     ...shadows.sm,
   },
 
+  recommendationImage: {
+    width: "100%",
+    height: 180,
+    backgroundColor: "#f3f4f6",
+  },
+
   recommendationContent: {
-    flexDirection: "row",
-    gap: spacing.lg,
+    padding: spacing.lg,
   },
 
   recommendationIcon: {

@@ -24,10 +24,12 @@ import {
   conversationServiceClient,
   mediaServiceClient
 } from './axios';
+import { reset } from '../../utils/navigationRef';
+import { authEvents } from '../../utils/authEvents';
 
-// AsyncStorage 키
-const TOKEN_KEY = '@pai:access_token';
-const REFRESH_TOKEN_KEY = '@pai:refresh_token';
+// AsyncStorage 키 (기존 코드와 호환)
+const TOKEN_KEY = 'accessToken';
+const REFRESH_TOKEN_KEY = 'refreshToken';
 const PROFILE_ID_KEY = '@pai:selected_profile_id';
 
 /**
@@ -118,8 +120,15 @@ const setupResponseInterceptor = (client: AxiosInstance) => {
           return client(originalRequest);
         } catch (refreshError) {
           // 토큰 갱신 실패 시 로그아웃 처리
+          console.log('[AUTH] Refresh token expired - Clearing tokens and redirecting to login');
           await tokenManager.clearTokens();
-          // TODO: NavigationService를 통해 Login 화면으로 이동
+
+          // 인증 이벤트 발생
+          authEvents.emit();
+
+          // 로그인 화면으로 네비게이션
+          reset('Auth');
+
           return Promise.reject(refreshError);
         }
       }

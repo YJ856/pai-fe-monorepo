@@ -29,7 +29,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
-import { LogOut, User, Users, Mic, Camera, Edit, X } from "lucide-react-native";
+import { LogOut, User, Users, Mic, Camera, Edit, X, UserCircle } from "lucide-react-native";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as ImagePicker from "expo-image-picker";
@@ -254,6 +254,20 @@ export default function ParentProfileScreen() {
     }
   };
 
+  const handleBackToProfileSelect = () => {
+    // Zustand store 비우기 -> ProfileSelect에서 최신 프로필 목록 로드
+    useProfileStore.getState().setProfiles([]);
+
+    // Root Navigator로 이동 -> ProfileNavigator의 ProfileSelect 화면으로
+    const parent = navigation.getParent();
+    if (parent) {
+      parent.reset({
+        index: 0,
+        routes: [{ name: 'Profile' }],
+      });
+    }
+  };
+
   const handleLogout = async () => {
     Alert.alert(
       "로그아웃",
@@ -470,15 +484,26 @@ export default function ParentProfileScreen() {
             </TouchableOpacity>
           </LinearGradient>
 
-          {/* Logout Button */}
-          <TouchableOpacity
-            style={styles.logoutButton}
-            onPress={handleLogout}
-            activeOpacity={0.7}
-          >
-            <LogOut size={20} color="#6B7280" />
-            <Text style={styles.logoutText}>로그아웃</Text>
-          </TouchableOpacity>
+          {/* Profile Select & Logout Buttons */}
+          <View style={styles.buttonContainer}>
+            <TouchableOpacity
+              style={styles.actionButton}
+              onPress={handleBackToProfileSelect}
+              activeOpacity={0.7}
+            >
+              <UserCircle size={20} color="#6B7280" />
+              <Text style={styles.actionButtonText}>프로필 변경</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.actionButton}
+              onPress={handleLogout}
+              activeOpacity={0.7}
+            >
+              <LogOut size={20} color="#6B7280" />
+              <Text style={styles.actionButtonText}>로그아웃</Text>
+            </TouchableOpacity>
+          </View>
         </RefreshableScrollView>
       </View>
 
@@ -738,7 +763,13 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: "#5B9BD5",
   },
-  logoutButton: {
+  buttonContainer: {
+    flexDirection: "row",
+    gap: spacing.sm,
+    marginTop: spacing.md,
+  },
+  actionButton: {
+    flex: 1,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
@@ -747,11 +778,10 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: "#D1D5DB",
     backgroundColor: "#FFFFFF",
-    gap: spacing.sm,
-    marginTop: spacing.xs,
+    gap: spacing.xs,
   },
-  logoutText: {
-    fontSize: 18,
+  actionButtonText: {
+    fontSize: 16,
     color: "#6B7280",
     fontWeight: "600",
   },
