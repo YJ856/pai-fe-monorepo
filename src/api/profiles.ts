@@ -15,35 +15,25 @@
  * - child: 자녀 프로필
  */
 
-import { userServiceClient } from './client/axios';
-
-export type ProfileType = 'parent' | 'child';
-
-export interface CreateProfileRequest {
-  profileType: ProfileType;
-  name: string;
-  birthDate?: string; // YYYY-MM-DD
-  gender?: 'male' | 'female' | 'other';
-  avatarMediaId?: string; // media 서비스에서 업로드 후 받은 ID
-  voiceMediaId?: string; // 음성 파일 ID
-  pinHash?: string; // 자녀 프로필용 PIN
-}
-
-export interface UpdateProfileRequest {
-  name?: string;
-  birthDate?: string;
-  gender?: 'male' | 'female' | 'other';
-  avatarMediaId?: string;
-  voiceMediaId?: string;
-  pinHash?: string;
-}
+import {
+  BaseResponse,
+  CreateProfileRequestDto,
+  DeleteProfileResponseData,
+  GetProfileResponseData,
+  GetProfilesResponseData,
+  ProfileType,
+  SelectProfileResponseData,
+  UpdateProfileRequestDto,
+  UpdateProfileResponseData,
+} from "pai-shared-types";
+import { userServiceClient } from "./client/axios";
 
 /**
  * POST /api/profiles
  * 프로필 생성
  */
-export const createProfile = async (data: CreateProfileRequest) => {
-  const response = await userServiceClient.post('/api/profiles', data);
+export const createProfile = async (data: CreateProfileRequestDto) => {
+  const response = await userServiceClient.post("/api/profiles", data);
   return response.data.data;
 };
 
@@ -58,18 +48,34 @@ export const createProfile = async (data: CreateProfileRequest) => {
  * - { profiles: [...] }
  */
 export const getProfiles = async (profileType?: ProfileType) => {
-  const response = await userServiceClient.get('/api/profiles', {
+  const response = await userServiceClient.get<
+    BaseResponse<GetProfilesResponseData>
+  >("/api/profiles", {
     params: { profileType },
   });
-  return response.data.data.profiles || [];
+  return response.data.data?.profiles;
+};
+
+export const getProfile = async (profileId: string) => {
+  const response = await userServiceClient.get<
+    BaseResponse<GetProfileResponseData>
+  >("/api/profiles", {
+    params: profileId,
+  });
+  return response.data.data;
 };
 
 /**
  * PATCH /api/profiles/:profileId
  * 프로필 수정
  */
-export const updateProfile = async (profileId: string, data: UpdateProfileRequest) => {
-  const response = await userServiceClient.patch(`/api/profiles/${profileId}`, data);
+export const updateProfile = async (
+  profileId: string,
+  data: UpdateProfileRequestDto
+) => {
+  const response = await userServiceClient.patch<
+    BaseResponse<UpdateProfileResponseData>
+  >(`/api/profiles/${profileId}`, data);
   return response.data.data;
 };
 
@@ -78,7 +84,9 @@ export const updateProfile = async (profileId: string, data: UpdateProfileReques
  * 프로필 삭제
  */
 export const deleteProfile = async (profileId: string) => {
-  const response = await userServiceClient.delete(`/api/profiles/${profileId}`);
+  const response = await userServiceClient.delete<
+    BaseResponse<DeleteProfileResponseData>
+  >(`/api/profiles/${profileId}`);
   return response.data;
 };
 
@@ -93,9 +101,11 @@ export const deleteProfile = async (profileId: string) => {
  * Note: 선택 후 tokenManager.setProfileId()로 저장 필요
  */
 export const selectProfile = async (profileId: string, pin?: string) => {
-  const response = await userServiceClient.post('/api/profiles/select', {
+  const response = await userServiceClient.post<
+    BaseResponse<SelectProfileResponseData>
+  >("/api/profiles/select", {
     profileId,
     pin,
   });
-  return response.data.data;
+  return response.data.data!;
 };

@@ -12,17 +12,16 @@
  * - mediaServiceClient: 파일 업로드/다운로드
  */
 
-import axios from 'axios';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { SERVICE_URLS } from './serviceUrls';
-import { authEvents } from '../../utils/authEvents';
+import axios from "axios";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { SERVICE_URLS } from "./serviceUrls";
 
 // 사용자 서비스 (인증, 프로필)
 export const userServiceClient = axios.create({
   baseURL: SERVICE_URLS.USER_SERVICE,
   timeout: 10000,
   headers: {
-    'Content-Type': 'application/json',
+    "Content-Type": "application/json",
   },
 });
 
@@ -31,7 +30,7 @@ export const insightServiceClient = axios.create({
   baseURL: SERVICE_URLS.INSIGHT_SERVICE,
   timeout: 10000,
   headers: {
-    'Content-Type': 'application/json',
+    "Content-Type": "application/json",
   },
 });
 
@@ -40,7 +39,7 @@ export const quizServiceClient = axios.create({
   baseURL: SERVICE_URLS.QUIZ_SERVICE,
   timeout: 10000,
   headers: {
-    'Content-Type': 'application/json',
+    "Content-Type": "application/json",
   },
 });
 
@@ -49,7 +48,7 @@ export const conversationServiceClient = axios.create({
   baseURL: SERVICE_URLS.CONVERSATION_SERVICE,
   timeout: 10000,
   headers: {
-    'Content-Type': 'application/json',
+    "Content-Type": "application/json",
   },
 });
 
@@ -58,7 +57,7 @@ export const mediaServiceClient = axios.create({
   baseURL: SERVICE_URLS.MEDIA_SERVICE,
   timeout: 30000, // 파일 업로드 고려하여 타임아웃 증가
   headers: {
-    'Content-Type': 'application/json',
+    "Content-Type": "application/json",
   },
 });
 
@@ -67,19 +66,28 @@ const addAuthInterceptor = (client: any) => {
   client.interceptors.request.use(
     async (config: any) => {
       // 회원가입, 로그인은 토큰 불필요
-      const publicEndpoints = ['/api/auth/signup', '/api/auth/login'];
-      const isPublicEndpoint = publicEndpoints.some(endpoint => config.url?.includes(endpoint));
+      const publicEndpoints = ["/api/auth/signup", "/api/auth/login"];
+      const isPublicEndpoint = publicEndpoints.some((endpoint) =>
+        config.url?.includes(endpoint)
+      );
 
       if (!isPublicEndpoint) {
         // AsyncStorage에서 토큰 가져오기
-        const accessToken = await AsyncStorage.getItem('accessToken');
-        console.log('[AUTH-INTERCEPTOR] AccessToken from AsyncStorage:', accessToken ? `${accessToken.substring(0, 20)}...` : 'NULL');
+        const accessToken = await AsyncStorage.getItem("accessToken");
+        console.log(
+          "[AUTH-INTERCEPTOR] AccessToken from AsyncStorage:",
+          accessToken ? `${accessToken.substring(0, 20)}...` : "NULL"
+        );
 
         if (accessToken) {
           config.headers.Authorization = `Bearer ${accessToken}`;
-          console.log('[AUTH-INTERCEPTOR] Authorization header set successfully');
+          console.log(
+            "[AUTH-INTERCEPTOR] Authorization header set successfully"
+          );
         } else {
-          console.warn('[AUTH-INTERCEPTOR] No accessToken found in AsyncStorage!');
+          console.warn(
+            "[AUTH-INTERCEPTOR] No accessToken found in AsyncStorage!"
+          );
         }
       }
 
@@ -121,28 +129,24 @@ const addDebugInterceptor = (client: any, serviceName: string) => {
       });
       return response;
     },
-    async (error: any) => {
+    (error: any) => {
+      // 에러 로그만 출력 (401 처리는 interceptors.ts에서 담당)
       console.error(`[${serviceName}] Response Error:`, {
         message: error.message,
         code: error.code,
-        config: error.config ? {
-          url: error.config.url,
-          baseURL: error.config.baseURL,
-        } : null,
-        response: error.response ? {
-          status: error.response.status,
-          data: error.response.data,
-        } : null,
+        config: error.config
+          ? {
+              url: error.config.url,
+              baseURL: error.config.baseURL,
+            }
+          : null,
+        response: error.response
+          ? {
+              status: error.response.status,
+              data: error.response.data,
+            }
+          : null,
       });
-
-      // 401 에러 발생 시 자동 로그아웃
-      if (error.response?.status === 401) {
-        console.log('[AUTH] 401 Unauthorized - Clearing tokens and redirecting to login');
-        // AsyncStorage에서 토큰 삭제
-        await AsyncStorage.multiRemove(['accessToken', 'refreshToken', 'userId']);
-        // 인증 이벤트 발생 (RootNavigator가 감지하여 로그인 화면으로 이동)
-        authEvents.emit();
-      }
 
       return Promise.reject(error);
     }
@@ -157,8 +161,8 @@ addAuthInterceptor(conversationServiceClient);
 addAuthInterceptor(mediaServiceClient);
 
 // 모든 클라이언트에 디버깅 인터셉터 추가
-addDebugInterceptor(userServiceClient, 'USER');
-addDebugInterceptor(insightServiceClient, 'INSIGHT');
-addDebugInterceptor(quizServiceClient, 'QUIZ');
-addDebugInterceptor(conversationServiceClient, 'CONVERSATION');
-addDebugInterceptor(mediaServiceClient, 'MEDIA');
+addDebugInterceptor(userServiceClient, "USER");
+addDebugInterceptor(insightServiceClient, "INSIGHT");
+addDebugInterceptor(quizServiceClient, "QUIZ");
+addDebugInterceptor(conversationServiceClient, "CONVERSATION");
+addDebugInterceptor(mediaServiceClient, "MEDIA");

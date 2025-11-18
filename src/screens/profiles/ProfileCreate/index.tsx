@@ -44,10 +44,11 @@ import {
   borderRadius,
   shadows,
 } from "../../../design/tokens";
-import { Profile, ProfileType, Gender } from "../../../shared/types";
+import { ProfileType, Gender } from "../../../shared/types";
 import { createProfile, updateProfile } from "../../../api/profiles";
 import { uploadMedia } from "../../../api/media";
 import { useNavigation } from "@react-navigation/native";
+import { useProfileStore } from "../../../store/useProfileStore";
 
 export default function ProfileCreateScreen() {
   const navigation = useNavigation<any>();
@@ -175,7 +176,10 @@ export default function ProfileCreateScreen() {
 
     if (!birthdate.trim()) {
       newErrors.birthdate = "생년월일을 입력해주세요";
-    } else if (birthdate.length !== 10 || !birthdate.match(/^\d{4}-\d{2}-\d{2}$/)) {
+    } else if (
+      birthdate.length !== 10 ||
+      !birthdate.match(/^\d{4}-\d{2}-\d{2}$/)
+    ) {
       newErrors.birthdate = "올바른 날짜 형식을 입력해주세요 (YYYY-MM-DD)";
     }
 
@@ -224,7 +228,10 @@ export default function ProfileCreateScreen() {
           const profileId = createdProfile.profileId || createdProfile.id;
 
           if (!profileId) {
-            throw new Error("프로필 ID를 찾을 수 없습니다. createdProfile: " + JSON.stringify(createdProfile));
+            throw new Error(
+              "프로필 ID를 찾을 수 없습니다. createdProfile: " +
+                JSON.stringify(createdProfile)
+            );
           }
 
           console.log("이미지 업로드 시작:");
@@ -244,7 +251,7 @@ export default function ProfileCreateScreen() {
           const uploadResult = await uploadMedia(formData);
           console.log("이미지 업로드 결과:", uploadResult);
 
-          const mediaId = uploadResult.mediaId || uploadResult.id;
+          const mediaId = uploadResult.mediaId;
           console.log("추출된 mediaId:", mediaId);
 
           // 3단계: 프로필에 이미지 연결
@@ -267,7 +274,11 @@ export default function ProfileCreateScreen() {
             [
               {
                 text: "확인",
-                onPress: () => navigation.goBack(),
+                onPress: () => {
+                  // Zustand store 비우기 -> ProfileSelect에서 API 재호출하도록
+                  useProfileStore.getState().setProfiles([]);
+                  navigation.goBack();
+                },
               },
             ]
           );
@@ -279,7 +290,11 @@ export default function ProfileCreateScreen() {
       Alert.alert("성공", "프로필이 생성되었습니다.", [
         {
           text: "확인",
-          onPress: () => navigation.goBack(),
+          onPress: () => {
+            // Zustand store 비우기 -> ProfileSelect에서 API 재호출하도록
+            useProfileStore.getState().setProfiles([]);
+            navigation.goBack();
+          },
         },
       ]);
     } catch (error: any) {
@@ -398,14 +413,14 @@ export default function ProfileCreateScreen() {
                   <Label>성별</Label>
                   <View style={styles.genderButtons}>
                     <Button
-                      variant={gender === "male" ? "default" : "outline"}
+                      variant={gender === "male" ? "secondary" : "outline"}
                       onPress={() => setGender("male")}
                       style={styles.genderButton}
                     >
                       남성
                     </Button>
                     <Button
-                      variant={gender === "female" ? "default" : "outline"}
+                      variant={gender === "female" ? "secondary" : "outline"}
                       onPress={() => setGender("female")}
                       style={styles.genderButton}
                     >

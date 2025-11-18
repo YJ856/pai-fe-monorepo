@@ -8,26 +8,12 @@
 /**
  * 프로필 타입
  */
-export type ProfileType = 'parent' | 'child';
+export type ProfileType = "parent" | "child";
 
 /**
  * 성별
  */
-export type Gender = 'male' | 'female' | 'other';
-
-/**
- * 프로필 정보 (최소)
- */
-export interface Profile {
-  id: string;
-  profileType: ProfileType;
-  name: string;
-  birthdate: string;
-  gender: Gender;
-  avatar: string; // 이모지
-  pin?: string; // 부모 프로필용
-  avatarUrl?: string;
-}
+export type Gender = "male" | "female";
 
 /**
  * 사용자 정보 (최소)
@@ -40,7 +26,7 @@ export interface User {
 /**
  * 퀴즈 상태
  */
-export type QuizStatus = 'today' | 'completed' | 'scheduled';
+export type QuizStatus = "today" | "completed" | "scheduled";
 
 /**
  * 대화 정보 (최소)

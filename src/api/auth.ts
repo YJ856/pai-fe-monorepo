@@ -28,8 +28,10 @@ import type {
 /**
  * POST /api/auth/check-email
  * 이메일 중복 확인
+ *
+ * Response data: boolean (이메일 사용 가능 여부)
  */
-export const checkEmail = async (email: string): Promise<BaseResponse<{ available: boolean }>> => {
+export const checkEmail = async (email: string): Promise<BaseResponse<boolean>> => {
   const response = await userServiceClient.post('/api/auth/check-email', { email });
   return response.data;
 };

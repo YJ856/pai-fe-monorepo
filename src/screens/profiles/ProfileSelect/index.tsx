@@ -46,15 +46,15 @@ import {
   borderRadius,
   shadows,
 } from "../../../design/tokens";
-import { Profile } from "../../../shared/types";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { logout } from "../../../api/auth";
 import { getProfiles, selectProfile } from "../../../api/profiles";
+import { getMedia } from "../../../api/media";
 import { useProfileStore } from "../../../store/useProfileStore";
+import { Profile } from "pai-shared-types";
 
 export default function ProfileSelectScreen() {
   const navigation = useNavigation<any>();
-  const [profiles, setProfiles] = useState<Profile[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [selectedProfile, setSelectedProfile] = useState<Profile | null>(null);
@@ -63,7 +63,11 @@ export default function ProfileSelectScreen() {
   const [pinError, setPinError] = useState("");
 
   // Zustand store
-  const { setCurrentProfile, setProfiles: setStoreProfiles } = useProfileStore();
+  const {
+    profiles,
+    setCurrentProfile,
+    setProfiles: setProfiles,
+  } = useProfileStore();
 
   // 화면에 포커스될 때마다 프로필 목록 새로고침
   useFocusEffect(
@@ -74,35 +78,85 @@ export default function ProfileSelectScreen() {
 
   const loadProfiles = async () => {
     setIsLoading(true);
+
     try {
+      // Zustand store에 이미 프로필 목록이 있는지 확인
+      const storeProfiles = useProfileStore.getState().profiles;
+
+      if (storeProfiles.length > 0) {
+        console.log(
+          "Zustand store에 저장된 프로필 사용 (API 호출 생략):",
+          storeProfiles.length
+        );
+        setIsLoading(false);
+        return;
+      }
+
+      // Store에 프로필이 없을 때만 API 호출
       console.log("프로필 목록 로드 시작...");
-      const profileList = await getProfiles();
+      const profileList = await getProfiles("all");
       console.log("프로필 목록 로드 완료:", profileList);
       console.log("프로필 개수:", profileList?.length || 0);
 
       // 배열인지 확인 및 데이터 변환
       if (Array.isArray(profileList)) {
         // API 응답 데이터를 앱 타입으로 변환
-        const transformedProfiles = profileList.map((profile: any) => ({
-          id: profile.profileId || profile.id,
-          profileType: profile.profileType?.toLowerCase() || "child",
+        const baseProfiles = profileList.map((profile: any) => ({
+          profileId: Number(profile.profileId || profile.id),
+          userId: Number(profile.userId),
+          profileType: profile.profileType,
           name: profile.name,
-          birthdate: profile.birthDate || profile.birthdate,
-          gender: profile.gender?.toLowerCase() || "other",
-          avatar: profile.avatar || "👤",
-          avatarUrl: profile.avatarUrl,
-          // pin은 백엔드에서 제공하지 않음 (보안상 제외)
+          birthDate: profile.birthDate || profile.birthdate,
+          gender: profile.gender?.toLowerCase(),
+
+          avatarMediaId: profile.avatarMediaId
+            ? BigInt(profile.avatarMediaId)
+            : undefined,
+          voiceMediaId: profile.voiceMediaId
+            ? BigInt(profile.voiceMediaId)
+            : undefined,
+          avatarUrl: undefined,
+
+          createdAt: profile.createdAt || profile.createAt, // 오타 가능성 고려
         }));
 
-        setProfiles(transformedProfiles);
-        setStoreProfiles(transformedProfiles); // Zustand store에 저장
+        const addUrlProfiles = baseProfiles.map(async (profile) => {
+          let avatarUrl = undefined;
+          if (profile.avatarMediaId) {
+            try {
+              const mediaId = String(profile.avatarMediaId);
+              const mediaResponse = await getMedia({ mediaIds: mediaId });
+              avatarUrl = mediaResponse?.[0].cdnUrl;
+            } catch (error) {
+              console.error(
+                `Failed to fetch media URL for ID ${profile.avatarMediaId}:`,
+                error
+              );
+            }
+          }
+          return { ...profile, avatarUrl };
+        });
+
+        const transformedProfiles = await Promise.all(addUrlProfiles);
+
+        setProfiles(transformedProfiles); // Zustand store에 저장
         console.log("변환된 프로필:", transformedProfiles);
       } else {
         console.error("프로필 목록이 배열이 아닙니다:", profileList);
-        setProfiles([]);
-        setStoreProfiles([]); // 빈 배열로 초기화
+        setProfiles([]); // 빈 배열로 초기화
       }
     } catch (error: any) {
+      // 401 에러는 axios 인터셉터에서 자동으로 처리하여 로그인 화면으로 이동하므로
+      // 여기서는 사용자에게 에러 Alert을 표시하지 않음
+      if (error.response?.status === 401) {
+        console.log(
+          "[ProfileSelect] 401 Unauthorized - 로그인 화면으로 리다이렉트됩니다."
+        );
+        setProfiles([]); // 스토어 비우기
+        return; // Alert 표시하지 않고 조용히 종료
+      }
+
+      // 401이 아닌 다른 에러는 로그 출력 및 Alert 표시
       console.error("프로필 목록 로드 오류:", error);
       console.error("에러 상세:", {
         message: error.message,
@@ -110,11 +164,12 @@ export default function ProfileSelectScreen() {
         status: error.response?.status,
       });
 
-      setProfiles([]);
+      setProfiles([]); // 오류 발생 시 스토어도 비웁니다.
 
       Alert.alert(
         "오류",
-        error.response?.data?.message || "프로필 목록을 불러오는 중 오류가 발생했습니다."
+        error.response?.data?.message ||
+          "프로필 목록을 불러오는 중 오류가 발생했습니다."
       );
     } finally {
       setIsLoading(false);
@@ -136,14 +191,17 @@ export default function ProfileSelectScreen() {
     } else {
       // 자녀 프로필 선택 (PIN 불필요)
       try {
-        const result = await selectProfile(profile.id);
+        const result = await selectProfile(String(profile.profileId));
 
         // 토큰 저장
         if (result.accessToken) {
           await AsyncStorage.setItem("accessToken", result.accessToken);
-          console.log('[ProfileSelect-Child] AccessToken saved:', result.accessToken.substring(0, 20) + '...');
+          console.log(
+            "[ProfileSelect-Child] AccessToken saved:",
+            result.accessToken.substring(0, 20) + "..."
+          );
         } else {
-          console.warn('[ProfileSelect-Child] No accessToken in response!');
+          console.warn("[ProfileSelect-Child] No accessToken in response!");
         }
         if (result.refreshToken) {
           await AsyncStorage.setItem("refreshToken", result.refreshToken);
@@ -171,14 +229,20 @@ export default function ProfileSelectScreen() {
       setPinError("");
 
       // 백엔드에서 PIN 검증
-      const result = await selectProfile(selectedProfile.id, pin);
+      const result = await selectProfile(
+        String(selectedProfile.profileId),
+        pin
+      );
 
       // PIN이 맞으면 토큰 저장
       if (result.accessToken) {
         await AsyncStorage.setItem("accessToken", result.accessToken);
-        console.log('[ProfileSelect-Parent] AccessToken saved:', result.accessToken.substring(0, 20) + '...');
+        console.log(
+          "[ProfileSelect-Parent] AccessToken saved:",
+          result.accessToken.substring(0, 20) + "..."
+        );
       } else {
-        console.warn('[ProfileSelect-Parent] No accessToken in response!');
+        console.warn("[ProfileSelect-Parent] No accessToken in response!");
       }
       if (result.refreshToken) {
         await AsyncStorage.setItem("refreshToken", result.refreshToken);
@@ -237,6 +301,9 @@ export default function ProfileSelectScreen() {
               "userId",
             ]);
 
+            // Zustand store 프로필 데이터 삭제
+            useProfileStore.getState().clearProfile();
+
             console.log("로그아웃 완료 - 로그인 화면으로 이동");
 
             // authEvents 발생시켜서 RootNavigator에서 자동으로 Auth 화면으로 이동
@@ -260,7 +327,7 @@ export default function ProfileSelectScreen() {
         {item.avatarUrl ? (
           <Image source={{ uri: item.avatarUrl }} style={styles.avatarImage} />
         ) : (
-          <Avatar emoji={item.avatar || "👤"} size="lg" />
+          <Avatar emoji={"👤"} size="lg" />
         )}
         {isParent && (
           <View style={styles.lockBadge}>
@@ -336,7 +403,7 @@ export default function ProfileSelectScreen() {
                       <FlatList
                         data={profiles}
                         renderItem={renderProfileCard}
-                        keyExtractor={(item) => item.id}
+                        keyExtractor={(item) => String(item.profileId)}
                         numColumns={2}
                         columnWrapperStyle={styles.row}
                         contentContainerStyle={styles.gridContent}
@@ -640,7 +707,7 @@ const styles = StyleSheet.create({
   // Modal styles
   modalOverlay: {
     flex: 1,
-    backgroundColor: "rgba(0, 0, 0, 0.6)",
+    // backgroundColor: "rgba(0, 0, 0, 0.6)",
     justifyContent: "center",
     alignItems: "center",
     padding: spacing.lg,

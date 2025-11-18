@@ -13,8 +13,8 @@
  * - Profile: 현재 프로필 정보 표시
  */
 
-import { create } from 'zustand';
-import { Profile } from '../shared/types';
+import { Profile } from "pai-shared-types";
+import { create } from "zustand";
 
 interface ProfileStore {
   // 현재 선택된 프로필
@@ -45,7 +45,7 @@ export const useProfileStore = create<ProfileStore>((set, get) => ({
   },
 
   setProfiles: (profiles) => {
-    const childProfiles = profiles.filter(p => p.profileType === 'child');
+    const childProfiles = profiles.filter((p) => p.profileType === "child");
     set({ profiles, childProfiles });
   },
 
