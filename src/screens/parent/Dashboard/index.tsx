@@ -29,6 +29,8 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
+import { useNavigation } from "@react-navigation/native";
+import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import {
   colors,
   spacing,
@@ -40,10 +42,13 @@ import { useProfileStore } from "../../../store/useProfileStore";
 import InterestsTab from "./_tabs/InterestsTab";
 import ActivityTab from "./_tabs/ActivityTab";
 import RecommendationsTab from "./_tabs/RecommendationsTab";
+import { ParentStackParamList } from "../../../app/navigation/ParentNavigator";
 
 type TabValue = "interests" | "calendar" | "recommendations";
+type DashboardNavigationProp = NativeStackNavigationProp<ParentStackParamList, "DashboardMain">;
 
 export default function ParentDashboard() {
+  const navigation = useNavigation<DashboardNavigationProp>();
   const [activeTab, setActiveTab] = useState<TabValue>("interests");
   const [showChildDropdown, setShowChildDropdown] = useState(false);
 
@@ -59,6 +64,11 @@ export default function ParentDashboard() {
   console.log("[Dashboard] childProfiles:", childProfiles);
   console.log("[Dashboard] selectedChildId:", selectedChildId);
 
+  // 자녀 카드 클릭 핸들러 (Gallery 화면으로 이동)
+  const handleChildPress = (childId: string, date: string) => {
+    console.log("Child pressed:", childId, "Date:", date);
+    navigation.navigate('ActivityGallery', { childId, date });
+  };
 
   return (
     <SafeAreaView style={styles.safeArea} edges={["top"]}>
@@ -217,7 +227,11 @@ export default function ParentDashboard() {
             <InterestsTab childId={selectedChildId} />
           )}
           {activeTab === "calendar" && (
-            <ActivityTab childId={selectedChildId} />
+            <ActivityTab
+              childId={selectedChildId}
+              childProfiles={childProfiles}
+              onChildPress={handleChildPress}
+            />
           )}
           {activeTab === "recommendations" && (
             <RecommendationsTab childId={selectedChildId} />

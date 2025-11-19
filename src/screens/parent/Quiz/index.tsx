@@ -88,6 +88,9 @@ export default function ParentQuizScreen() {
     isLoading: isLoadingScheduledQuizzes,
   } = useScheduledQuizzes();
 
+  console.log(scheduledQuizzesData);
+  
+
   const queryClient = useQueryClient();
 
   // Mutation hooks
@@ -156,18 +159,21 @@ export default function ParentQuizScreen() {
     })),
   }));
 
-  const scheduledQuizzes: Quiz[] = scheduledQuizzesData.map((quiz) => ({
-    id: quiz.id,
-    question: quiz.question,
-    answer: quiz.answer,
-    hint: quiz.hint,
-    reward: quiz.reward,
-    author: quiz.authorName,
-    authorAvatar: quiz.authorAvatarUrl,
-    date: quiz.publishDate,
-    isEditable: quiz.isEditable,
-    childSolutions: [],
-  }));
+  const scheduledQuizzes: Quiz[] = scheduledQuizzesData.map((quiz) => {
+    console.log('[Quiz] Scheduled Quiz ID:', quiz.id, 'isEditable:', quiz.isEditable, 'author:', quiz.authorName);
+    return {
+      id: quiz.id,
+      question: quiz.question,
+      answer: quiz.answer,
+      hint: quiz.hint,
+      reward: quiz.reward,
+      author: quiz.authorName,
+      authorAvatar: quiz.authorAvatarUrl,
+      date: quiz.publishDate,
+      isEditable: quiz.isEditable,
+      childSolutions: [],
+    };
+  });
 
   // 핸들러 함수들
   const handleCreateQuiz = (data: {
@@ -391,7 +397,7 @@ export default function ParentQuizScreen() {
         )}
 
         {/* Scheduled Tab: Show Actions (본인 작성자일 때만) */}
-        {showActions && quiz.isEditable && (
+        {showActions && quiz.isEditable === true && (
           <View style={styles.actionsContainer}>
             <TouchableOpacity
               style={styles.actionButton}

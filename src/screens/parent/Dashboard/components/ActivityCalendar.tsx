@@ -1,11 +1,11 @@
 /**
  * ActivityCalendar 컴포넌트
  *
- * 활동 달력 프레젠테이션 컴포넌트
+ * 활동 달력 프레젠테이션 컴포넌트 (react-native-calendars 사용)
  *
  * 주요 기능:
  * - 달력 UI 렌더링
- * - 날짜별 이벤트 마커 표시
+ * - 날짜별 이벤트 마커 표시 (1-2개, 3-4개, 5개 이상)
  * - 날짜 선택 이벤트 처리
  *
  * Props:
@@ -14,15 +14,31 @@
  * - onDateSelect: (date: string) => void
  */
 
-import React, { useState } from "react";
-import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
-import { ChevronLeft, ChevronRight } from "lucide-react-native";
+import React from "react";
+import { View, Text, StyleSheet } from "react-native";
+import { Calendar, LocaleConfig } from "react-native-calendars";
 import {
   colors,
   spacing,
   typography,
   borderRadius,
 } from "../../../../design/tokens";
+
+// 한국어 로케일 설정
+LocaleConfig.locales['kr'] = {
+  monthNames: [
+    '1월', '2월', '3월', '4월', '5월', '6월',
+    '7월', '8월', '9월', '10월', '11월', '12월'
+  ],
+  monthNamesShort: [
+    '1월', '2월', '3월', '4월', '5월', '6월',
+    '7월', '8월', '9월', '10월', '11월', '12월'
+  ],
+  dayNames: ['일요일', '월요일', '화요일', '수요일', '목요일', '금요일', '토요일'],
+  dayNamesShort: ['일', '월', '화', '수', '목', '금', '토'],
+  today: '오늘'
+};
+LocaleConfig.defaultLocale = 'kr';
 
 interface ActivityDay {
   date: string;
@@ -35,178 +51,85 @@ interface ActivityCalendarProps {
   onDateSelect: (date: string) => void;
 }
 
-const WEEKDAYS = ["일", "월", "화", "수", "목", "금", "토"];
-
 export default function ActivityCalendar({
   events,
   selectedDate,
   onDateSelect,
 }: ActivityCalendarProps) {
-  const [currentDate, setCurrentDate] = useState(new Date());
+  // events를 markedDates 형식으로 변환
+  const markedDates: any = {};
 
-  // 이벤트 맵 생성
-  const eventMap = React.useMemo(() => {
-    const map = new Map<string, number>();
-    events.forEach((event) => {
-      map.set(event.date, event.count);
-    });
-    return map;
-  }, [events]);
+  events.forEach((event) => {
+    const dotCount = event.count >= 5 ? 3 : event.count >= 3 ? 2 : 1;
 
-  // 현재 월의 날짜들 생성
-  const getDaysInMonth = () => {
-    const year = currentDate.getFullYear();
-    const month = currentDate.getMonth();
-    const firstDay = new Date(year, month, 1);
-    const lastDay = new Date(year, month + 1, 0);
-    const daysInMonth = lastDay.getDate();
-    const startDayOfWeek = firstDay.getDay();
+    markedDates[event.date] = {
+      marked: true,
+      dots: Array(dotCount).fill({ color: colors.parent.from }),
+    };
+  });
 
-    const days: (Date | null)[] = [];
+  // 선택된 날짜 표시
+  if (selectedDate) {
+    markedDates[selectedDate] = {
+      ...markedDates[selectedDate],
+      selected: true,
+      selectedColor: colors.parent.from,
+    };
+  }
 
-    // 이전 달의 빈 칸 채우기
-    for (let i = 0; i < startDayOfWeek; i++) {
-      days.push(null);
-    }
-
-    // 현재 달의 날짜 채우기
-    for (let i = 1; i <= daysInMonth; i++) {
-      days.push(new Date(year, month, i));
-    }
-
-    return days;
-  };
-
-  const formatDate = (date: Date): string => {
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, "0");
-    const day = String(date.getDate()).padStart(2, "0");
-    return `${year}-${month}-${day}`;
-  };
-
-  const handlePrevMonth = () => {
-    setCurrentDate(
-      new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1)
-    );
-  };
-
-  const handleNextMonth = () => {
-    setCurrentDate(
-      new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1)
-    );
-  };
-
-  const handleDayPress = (date: Date) => {
-    const dateString = formatDate(date);
-    onDateSelect(dateString);
-  };
-
-  const isToday = (date: Date): boolean => {
-    const today = new Date();
-    return (
-      date.getDate() === today.getDate() &&
-      date.getMonth() === today.getMonth() &&
-      date.getFullYear() === today.getFullYear()
-    );
-  };
-
-  const isSelected = (date: Date): boolean => {
-    const dateString = formatDate(date);
-    return dateString === selectedDate;
-  };
-
-  const getActivityDots = (date: Date) => {
-    const dateString = formatDate(date);
-    const count = eventMap.get(dateString) || 0;
-
-    if (count === 0) return null;
-
-    const dotCount = count >= 5 ? 3 : count >= 3 ? 2 : 1;
-    const dots = [];
-
-    for (let i = 0; i < dotCount; i++) {
-      dots.push(
-        <View
-          key={i}
-          style={[
-            styles.activityDot,
-            { backgroundColor: colors.parent.from },
-          ]}
-        />
-      );
-    }
-
-    return <View style={styles.dotsContainer}>{dots}</View>;
-  };
-
-  const days = getDaysInMonth();
+  // 오늘 날짜 표시
+  const today = new Date().toISOString().split('T')[0];
+  if (!markedDates[today]) {
+    markedDates[today] = {};
+  }
+  if (today !== selectedDate) {
+    markedDates[today] = {
+      ...markedDates[today],
+      customStyles: {
+        container: {
+          borderWidth: 1,
+          borderColor: colors.parent.from,
+          borderRadius: borderRadius.md,
+        },
+        text: {
+          color: colors.parent.from,
+          fontWeight: '600',
+        },
+      },
+    };
+  }
 
   return (
     <View style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={handlePrevMonth} style={styles.navButton}>
-          <ChevronLeft size={24} color={colors.parent.from} />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>
-          {currentDate.getFullYear()}년 {currentDate.getMonth() + 1}월
-        </Text>
-        <TouchableOpacity onPress={handleNextMonth} style={styles.navButton}>
-          <ChevronRight size={24} color={colors.parent.from} />
-        </TouchableOpacity>
-      </View>
-
-      {/* Weekday Headers */}
-      <View style={styles.weekdayRow}>
-        {WEEKDAYS.map((day, index) => (
-          <View key={day} style={styles.weekdayCell}>
-            <Text
-              style={[
-                styles.weekdayText,
-                index === 0 && { color: "#FF5252" },
-                index === 6 && { color: "#448AFF" },
-              ]}
-            >
-              {day}
-            </Text>
-          </View>
-        ))}
-      </View>
-
-      {/* Calendar Grid */}
-      <View style={styles.calendarGrid}>
-        {days.map((date, index) => {
-          if (!date) {
-            return <View key={`empty-${index}`} style={styles.dayCell} />;
-          }
-
-          const today = isToday(date);
-          const selected = isSelected(date);
-
-          return (
-            <TouchableOpacity
-              key={formatDate(date)}
-              style={[
-                styles.dayCell,
-                selected && styles.selectedDay,
-                today && !selected && styles.todayDay,
-              ]}
-              onPress={() => handleDayPress(date)}
-            >
-              <Text
-                style={[
-                  styles.dayText,
-                  selected && styles.selectedDayText,
-                  today && !selected && styles.todayDayText,
-                ]}
-              >
-                {date.getDate()}
-              </Text>
-              {getActivityDots(date)}
-            </TouchableOpacity>
-          );
-        })}
-      </View>
+      <Calendar
+        markingType="multi-dot"
+        markedDates={markedDates}
+        onDayPress={(day) => onDateSelect(day.dateString)}
+        theme={{
+          backgroundColor: colors.background,
+          calendarBackground: colors.background,
+          textSectionTitleColor: colors.text.secondary,
+          selectedDayBackgroundColor: colors.parent.from,
+          selectedDayTextColor: '#FFFFFF',
+          todayTextColor: colors.parent.from,
+          dayTextColor: colors.text.primary,
+          textDisabledColor: colors.muted,
+          dotColor: colors.parent.from,
+          selectedDotColor: '#FFFFFF',
+          arrowColor: colors.parent.from,
+          monthTextColor: colors.text.primary,
+          textDayFontFamily: 'System',
+          textMonthFontFamily: 'System',
+          textDayHeaderFontFamily: 'System',
+          textDayFontWeight: '400',
+          textMonthFontWeight: '600',
+          textDayHeaderFontWeight: '600',
+          textDayFontSize: 14,
+          textMonthFontSize: 16,
+          textDayHeaderFontSize: 12,
+        }}
+        style={styles.calendar}
+      />
 
       {/* Legend */}
       <View style={styles.legend}>
@@ -214,14 +137,14 @@ export default function ActivityCalendar({
           <View style={styles.legendDotContainer}>
             <View style={[styles.dot, { backgroundColor: colors.parent.from }]} />
           </View>
-          <Text style={styles.legendText}>1-2개 대화</Text>
+          <Text style={styles.legendText}>1-2개</Text>
         </View>
         <View style={styles.legendItem}>
           <View style={styles.legendDotContainer}>
             <View style={[styles.dot, { backgroundColor: colors.parent.from }]} />
             <View style={[styles.dot, { backgroundColor: colors.parent.from }]} />
           </View>
-          <Text style={styles.legendText}>3-4개 대화</Text>
+          <Text style={styles.legendText}>3-4개</Text>
         </View>
         <View style={styles.legendItem}>
           <View style={styles.legendDotContainer}>
@@ -244,75 +167,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
   },
-  header: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: spacing.md,
-    paddingHorizontal: spacing.sm,
-  },
-  navButton: {
-    padding: spacing.xs,
-  },
-  headerTitle: {
-    ...typography.h4,
-    color: colors.text.primary,
-  },
-  weekdayRow: {
-    flexDirection: "row",
-    marginBottom: spacing.sm,
-  },
-  weekdayCell: {
-    flex: 1,
-    alignItems: "center",
-    paddingVertical: spacing.xs,
-  },
-  weekdayText: {
-    ...typography.caption,
-    fontWeight: "600",
-    color: colors.text.secondary,
-  },
-  calendarGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-  },
-  dayCell: {
-    width: `${100 / 7}%`,
-    aspectRatio: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    padding: spacing.xs,
-  },
-  selectedDay: {
-    backgroundColor: colors.parent.from,
+  calendar: {
     borderRadius: borderRadius.md,
-  },
-  todayDay: {
-    borderWidth: 1,
-    borderColor: colors.parent.from,
-    borderRadius: borderRadius.md,
-  },
-  dayText: {
-    ...typography.body2,
-    color: colors.text.primary,
-  },
-  selectedDayText: {
-    color: "#FFFFFF",
-    fontWeight: "600",
-  },
-  todayDayText: {
-    color: colors.parent.from,
-    fontWeight: "600",
-  },
-  dotsContainer: {
-    flexDirection: "row",
-    gap: 2,
-    marginTop: 2,
-  },
-  activityDot: {
-    width: 4,
-    height: 4,
-    borderRadius: 2,
   },
   legend: {
     flexDirection: "row",

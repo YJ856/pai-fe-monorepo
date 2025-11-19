@@ -14,10 +14,8 @@ import DashboardScreen from '../../screens/parent/Dashboard';
 import ProfileScreen from '../../screens/parent/Profile';
 import { colors } from '../../design/tokens';
 
-// TODO: 대시보드 활동 서브 스크린 import
-// import ActivityCalendarScreen from '../../screens/parent/Dashboard/ActivityCalendar';
-// import ActivityGalleryScreen from '../../screens/parent/Dashboard/ActivityGallery';
-// import ActivityDetailScreen from '../../screens/parent/Dashboard/ActivityDetail';
+// 대시보드 활동 서브 스크린
+import ActivityGalleryScreen from '../../screens/parent/Dashboard/activity/Gallery';
 
 export type ParentTabParamList = {
   Chat: undefined;
@@ -28,8 +26,7 @@ export type ParentTabParamList = {
 
 export type ParentStackParamList = {
   DashboardMain: undefined;
-  ActivityCalendar: undefined;
-  ActivityGallery: { date: string };
+  ActivityGallery: { childId: string; date: string };
   ActivityDetail: { conversationId: string };
 };
 
@@ -39,11 +36,23 @@ const Stack = createNativeStackNavigator<ParentStackParamList>();
 function DashboardStack() {
   return (
     <Stack.Navigator>
-      <Stack.Screen name="DashboardMain" component={DashboardScreen} options={{ headerShown: false }} />
-      {/* TODO: 활동 서브 스크린 추가 */}
-      {/* <Stack.Screen name="ActivityCalendar" component={ActivityCalendarScreen} options={{ title: '활동 달력' }} />
-      <Stack.Screen name="ActivityGallery" component={ActivityGalleryScreen} options={{ title: '갤러리' }} />
-      <Stack.Screen name="ActivityDetail" component={ActivityDetailScreen} options={{ title: '대화 상세' }} /> */}
+      <Stack.Screen
+        name="DashboardMain"
+        component={DashboardScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="ActivityGallery"
+        component={ActivityGalleryScreen}
+        options={{
+          title: '대화 갤러리',
+          headerStyle: {
+            backgroundColor: '#EFF6FF',
+          },
+          headerTintColor: colors.parent.from,
+        }}
+      />
+      {/* TODO: ActivityDetail 화면 추가 */}
     </Stack.Navigator>
   );
 }

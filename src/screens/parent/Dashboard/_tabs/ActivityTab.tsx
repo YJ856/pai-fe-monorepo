@@ -23,6 +23,7 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
+  Image,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import {
@@ -34,31 +35,42 @@ import {
 } from "../../../../design/tokens";
 import { Card } from "../../../../design/components/Card";
 import ActivityCalendar from "../components/ActivityCalendar";
-import { useActivityData } from "../hooks/useDashboardData";
+import { useConversationsCalendar } from "../hooks/activity/useConversationsCalendar";
+import { Profile } from "pai-shared-types";
 
 interface ActivityTabProps {
   childId: string;
+  childProfiles: Profile[];
+  onChildPress: (childId: string, date: string) => void;
 }
 
-interface Child {
-  id: string;
-  name: string;
-  avatar: string;
-}
-
-const CHILDREN: Child[] = [
-  { id: "3", name: "지우", avatar: "👧" },
-  { id: "4", name: "민준", avatar: "👦" },
-];
-
-export default function ActivityTab({ childId }: ActivityTabProps) {
+export default function ActivityTab({ childId, childProfiles, onChildPress }: ActivityTabProps) {
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
 
-  // API 데이터 조회
-  const { data: activityData } = useActivityData(childId);
+  // 현재 연/월
+  const now = new Date();
+  const currentYear = now.getFullYear();
+  const currentMonth = now.getMonth() + 1;
 
-  // 활동 데이터 (API)
-  const activities = activityData || [];
+  // 캘린더 데이터 조회 (자녀별 대화 개수 포함)
+  const { days } = useConversationsCalendar({
+    childProfileId: Number(childId),
+    year: currentYear,
+    month: currentMonth,
+  });
+
+  // ActivityCalendar 컴포넌트용 데이터 변환
+  const activities = days.map((day) => ({
+    date: day.date,
+    count: day.count,
+  }));
+
+  // 오늘 날짜를 YYYY-MM-DD 형식으로
+  const today = new Date().toISOString().split("T")[0];
+
+  // 선택된 날짜의 대화 자녀 목록
+  const selectedDayData = days.find((day) => day.date === (selectedDate || today));
+  const childrenWithConversations = selectedDayData?.children || [];
 
   return (
     <Card style={styles.contentCard}>
@@ -73,31 +85,58 @@ export default function ActivityTab({ childId }: ActivityTabProps) {
           }}
         />
 
-        {/* Children Grid */}
+        {/* Children Grid - 대화가 있는 자녀만 표시 */}
         <Text style={styles.dateTitle}>
           {selectedDate
             ? `${selectedDate} 대화 기록`
             : "오늘의 대화 기록"}
         </Text>
-        <View style={styles.childrenGrid}>
-          {CHILDREN.map((child) => (
-            <TouchableOpacity
-              key={child.id}
-              style={styles.childCard}
-              activeOpacity={0.8}
-            >
-              <LinearGradient
-                colors={["#5B9BD5", "#4A8BC2"]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={styles.childCardGradient}
-              >
-                <Text style={styles.childAvatar}>{child.avatar}</Text>
-                <Text style={styles.childName}>{child.name}</Text>
-              </LinearGradient>
-            </TouchableOpacity>
-          ))}
-        </View>
+        {childrenWithConversations.length > 0 ? (
+          <View style={styles.childrenGrid}>
+            {childrenWithConversations.map((childData) => {
+              // childProfiles에서 해당 자녀 찾기 (아바타 URL 사용하기 위해)
+              const childProfile = childProfiles.find(
+                (p) => String(p.profileId) === String(childData.childProfileId)
+              );
+
+              return (
+                <TouchableOpacity
+                  key={String(childData.childProfileId)}
+                  style={styles.childCard}
+                  activeOpacity={0.8}
+                  onPress={() => onChildPress(String(childData.childProfileId), selectedDate || today)}
+                >
+                  <LinearGradient
+                    colors={["#5B9BD5", "#4A8BC2"]}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={styles.childCardGradient}
+                  >
+                    {/* API에서 받은 아바타 또는 프로필 아바타 */}
+                    {childData.childAvatarMediaId || childProfile?.avatarUrl ? (
+                      <Image
+                        source={{
+                          uri: childProfile?.avatarUrl || `https://api.example.com/media/${childData.childAvatarMediaId}`
+                        }}
+                        style={styles.childAvatarImage}
+                      />
+                    ) : (
+                      <Text style={styles.childAvatar}>
+                        {childProfile?.gender === "male" ? "👦" : "👧"}
+                      </Text>
+                    )}
+                    <Text style={styles.childName}>{childData.childName}</Text>
+                    <Text style={styles.childConversationCount}>{childData.count}개 대화</Text>
+                  </LinearGradient>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        ) : (
+          <View style={styles.emptyState}>
+            <Text style={styles.emptyText}>이 날짜에는 대화 기록이 없습니다</Text>
+          </View>
+        )}
       </View>
     </Card>
   );
@@ -138,9 +177,33 @@ const styles = StyleSheet.create({
     fontSize: 60,
     marginBottom: spacing.lg,
   },
+  childAvatarImage: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    marginBottom: spacing.lg,
+  },
   childName: {
     ...typography.h2,
     fontSize: 24,
     color: colors.primaryForeground,
+  },
+  childConversationCount: {
+    ...typography.caption,
+    fontSize: 14,
+    color: colors.primaryForeground,
+    marginTop: spacing.xs,
+    opacity: 0.9,
+  },
+  emptyState: {
+    padding: spacing.xl,
+    alignItems: "center",
+    justifyContent: "center",
+    minHeight: 120,
+  },
+  emptyText: {
+    ...typography.body2,
+    color: colors.text.secondary,
+    textAlign: "center",
   },
 });
