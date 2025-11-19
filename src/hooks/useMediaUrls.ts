@@ -10,8 +10,8 @@
  * const avatarUrl = mediaUrlMap['123'];
  */
 
-import { useQuery } from '@tanstack/react-query';
-import { getMedia } from '../api/media';
+import { useQuery } from "@tanstack/react-query";
+import { getMedia } from "../api/media";
 
 interface MediaItem {
   mediaId: string;
@@ -23,7 +23,9 @@ interface MediaItem {
 
 export function useMediaUrls(mediaIds: (string | null | undefined)[]) {
   // null, undefined 제거하고 unique한 값만 추출
-  const validMediaIds = [...new Set(mediaIds.filter((id): id is string => !!id))];
+  const validMediaIds = [
+    ...new Set(mediaIds.filter((id): id is string => !!id)),
+  ];
 
   const {
     data: mediaList,
@@ -31,16 +33,16 @@ export function useMediaUrls(mediaIds: (string | null | undefined)[]) {
     isError,
     error,
   } = useQuery<MediaItem[], Error>({
-    queryKey: ['media', 'urls', validMediaIds.sort().join(',')],
+    queryKey: ["media", "urls", validMediaIds.sort().join(",")],
     queryFn: async () => {
       if (validMediaIds.length === 0) {
         return [];
       }
       // 백엔드: GET /api/media?mediaIds=123,456,789
-      const response = await getMedia({ mediaIds: validMediaIds.join(',') });
+      const response = await getMedia({ mediaIds: validMediaIds.join(",") });
 
       // getMedia()는 이미 배열을 반환함
-      const mediaArray = Array.isArray(response) ? response : (response.media || []);
+      const mediaArray = Array.isArray(response) ? response : [];
       return mediaArray;
     },
     enabled: validMediaIds.length > 0,

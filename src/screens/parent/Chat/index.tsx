@@ -15,7 +15,7 @@
  * - 하단 고정 입력창
  */
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -31,16 +31,9 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Send, ImageIcon as ImagePlus, Sparkles } from 'lucide-react-native';
-import * as ImagePicker from 'expo-image-picker';
 import { spacing, typography, borderRadius, shadows } from '../../../design/tokens';
-
-interface Message {
-  id: string;
-  sender: 'parent' | 'ai';
-  text: string;
-  imageUrl?: string;
-  timestamp: Date;
-}
+import { useChatMessages } from './hooks/useChatMessages';
+import { useChatImagePicker } from './hooks/useChatImagePicker';
 
 const SUGGESTED_QUESTIONS = [
   '아이가 공룡에 관심이 많은데 어떻게 교육하면 좋을까요?',
@@ -50,64 +43,20 @@ const SUGGESTED_QUESTIONS = [
 ];
 
 export default function ParentChatScreen() {
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [inputText, setInputText] = useState('');
-  const [currentImage, setCurrentImage] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const scrollViewRef = useRef<ScrollView>(null);
+  // 메시지 관리 Hook
+  const {
+    messages,
+    inputText,
+    setInputText,
+    currentImage,
+    setCurrentImage,
+    isLoading,
+    handleSend,
+    scrollViewRef,
+  } = useChatMessages();
 
-  const handleImagePick = async () => {
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      quality: 0.8,
-    });
-
-    if (!result.canceled && result.assets[0]) {
-      setCurrentImage(result.assets[0].uri);
-    }
-  };
-
-  const handleSend = () => {
-    if (!inputText.trim()) return;
-
-    const questionMessage: Message = {
-      id: Date.now().toString(),
-      sender: 'parent',
-      text: inputText,
-      imageUrl: currentImage || undefined,
-      timestamp: new Date(),
-    };
-
-    setMessages((prev) => [...prev, questionMessage]);
-    setIsLoading(true);
-
-    // Scroll to bottom
-    setTimeout(() => {
-      scrollViewRef.current?.scrollToEnd({ animated: true });
-    }, 100);
-
-    // Simulate AI response
-    setTimeout(() => {
-      const answerMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        sender: 'ai',
-        text: `좋은 질문이네요! "${inputText}"에 대해 함께 이야기해볼까요? 아이들과 이런 주제로 대화하면 매우 유익할 것 같습니다. 구체적으로 어떤 부분이 궁금하신가요?`,
-        timestamp: new Date(),
-      };
-
-      setMessages((prev) => [...prev, answerMessage]);
-      setIsLoading(false);
-
-      // Scroll to bottom
-      setTimeout(() => {
-        scrollViewRef.current?.scrollToEnd({ animated: true });
-      }, 100);
-    }, 1500);
-
-    setInputText('');
-    setCurrentImage(null);
-  };
+  // 이미지 선택 Hook
+  const { handleImagePick } = useChatImagePicker(setCurrentImage);
 
   const renderLoadingDots = () => {
     const dot1 = useRef(new Animated.Value(0)).current;
