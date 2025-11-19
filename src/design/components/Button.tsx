@@ -214,9 +214,10 @@ const styles = StyleSheet.create({
   text: {
     ...typography.button,
     textAlign: 'center',
+    // 기본 색상을 설정하지 않음 - variant별 색상이 적용되도록
   },
   defaultText: {
-    color: colors.primaryForeground,
+    color: colors.primaryForeground, // #FFFFFF
   },
   destructiveText: {
     color: colors.destructiveForeground,

@@ -9,7 +9,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { getTopInterests } from "../../../../api/insights";
-import { getConversations } from "../../../../api/conversations";
+import { getConversationsCalendar, getConversationsByDate } from "../../../../api/conversations";
 import { getRecommendations } from "../../../../api/recommendations";
 
 /**
@@ -31,25 +31,21 @@ export const useActivityData = (childId: string) => {
   return useQuery({
     queryKey: ["activities", childId],
     queryFn: async () => {
-      // 최근 100개 대화 가져오기
-      const data = await getConversations({
-        childProfileId: childId,
-        page: 1,
-        limit: 100,
+      // 캘린더 API 사용 (날짜별 대화 개수 집계)
+      const currentDate = new Date();
+      const year = currentDate.getFullYear();
+      const month = currentDate.getMonth() + 1;
+
+      const data = await getConversationsCalendar({
+        childProfileId: Number(childId),
+        year,
+        month,
       });
 
-      // 날짜별로 대화 개수 집계
-      const activityMap = new Map<string, number>();
-
-      data.conversations.forEach((conv: any) => {
-        const date = new Date(conv.startDate).toISOString().split("T")[0];
-        activityMap.set(date, (activityMap.get(date) || 0) + 1);
-      });
-
-      // 배열로 변환
-      return Array.from(activityMap.entries()).map(([date, count]) => ({
-        date,
-        count,
+      // 응답 데이터를 캘린더 형식으로 변환
+      return data.dates.map((item) => ({
+        date: item.date,
+        count: item.count,
       }));
     },
     enabled: !!childId,
@@ -60,14 +56,13 @@ export const useActivityData = (childId: string) => {
 /**
  * 최근 대화 목록 조회
  */
-export const useRecentConversations = (childId: string, limit = 10) => {
+export const useRecentConversations = (childId: string, date?: string) => {
   return useQuery({
-    queryKey: ["recent-conversations", childId, limit],
+    queryKey: ["recent-conversations", childId, date],
     queryFn: () =>
-      getConversations({
-        childProfileId: childId,
-        page: 1,
-        limit,
+      getConversationsByDate({
+        childProfileId: Number(childId),
+        date: date || new Date().toISOString().split("T")[0],
       }),
     enabled: !!childId,
     staleTime: 1000 * 60 * 2, // 2분

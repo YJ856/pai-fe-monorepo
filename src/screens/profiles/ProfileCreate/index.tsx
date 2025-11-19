@@ -170,20 +170,40 @@ export default function ProfileCreateScreen() {
                 <View style={styles.section}>
                   <Label>성별</Label>
                   <View style={styles.genderButtons}>
-                    <Button
-                      variant={gender === "male" ? "secondary" : "outline"}
+                    <TouchableOpacity
+                      style={[
+                        styles.genderButtonCustom,
+                        gender === "male" && styles.genderButtonSelected,
+                      ]}
                       onPress={() => setGender("male")}
-                      style={styles.genderButton}
+                      activeOpacity={0.8}
                     >
-                      남성
-                    </Button>
-                    <Button
-                      variant={gender === "female" ? "secondary" : "outline"}
+                      <Text
+                        style={[
+                          styles.genderButtonText,
+                          gender === "male" && styles.genderButtonTextSelected,
+                        ]}
+                      >
+                        남성
+                      </Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[
+                        styles.genderButtonCustom,
+                        gender === "female" && styles.genderButtonSelected,
+                      ]}
                       onPress={() => setGender("female")}
-                      style={styles.genderButton}
+                      activeOpacity={0.8}
                     >
-                      여성
-                    </Button>
+                      <Text
+                        style={[
+                          styles.genderButtonText,
+                          gender === "female" && styles.genderButtonTextSelected,
+                        ]}
+                      >
+                        여성
+                      </Text>
+                    </TouchableOpacity>
                   </View>
                 </View>
 
@@ -386,8 +406,31 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
 
-  genderButton: {
+  genderButtonCustom: {
     flex: 1,
+    height: 36,
+    paddingHorizontal: spacing.md,
+    borderRadius: borderRadius.md,
+    backgroundColor: colors.background,
+    borderWidth: 1,
+    borderColor: colors.border,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  genderButtonSelected: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
+
+  genderButtonText: {
+    ...typography.button,
+    fontSize: 16,
+    color: colors.foreground,
+  },
+
+  genderButtonTextSelected: {
+    color: colors.primaryForeground,
   },
 
   avatarContainer: {
