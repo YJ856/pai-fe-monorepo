@@ -25,12 +25,14 @@ import { useState } from "react";
 import { Alert } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useQueryClient } from "@tanstack/react-query";
 import { selectProfile } from "../../../../api/profiles";
 import { useProfileStore } from "../../../../store/useProfileStore";
 import { Profile } from "pai-shared-types";
 
 export function useProfileSelection() {
   const navigation = useNavigation<any>();
+  const queryClient = useQueryClient();
   const [selectedProfile, setSelectedProfile] = useState<Profile | null>(null);
   const [showPinModal, setShowPinModal] = useState(false);
   const [pin, setPin] = useState("");
@@ -65,6 +67,10 @@ export function useProfileSelection() {
 
         // Zustand store에 현재 프로필 저장
         setCurrentProfile(profile);
+
+        // React Query 캐시 삭제 (프로필 변경 시)
+        queryClient.clear();
+        console.log("[ProfileSelect] React Query cache cleared");
 
         // 자녀용 앱으로 네비게이션
         navigation.reset({
@@ -108,6 +114,10 @@ export function useProfileSelection() {
       setCurrentProfile(selectedProfile);
 
       setShowPinModal(false);
+
+      // React Query 캐시 삭제 (프로필 변경 시)
+      queryClient.clear();
+      console.log("[ProfileSelect] React Query cache cleared");
 
       // 부모용 앱으로 네비게이션
       navigation.reset({
