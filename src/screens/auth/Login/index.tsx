@@ -17,7 +17,7 @@
  * - TanStack Query useMutation 사용
  */
 
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import {
   View,
   Text,
@@ -28,13 +28,8 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
-  Alert,
-  FlatList,
-  Modal,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useNavigation } from "@react-navigation/native";
-import { useMutation } from "@tanstack/react-query";
 import { Input } from "../../../design/components/Input";
 import { Button } from "../../../design/components/Button";
 import { Tab } from "../../../design/components/Tab";
@@ -46,202 +41,61 @@ import {
   borderRadius,
   shadows,
 } from "../../../design/tokens";
-import { login, signup, checkEmail } from "../../../api/auth";
-import type { LoginRequestDto, SignupRequestDto } from "../../../api/types";
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useLogin } from "./hooks/useLogin";
+import { useSignup } from "./hooks/useSignup";
+import { useEmailDomain } from "./hooks/useEmailDomain";
 
 // 이메일 도메인 목록
 const EMAIL_DOMAINS = ["gmail.com", "naver.com", "kakao.com", "직접 입력"];
 
 export default function LoginScreen() {
-  const navigation = useNavigation<any>();
   const [activeTab, setActiveTab] = useState("login");
 
-  // 로그인 상태
-  const [loginEmailUsername, setLoginEmailUsername] = useState("");
-  const [loginEmailDomain, setLoginEmailDomain] = useState("@gmail.com");
-  const [loginCustomDomain, setLoginCustomDomain] = useState("");
-  const [loginPassword, setLoginPassword] = useState("");
-  const [loginDomainModalVisible, setLoginDomainModalVisible] = useState(false);
+  // 로그인 Hook
+  const {
+    loginEmailUsername,
+    setLoginEmailUsername,
+    loginEmailDomain,
+    setLoginEmailDomain,
+    loginCustomDomain,
+    setLoginCustomDomain,
+    loginPassword,
+    setLoginPassword,
+    handleLogin,
+    loginMutation,
+  } = useLogin();
 
-  // 회원가입 상태
-  const [signupEmailUsername, setSignupEmailUsername] = useState("");
-  const [signupEmailDomain, setSignupEmailDomain] = useState("@gmail.com");
-  const [signupCustomDomain, setSignupCustomDomain] = useState("");
-  const [signupPassword, setSignupPassword] = useState("");
-  const [signupAddress, setSignupAddress] = useState("");
-  const [signupDomainModalVisible, setSignupDomainModalVisible] =
-    useState(false);
+  // 회원가입 Hook
+  const {
+    signupEmailUsername,
+    signupEmailDomain,
+    signupCustomDomain,
+    signupPassword,
+    setSignupPassword,
+    signupAddress,
+    setSignupAddress,
+    emailCheckStatus,
+    handleCheckEmail,
+    handleSignupEmailUsernameChange,
+    handleSignupDomainChange,
+    handleSignupCustomDomainChange,
+    handleSignup,
+    signupMutation,
+  } = useSignup();
 
-  // 이메일 중복 체크 상태
-  const [emailCheckStatus, setEmailCheckStatus] = useState<
-    "unchecked" | "checking" | "available" | "unavailable"
-  >("unchecked");
-
-  // 로그인 Mutation
-  const loginMutation = useMutation({
-    mutationFn: (data: LoginRequestDto) => login(data),
-    onSuccess: async (response) => {
-      // 토큰 저장
-      await AsyncStorage.setItem("accessToken", response.accessToken);
-      await AsyncStorage.setItem("refreshToken", response.refreshToken);
-      await AsyncStorage.setItem("userId", response.userId.toString());
-
-      navigation.navigate("Profile");
-    },
-    onError: (error: any) => {
-      Alert.alert("로그인 오류", error.message || "서버 오류가 발생했습니다");
-    },
-  });
-
-  // 회원가입 Mutation
-  const signupMutation = useMutation({
-    mutationFn: (data: SignupRequestDto) => signup(data),
-    onSuccess: async (response) => {
-      if (response.success && response.data) {
-        // 토큰 저장
-        await AsyncStorage.setItem("accessToken", response.data.accessToken);
-        await AsyncStorage.setItem("refreshToken", response.data.refreshToken);
-        await AsyncStorage.setItem("userId", response.data.userId.toString());
-
-        Alert.alert("회원가입 성공", "프로필을 생성해주세요");
-        navigation.navigate("Profile");
-      } else {
-        Alert.alert(
-          "회원가입 실패",
-          response.message || "회원가입에 실패했습니다"
-        );
-      }
-    },
-    onError: (error: any) => {
-      Alert.alert("회원가입 오류", error.message || "서버 오류가 발생했습니다");
-    },
-  });
-
-  // 이메일 조합 함수
-  const getLoginEmail = () => {
-    const domain =
-      loginEmailDomain === "직접 입력" ? loginCustomDomain : loginEmailDomain;
-    return loginEmailUsername + "@" + domain;
-  };
-
-  const getSignupEmail = () => {
-    const domain =
-      signupEmailDomain === "직접 입력"
-        ? signupCustomDomain
-        : signupEmailDomain;
-    return signupEmailUsername + "@" + domain;
-  };
-
-  // 이메일 중복 체크 함수
-  const handleCheckEmail = async () => {
-    const signupEmail = getSignupEmail();
-
-    // 유효성 검사
-    if (!signupEmailUsername || !signupEmail.includes("@")) {
-      Alert.alert("입력 오류", "올바른 이메일을 입력해주세요");
-      return;
-    }
-
-    setEmailCheckStatus("checking");
-
-    try {
-      const response = await checkEmail(signupEmail);
-
-      if (response.success && response.data) {
-        setEmailCheckStatus("available");
-        Alert.alert("확인 완료", "사용 가능한 이메일입니다");
-      } else {
-        setEmailCheckStatus("unavailable");
-        Alert.alert(
-          "사용 불가",
-          response.message || "이미 사용 중인 이메일입니다"
-        );
-      }
-    } catch (error: any) {
-      setEmailCheckStatus("unavailable");
-      Alert.alert(
-        "오류",
-        error.message || "이메일 확인 중 오류가 발생했습니다"
-      );
-    }
-  };
-
-  // 이메일 변경 시 체크 상태 초기화
-  const handleSignupEmailUsernameChange = (text: string) => {
-    setSignupEmailUsername(text);
-    setEmailCheckStatus("unchecked");
-  };
-
-  const handleSignupDomainChange = (domain: string) => {
-    setSignupEmailDomain(domain);
-    setSignupDomainModalVisible(false);
-    setEmailCheckStatus("unchecked");
-    if (domain === "직접 입력") {
-      setSignupCustomDomain("");
-    }
-  };
-
-  const handleSignupCustomDomainChange = (text: string) => {
-    setSignupCustomDomain(text);
-    setEmailCheckStatus("unchecked");
-  };
-
-  const handleLogin = () => {
-    const loginEmail = getLoginEmail();
-
-    // 유효성 검사
-    if (!loginEmailUsername || !loginEmail.includes("@") || !loginPassword) {
-      Alert.alert("입력 오류", "이메일과 비밀번호를 입력해주세요");
-      return;
-    }
-
-    const loginData: LoginRequestDto = {
-      email: loginEmail,
-      password: loginPassword,
-    };
-    loginMutation.mutate(loginData);
-  };
-
-  const handleSignup = () => {
-    const signupEmail = getSignupEmail();
-
-    // 이메일 중복 체크 확인
-    if (emailCheckStatus !== "available") {
-      Alert.alert("이메일 확인 필요", "이메일 중복 확인을 먼저 진행해주세요");
-      return;
-    }
-
-    // 유효성 검사
-    if (
-      !signupEmailUsername ||
-      !signupEmail.includes("@") ||
-      !signupPassword ||
-      !signupAddress
-    ) {
-      Alert.alert("입력 오류", "모든 필드를 입력해주세요");
-      return;
-    }
-
-    const signupData: SignupRequestDto = {
-      email: signupEmail,
-      password: signupPassword,
-      address: signupAddress,
-    };
-    signupMutation.mutate(signupData);
-  };
-
-  const handleSelectLoginDomain = (domain: string) => {
-    setLoginEmailDomain(domain);
-    setLoginDomainModalVisible(false);
-    if (domain === "직접 입력") {
-      setLoginCustomDomain("");
-    }
-  };
-
-  const handleSelectSignupDomain = (domain: string) => {
-    handleSignupDomainChange(domain);
-  };
+  // 이메일 도메인 선택 Hook
+  const {
+    loginDomainModalVisible,
+    setLoginDomainModalVisible,
+    signupDomainModalVisible,
+    setSignupDomainModalVisible,
+    handleSelectLoginDomain,
+    handleSelectSignupDomain,
+  } = useEmailDomain(
+    setLoginEmailDomain,
+    setLoginCustomDomain,
+    handleSignupDomainChange
+  );
 
   return (
     <SafeAreaView style={styles.safeArea}>

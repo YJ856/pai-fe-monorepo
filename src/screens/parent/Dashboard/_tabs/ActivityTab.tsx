@@ -22,12 +22,9 @@ import {
   View,
   Text,
   StyleSheet,
-  ScrollView,
   TouchableOpacity,
-  Image,
 } from "react-native";
-import { Calendar, Grid, MessageCircle } from "lucide-react-native";
-import { Button } from "../../../../design/components/Button";
+import { LinearGradient } from "expo-linear-gradient";
 import {
   colors,
   spacing,
@@ -35,254 +32,115 @@ import {
   borderRadius,
   shadows,
 } from "../../../../design/tokens";
+import { Card } from "../../../../design/components/Card";
 import ActivityCalendar from "../components/ActivityCalendar";
+import { useActivityData } from "../hooks/useDashboardData";
 
 interface ActivityTabProps {
   childId: string;
 }
 
-interface ActivityDay {
-  date: string;
-  count: number;
-}
-
-interface RecentActivity {
+interface Child {
   id: string;
-  title: string;
-  date: Date;
-  thumbnailUrl?: string;
+  name: string;
+  avatar: string;
 }
 
-// Mock data - 현재 월(11월) 기준
-const MOCK_ACTIVITIES: ActivityDay[] = [
-  { date: '2025-11-01', count: 3 },
-  { date: '2025-11-05', count: 5 },
-  { date: '2025-11-08', count: 2 },
-  { date: '2025-11-09', count: 4 },
-  { date: '2025-11-12', count: 3 },
-  { date: '2025-11-13', count: 2 },
-];
-
-const MOCK_RECENT: RecentActivity[] = [
-  {
-    id: '1',
-    title: '공룡은 어떤 동물일까?',
-    date: new Date(),
-  },
-  {
-    id: '2',
-    title: '바다에 사는 동물들',
-    date: new Date(Date.now() - 86400000),
-  },
-  {
-    id: '3',
-    title: '우주는 얼마나 넓을까?',
-    date: new Date(Date.now() - 172800000),
-  },
+const CHILDREN: Child[] = [
+  { id: "3", name: "지우", avatar: "👧" },
+  { id: "4", name: "민준", avatar: "👦" },
 ];
 
 export default function ActivityTab({ childId }: ActivityTabProps) {
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
-  const [activities] = useState<ActivityDay[]>(MOCK_ACTIVITIES);
-  const [recentActivities] = useState<RecentActivity[]>(MOCK_RECENT);
 
-  const formatDate = (date: Date) => {
-    const now = new Date();
-    const diff = now.getTime() - date.getTime();
-    const days = Math.floor(diff / 86400000);
+  // API 데이터 조회
+  const { data: activityData } = useActivityData(childId);
 
-    if (days === 0) return "오늘";
-    if (days === 1) return "어제";
-    return `${days}일 전`;
-  };
-
-  const handleDateSelect = (date: string) => {
-    setSelectedDate(date);
-    console.log("Selected date:", date);
-  };
-
-  const handleGalleryPress = () => {
-    console.log("Open gallery view");
-  };
+  // 활동 데이터 (API)
+  const activities = activityData || [];
 
   return (
-    <ScrollView
-      style={styles.container}
-      contentContainerStyle={styles.content}
-      showsVerticalScrollIndicator={false}
-    >
-      {/* Calendar Summary */}
-      <View style={styles.section}>
-        <View style={styles.sectionHeader}>
-          <Calendar size={20} color={colors.parent.from} />
-          <Text style={styles.sectionTitle}>활동 현황</Text>
-        </View>
-
-        <View style={styles.card}>
-          <View style={styles.statsRow}>
-            <View style={styles.statItem}>
-              <Text style={styles.statValue}>{activities.length}</Text>
-              <Text style={styles.statLabel}>활동 일수</Text>
-            </View>
-            <View style={styles.divider} />
-            <View style={styles.statItem}>
-              <Text style={styles.statValue}>
-                {activities.reduce((sum, a) => sum + a.count, 0)}
-              </Text>
-              <Text style={styles.statLabel}>총 대화</Text>
-            </View>
-            <View style={styles.divider} />
-            <View style={styles.statItem}>
-              <Text style={styles.statValue}>
-                {activities.length > 0
-                  ? Math.round(
-                      activities.reduce((sum, a) => sum + a.count, 0) /
-                        activities.length
-                    )
-                  : 0}
-              </Text>
-              <Text style={styles.statLabel}>평균/일</Text>
-            </View>
-          </View>
-        </View>
-      </View>
-
-      {/* Activity Calendar */}
-      <View style={styles.section}>
+    <Card style={styles.contentCard}>
+      <View style={styles.cardPadding}>
+        {/* ActivityCalendar Component */}
         <ActivityCalendar
           events={activities}
           selectedDate={selectedDate || undefined}
-          onDateSelect={handleDateSelect}
+          onDateSelect={(date) => {
+            setSelectedDate(date);
+            console.log("Selected date:", date);
+          }}
         />
-      </View>
 
-      {/* Recent Activities */}
-      <View style={styles.section}>
-        <View style={styles.sectionHeader}>
-          <Grid size={20} color={colors.parent.from} />
-          <Text style={styles.sectionTitle}>최근 활동</Text>
-        </View>
-
-        <View style={styles.card}>
-          {recentActivities.map((activity) => (
+        {/* Children Grid */}
+        <Text style={styles.dateTitle}>
+          {selectedDate
+            ? `${selectedDate} 대화 기록`
+            : "오늘의 대화 기록"}
+        </Text>
+        <View style={styles.childrenGrid}>
+          {CHILDREN.map((child) => (
             <TouchableOpacity
-              key={activity.id}
-              style={styles.activityItem}
-              onPress={() => console.log("Activity clicked:", activity.id)}
+              key={child.id}
+              style={styles.childCard}
+              activeOpacity={0.8}
             >
-              {activity.thumbnailUrl ? (
-                <Image
-                  source={{ uri: activity.thumbnailUrl }}
-                  style={styles.activityThumbnail}
-                />
-              ) : (
-                <View style={styles.activityThumbnailPlaceholder}>
-                  <MessageCircle size={24} color={colors.parent.from} />
-                </View>
-              )}
-
-              <View style={styles.activityInfo}>
-                <Text style={styles.activityTitle} numberOfLines={1}>
-                  {activity.title}
-                </Text>
-                <Text style={styles.activityDate}>
-                  {formatDate(activity.date)}
-                </Text>
-              </View>
+              <LinearGradient
+                colors={["#5B9BD5", "#4A8BC2"]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.childCardGradient}
+              >
+                <Text style={styles.childAvatar}>{child.avatar}</Text>
+                <Text style={styles.childName}>{child.name}</Text>
+              </LinearGradient>
             </TouchableOpacity>
           ))}
-
-          <Button
-            variant="outline"
-            onPress={handleGalleryPress}
-            style={{ marginTop: spacing.md }}
-          >
-            전체 갤러리 보기
-          </Button>
         </View>
       </View>
-    </ScrollView>
+    </Card>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  content: {
-    padding: spacing.lg,
-  },
-  section: {
-    marginBottom: spacing.xl,
-  },
-  sectionHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.sm,
-    marginBottom: spacing.md,
-  },
-  sectionTitle: {
-    ...typography.h4,
-  },
-  card: {
-    backgroundColor: colors.background,
-    borderRadius: borderRadius.lg,
-    padding: spacing.lg,
+  contentCard: {
+    backgroundColor: "#f9fafb",
+    borderRadius: borderRadius["2xl"],
     ...shadows.sm,
   },
-  statsRow: {
+  cardPadding: {
+    padding: spacing.xl,
+  },
+  dateTitle: {
+    ...typography.h3,
+    fontSize: 18,
+    color: "#111827",
+    marginBottom: spacing.lg,
+  },
+  childrenGrid: {
     flexDirection: "row",
-    justifyContent: "space-around",
-    alignItems: "center",
+    gap: spacing.lg,
   },
-  statItem: {
-    alignItems: "center",
+  childCard: {
+    flex: 1,
+    aspectRatio: 1,
+    borderRadius: borderRadius["2xl"],
+    overflow: "hidden",
+    ...shadows.md,
   },
-  statValue: {
-    ...typography.h2,
-    color: colors.parent.from,
-    marginBottom: spacing.xs,
-  },
-  statLabel: {
-    ...typography.caption,
-    color: colors.text.secondary,
-  },
-  divider: {
-    width: 1,
-    height: 40,
-    backgroundColor: colors.muted,
-  },
-  activityItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingVertical: spacing.sm,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.muted,
-  },
-  activityThumbnail: {
-    width: 60,
-    height: 60,
-    borderRadius: borderRadius.md,
-    marginRight: spacing.md,
-  },
-  activityThumbnailPlaceholder: {
-    width: 60,
-    height: 60,
-    borderRadius: borderRadius.md,
-    backgroundColor: colors.secondary,
+  childCardGradient: {
+    flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    marginRight: spacing.md,
   },
-  activityInfo: {
-    flex: 1,
+  childAvatar: {
+    fontSize: 60,
+    marginBottom: spacing.lg,
   },
-  activityTitle: {
-    ...typography.body1,
-    marginBottom: spacing.xs,
-  },
-  activityDate: {
-    ...typography.caption,
-    color: colors.text.secondary,
+  childName: {
+    ...typography.h2,
+    fontSize: 24,
+    color: colors.primaryForeground,
   },
 });

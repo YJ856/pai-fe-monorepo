@@ -25,12 +25,10 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  ActivityIndicator,
-  Linking,
+  Image,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
-import { Card } from "../../../design/components/Card";
 import {
   colors,
   spacing,
@@ -38,52 +36,15 @@ import {
   borderRadius,
   shadows,
 } from "../../../design/tokens";
-import ActivityCalendar from "./components/ActivityCalendar";
-import BubbleChart from "./components/BubbleChart";
-import {
-  useInterestsData,
-  useActivityData,
-  useRecommendations,
-} from "./hooks/useDashboardData";
 import { useProfileStore } from "../../../store/useProfileStore";
-import { Image } from "react-native";
+import InterestsTab from "./_tabs/InterestsTab";
+import ActivityTab from "./_tabs/ActivityTab";
+import RecommendationsTab from "./_tabs/RecommendationsTab";
 
 type TabValue = "interests" | "calendar" | "recommendations";
-type RecommendationType = "관광지" | "문화시설" | "축제공연행사";
-
-interface Interest {
-  topic: string;
-  count: number;
-  icon: string;
-}
-
-interface Recommendation {
-  id: string;
-  type: RecommendationType;
-  title: string;
-  description: string;
-  relatedInterest: string;
-  icon: string;
-  imageUrl?: string;
-  link?: string;
-}
-
-interface Child {
-  id: string;
-  name: string;
-  avatar: string;
-}
-
-const CHILDREN: Child[] = [
-  { id: "3", name: "지우", avatar: "👧" },
-  { id: "4", name: "민준", avatar: "👦" },
-];
 
 export default function ParentDashboard() {
   const [activeTab, setActiveTab] = useState<TabValue>("interests");
-  const [selectedRecommendationType, setSelectedRecommendationType] =
-    useState<RecommendationType>("축제공연행사");
-  const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [showChildDropdown, setShowChildDropdown] = useState(false);
 
   // Zustand store에서 자녀 프로필 가져오기
@@ -98,68 +59,6 @@ export default function ParentDashboard() {
   console.log("[Dashboard] childProfiles:", childProfiles);
   console.log("[Dashboard] selectedChildId:", selectedChildId);
 
-  // API 데이터 조회
-  const {
-    data: interestsData,
-    isLoading: interestsLoading,
-    error: interestsError,
-  } = useInterestsData(selectedChildId);
-  const { data: activityData, isLoading: activityLoading } =
-    useActivityData(selectedChildId);
-
-  console.log("[Dashboard] interestsData:", interestsData);
-  console.log("[Dashboard] interestsLoading:", interestsLoading);
-  console.log("[Dashboard] interestsError:", interestsError);
-
-  // 관심사 데이터 (API only)
-  const interests =
-    interestsData?.interests?.map((item: any) => ({
-      topic: item.keyword,
-      count: Math.round(item.rawScore * 10), // rawScore를 적절히 변환
-      icon: "💡", // 기본 아이콘
-    })) || [];
-
-  // 활동 데이터 (API only)
-  const activities = activityData || [];
-
-  // 최상위 관심사 키워드 추출 (가장 높은 rawScore)
-  const topKeyword = interestsData?.interests?.[0]?.keyword;
-
-  // 추천 콘텐츠 API 조회 (최상위 관심사 키워드 기반)
-  const { data: recommendationsData, isLoading: recommendationsLoading } =
-    useRecommendations(selectedChildId, topKeyword);
-
-  console.log("[Dashboard] topKeyword:", topKeyword);
-  console.log("[Dashboard] recommendationsData:", recommendationsData);
-
-  // API 카테고리를 Dashboard 타입으로 매핑
-  const mapCategoryToType = (category: string): RecommendationType => {
-    if (category === "축제") return "축제공연행사";
-    if (category === "관광지") return "관광지";
-    if (category === "문화시설") return "문화시설";
-    return "관광지"; // 기본값
-  };
-
-  // 추천 콘텐츠 (API 또는 Mock)
-  const apiRecommendations =
-    recommendationsData?.recommendations?.map((item: any) => ({
-      id: item.id,
-      type: mapCategoryToType(item.category), // API의 category를 Dashboard type으로 매핑
-      title: item.title,
-      description: item.description,
-      relatedInterest: item.relevantKeywords?.join(", ") || topKeyword || "",
-      icon: "🎯", // 기본 아이콘
-      location: item.location,
-      startDate: item.startDate,
-      endDate: item.endDate,
-      imageUrl: item.imageUrl,
-      link: item.link,
-    })) || [];
-
-  // Filter recommendations by type (API only)
-  const filteredRecommendations = apiRecommendations.filter(
-    (rec: Recommendation) => rec.type === selectedRecommendationType
-  );
 
   return (
     <SafeAreaView style={styles.safeArea} edges={["top"]}>
@@ -313,164 +212,15 @@ export default function ParentDashboard() {
             )}
           </View>
 
-          {/* Interests Tab */}
+          {/* Tab Content */}
           {activeTab === "interests" && (
-            <Card style={styles.contentCard}>
-              <View style={styles.cardPadding}>
-                {/* Header */}
-                <View style={styles.sectionHeader}>
-                  <Text style={styles.trendIcon}>📈</Text>
-                  <Text style={styles.sectionTitle}>관심사 TOP 10</Text>
-                </View>
-
-                {/* Loading */}
-                {interestsLoading && (
-                  <View style={styles.loadingContainer}>
-                    <ActivityIndicator
-                      size="large"
-                      color={colors.parent.from}
-                    />
-                    <Text style={styles.loadingText}>
-                      관심사 데이터 로딩 중...
-                    </Text>
-                  </View>
-                )}
-
-                {/* Bubble Chart */}
-                {!interestsLoading && <BubbleChart data={interests} />}
-              </View>
-            </Card>
+            <InterestsTab childId={selectedChildId} />
           )}
-
-          {/* Calendar Tab */}
           {activeTab === "calendar" && (
-            <Card style={styles.contentCard}>
-              <View style={styles.cardPadding}>
-                {/* ActivityCalendar Component */}
-                <ActivityCalendar
-                  events={activities}
-                  selectedDate={selectedDate || undefined}
-                  onDateSelect={(date) => {
-                    setSelectedDate(date);
-                    console.log("Selected date:", date);
-                  }}
-                />
-
-                {/* Children Grid */}
-                <Text style={styles.dateTitle}>
-                  {selectedDate
-                    ? `${selectedDate} 대화 기록`
-                    : "오늘의 대화 기록"}
-                </Text>
-                <View style={styles.childrenGrid}>
-                  {CHILDREN.map((child) => (
-                    <TouchableOpacity
-                      key={child.id}
-                      style={styles.childCard}
-                      activeOpacity={0.8}
-                    >
-                      <LinearGradient
-                        colors={["#5B9BD5", "#4A8BC2"]}
-                        start={{ x: 0, y: 0 }}
-                        end={{ x: 1, y: 1 }}
-                        style={styles.childCardGradient}
-                      >
-                        <Text style={styles.childAvatar}>{child.avatar}</Text>
-                        <Text style={styles.childName}>{child.name}</Text>
-                      </LinearGradient>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              </View>
-            </Card>
+            <ActivityTab childId={selectedChildId} />
           )}
-
-          {/* Recommendations Tab */}
           {activeTab === "recommendations" && (
-            <Card style={styles.contentCard}>
-              <View style={styles.cardPadding}>
-                {/* Related Interest Header */}
-                {topKeyword && (
-                  <View style={styles.relatedInterestHeader}>
-                    <Text style={styles.relatedInterestText}>
-                      {childProfiles[selectedChildIndex]?.name || "자녀"}님의
-                      관심사 '{topKeyword}' 기반 추천
-                    </Text>
-                  </View>
-                )}
-
-                {/* Category Tabs */}
-                <View style={styles.categoryTabs}>
-                  {(
-                    [
-                      "관광지",
-                      "문화시설",
-                      "축제공연행사",
-                    ] as RecommendationType[]
-                  ).map((type) => (
-                    <TouchableOpacity
-                      key={type}
-                      style={styles.categoryTab}
-                      onPress={() => setSelectedRecommendationType(type)}
-                      activeOpacity={0.8}
-                    >
-                      {selectedRecommendationType === type ? (
-                        <LinearGradient
-                          colors={["#5B9BD5", "#667BC6"]}
-                          start={{ x: 0, y: 0 }}
-                          end={{ x: 1, y: 0 }}
-                          style={styles.categoryTabActive}
-                        >
-                          <Text style={styles.categoryTabTextActive}>
-                            {type}
-                          </Text>
-                        </LinearGradient>
-                      ) : (
-                        <Text style={styles.categoryTabTextInactive}>
-                          {type}
-                        </Text>
-                      )}
-                    </TouchableOpacity>
-                  ))}
-                </View>
-
-                {/* Recommendation List */}
-                <View style={styles.recommendationList}>
-                  {filteredRecommendations.map((rec: Recommendation) => (
-                    <TouchableOpacity
-                      key={rec.id}
-                      style={styles.recommendationCard}
-                      activeOpacity={0.8}
-                      onPress={() => {
-                        if (rec.link) {
-                          Linking.openURL(rec.link).catch((err) =>
-                            console.error("링크 열기 실패:", err)
-                          );
-                        }
-                      }}
-                    >
-                      {rec.imageUrl && (
-                        <Image
-                          source={{ uri: rec.imageUrl }}
-                          style={styles.recommendationImage}
-                          resizeMode="cover"
-                        />
-                      )}
-                      <View style={styles.recommendationContent}>
-                        <View style={styles.recommendationInfo}>
-                          <Text style={styles.recommendationTitle}>
-                            {rec.title}
-                          </Text>
-                          <Text style={styles.recommendationDescription}>
-                            {rec.description}
-                          </Text>
-                        </View>
-                      </View>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              </View>
-            </Card>
+            <RecommendationsTab childId={selectedChildId} />
           )}
         </ScrollView>
       </LinearGradient>

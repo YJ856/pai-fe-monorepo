@@ -17,8 +17,8 @@
  * - useInterests (Dashboard/hooks/)
  */
 
-import React, { useState } from "react";
-import { View, Text, StyleSheet, ScrollView } from "react-native";
+import React from "react";
+import { View, Text, StyleSheet, ActivityIndicator } from "react-native";
 import { TrendingUp, Hash } from "lucide-react-native";
 import {
   colors,
@@ -27,194 +27,106 @@ import {
   borderRadius,
   shadows,
 } from "../../../../design/tokens";
-
-interface Interest {
-  keyword: string;
-  score: number;
-  trend: "up" | "down" | "stable";
-}
+import { Card } from "../../../../design/components/Card";
+import BubbleChart from "../components/BubbleChart";
+import { useInterestsData } from "../hooks/useDashboardData";
 
 interface InterestsTabProps {
   childId: string;
 }
 
-// Mock data
-const MOCK_INTERESTS: Interest[] = [
-  { keyword: "공룡", score: 95, trend: "up" },
-  { keyword: "우주", score: 88, trend: "up" },
-  { keyword: "바다", score: 75, trend: "stable" },
-  { keyword: "로봇", score: 70, trend: "down" },
-  { keyword: "식물", score: 65, trend: "stable" },
-  { keyword: "동물", score: 60, trend: "up" },
-  { keyword: "과학", score: 55, trend: "stable" },
-  { keyword: "음악", score: 50, trend: "down" },
-];
-
 export default function InterestsTab({ childId }: InterestsTabProps) {
-  const [interests] = useState<Interest[]>(MOCK_INTERESTS);
+  // API 데이터 조회
+  const {
+    data: interestsData,
+    isLoading,
+    error,
+  } = useInterestsData(childId);
 
-  const renderInterestCloud = () => {
+  // 관심사 데이터 변환 (API → BubbleChart 형식)
+  const interests =
+    interestsData?.interests?.map((item: any) => ({
+      topic: item.keyword,
+      count: Math.round(item.rawScore * 10), // rawScore를 적절히 변환
+      icon: "💡", // 기본 아이콘
+    })) || [];
+
+  // 로딩 상태
+  if (isLoading) {
     return (
-      <View style={styles.cloudContainer}>
-        {interests.map((interest, index) => {
-          const fontSize = 16 + (interest.score / 100) * 24; // 16-40px range
-          const color =
-            interest.score > 80
-              ? colors.parent.from
-              : interest.score > 60
-              ? colors.primary[400]
-              : colors.text.secondary;
-
-          return (
-            <View key={interest.keyword} style={styles.cloudItem}>
-              <Text style={[styles.cloudText, { fontSize, color }]}>
-                {interest.keyword}
-              </Text>
-              {interest.trend === "up" && (
-                <TrendingUp size={12} color={colors.status.success} />
-              )}
-            </View>
-          );
-        })}
-      </View>
-    );
-  };
-
-  const renderTopInterests = () => {
-    const topInterests = interests.slice(0, 5);
-
-    return (
-      <View style={styles.topContainer}>
-        <Text style={styles.sectionTitle}>Top 5 관심사</Text>
-        {topInterests.map((interest, index) => (
-          <View key={interest.keyword} style={styles.topItem}>
-            <View style={styles.rankBadge}>
-              <Text style={styles.rankText}>{index + 1}</Text>
-            </View>
-            <Text style={styles.topKeyword}>{interest.keyword}</Text>
-            <View style={styles.scoreBar}>
-              <View
-                style={[styles.scoreBarFill, { width: `${interest.score}%` }]}
-              />
-            </View>
-            <Text style={styles.scoreText}>{interest.score}</Text>
+      <Card style={styles.contentCard}>
+        <View style={styles.cardPadding}>
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color={colors.parent.from} />
+            <Text style={styles.loadingText}>관심사 데이터 로딩 중...</Text>
           </View>
-        ))}
-      </View>
+        </View>
+      </Card>
     );
-  };
+  }
+
+  // 에러 상태
+  if (error) {
+    return (
+      <Card style={styles.contentCard}>
+        <View style={styles.cardPadding}>
+          <View style={styles.loadingContainer}>
+            <Text style={styles.loadingText}>
+              관심사 데이터를 불러올 수 없습니다
+            </Text>
+          </View>
+        </View>
+      </Card>
+    );
+  }
 
   return (
-    <ScrollView
-      style={styles.container}
-      contentContainerStyle={styles.content}
-      showsVerticalScrollIndicator={false}
-    >
-      {/* Word Cloud */}
-      <View style={styles.section}>
+    <Card style={styles.contentCard}>
+      <View style={styles.cardPadding}>
+        {/* Header */}
         <View style={styles.sectionHeader}>
-          <Hash size={20} color={colors.parent.from} />
-          <Text style={styles.sectionTitle}>관심사 워드 클라우드</Text>
+          <Text style={styles.trendIcon}>📈</Text>
+          <Text style={styles.sectionTitle}>관심사 TOP 10</Text>
         </View>
-        <View style={styles.card}>{renderInterestCloud()}</View>
-      </View>
 
-      {/* Top Interests */}
-      <View style={styles.section}>
-        <View style={styles.sectionHeader}>
-          <TrendingUp size={20} color={colors.parent.from} />
-          <Text style={styles.sectionTitle}>인기 관심사</Text>
-        </View>
-        <View style={styles.card}>{renderTopInterests()}</View>
+        {/* Bubble Chart */}
+        <BubbleChart data={interests} />
       </View>
-    </ScrollView>
+    </Card>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
+  contentCard: {
+    backgroundColor: "#f9fafb",
+    borderRadius: borderRadius["2xl"],
+    ...shadows.sm,
   },
-  content: {
-    padding: spacing.lg,
-  },
-  section: {
-    marginBottom: spacing.xl,
+  cardPadding: {
+    padding: spacing.xl,
   },
   sectionHeader: {
     flexDirection: "row",
     alignItems: "center",
-    gap: spacing.sm,
-    marginBottom: spacing.md,
+    marginBottom: spacing.xl,
+  },
+  trendIcon: {
+    fontSize: 24,
+    marginRight: spacing.sm,
   },
   sectionTitle: {
-    ...typography.h4,
+    ...typography.h2,
+    fontSize: 24,
+    color: "#111827",
   },
-  card: {
-    backgroundColor: colors.background,
-    borderRadius: borderRadius.lg,
-    padding: spacing.lg,
-    ...shadows.sm,
-  },
-  cloudContainer: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: spacing.md,
-    justifyContent: "center",
-    alignItems: "center",
-    paddingVertical: spacing.lg,
-  },
-  cloudItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.xs,
-  },
-  cloudText: {
-    ...typography.h4,
-    fontWeight: "600",
-  },
-  topContainer: {
-    gap: spacing.md,
-  },
-  topItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.sm,
-  },
-  rankBadge: {
-    width: 32,
-    height: 32,
-    borderRadius: borderRadius.full,
-    backgroundColor: colors.parent.from,
+  loadingContainer: {
     alignItems: "center",
     justifyContent: "center",
+    paddingVertical: spacing.xl * 2,
   },
-  rankText: {
-    ...typography.body2,
-    color: colors.text.inverse,
-    fontWeight: "600",
-  },
-  topKeyword: {
-    ...typography.body1,
-    fontWeight: "600",
-    width: 80,
-  },
-  scoreBar: {
-    flex: 1,
-    height: 8,
-    backgroundColor: colors.background,
-    borderRadius: borderRadius.full,
-    overflow: "hidden",
-  },
-  scoreBarFill: {
-    height: "100%",
-    backgroundColor: colors.parent.from,
-    borderRadius: borderRadius.full,
-  },
-  scoreText: {
+  loadingText: {
     ...typography.body2,
     color: colors.text.secondary,
-    width: 32,
-    textAlign: "right",
+    marginTop: spacing.md,
   },
 });
