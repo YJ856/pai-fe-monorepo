@@ -15,11 +15,12 @@
  * - handleLogout
  */
 
-import { Alert } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { logout } from '../../../../api/auth';
-import { useProfileStore } from '../../../../store/useProfileStore';
+import { Alert } from "react-native";
+import { useNavigation } from "@react-navigation/native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { logout } from "../../../../api/auth";
+import { useProfileStore } from "../../../../store/useProfileStore";
+import { QueryClient } from "@tanstack/react-query";
 
 export function useProfileActions() {
   const navigation = useNavigation<any>();
@@ -27,42 +28,43 @@ export function useProfileActions() {
   const handleBackToProfileSelect = () => {
     // Zustand store 비우기 -> ProfileSelect에서 최신 프로필 목록 로드
     useProfileStore.getState().setProfiles([]);
+    queryClient.clear();
 
     // Root Navigator로 이동 -> ProfileNavigator의 ProfileSelect 화면으로
     const parent = navigation.getParent();
     if (parent) {
       parent.reset({
         index: 0,
-        routes: [{ name: 'Profile' }],
+        routes: [{ name: "Profile" }],
       });
     }
   };
 
   const handleLogout = async () => {
     Alert.alert(
-      '로그아웃',
-      '정말 로그아웃 하시겠어요?',
+      "로그아웃",
+      "정말 로그아웃 하시겠어요?",
       [
         {
-          text: '취소',
-          style: 'cancel',
+          text: "취소",
+          style: "cancel",
         },
         {
-          text: '로그아웃',
-          style: 'destructive',
+          text: "로그아웃",
+          style: "destructive",
           onPress: async () => {
             try {
-              const accessToken = await AsyncStorage.getItem('accessToken');
+              const accessToken = await AsyncStorage.getItem("accessToken");
               if (accessToken) {
                 await logout();
               }
             } catch (error) {
-              console.log('Logout API error:', error);
+              console.log("Logout API error:", error);
             } finally {
               await AsyncStorage.multiRemove([
-                'accessToken',
-                'refreshToken',
-                'userId',
+                "accessToken",
+                "refreshToken",
+                "userId",
               ]);
 
               // Zustand store 프로필 데이터 삭제
@@ -70,7 +72,7 @@ export function useProfileActions() {
 
               navigation.reset({
                 index: 0,
-                routes: [{ name: 'Auth' }],
+                routes: [{ name: "Auth" }],
               });
             }
           },

@@ -29,6 +29,7 @@ import {
   Image,
   ActivityIndicator,
   RefreshControl,
+  Dimensions,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect } from "@react-navigation/native";
@@ -77,11 +78,21 @@ export default function ProfileSelectScreen() {
     }, [])
   );
 
-  const renderProfileCard = ({ item }: { item: Profile }) => {
+  // 2x2 그리드로 프로필을 그룹화 (4개씩)
+  const groupedProfiles = React.useMemo(() => {
+    const groups: Profile[][] = [];
+    for (let i = 0; i < profiles.length; i += 4) {
+      groups.push(profiles.slice(i, i + 4));
+    }
+    return groups;
+  }, [profiles]);
+
+  const renderProfileCard = (item: Profile) => {
     const isParent = item.profileType === "parent";
 
     return (
       <TouchableOpacity
+        key={String(item.profileId)}
         style={styles.profileCard}
         onPress={() => handleProfileClick(item)}
         activeOpacity={0.8}
@@ -98,6 +109,23 @@ export default function ProfileSelectScreen() {
         )}
         <Text style={styles.profileName}>{item.name}</Text>
       </TouchableOpacity>
+    );
+  };
+
+  const renderProfileGroup = ({ item }: { item: Profile[] }) => {
+    const hasOnlyOneInSecondRow = item.length === 3;
+
+    return (
+      <View style={styles.profileGroup}>
+        <View style={styles.profileRow}>
+          {item[0] && renderProfileCard(item[0])}
+          {item[1] && renderProfileCard(item[1])}
+        </View>
+        <View style={[styles.profileRow, hasOnlyOneInSecondRow && styles.profileRowLeft]}>
+          {item[2] && renderProfileCard(item[2])}
+          {item[3] && renderProfileCard(item[3])}
+        </View>
+      </View>
     );
   };
 
@@ -162,22 +190,32 @@ export default function ProfileSelectScreen() {
                         </Text>
                       </View>
                     ) : (
-                      <FlatList
-                        data={profiles}
-                        renderItem={renderProfileCard}
-                        keyExtractor={(item) => String(item.profileId)}
-                        numColumns={2}
-                        columnWrapperStyle={styles.row}
-                        contentContainerStyle={styles.gridContent}
-                        scrollEnabled={false}
-                        refreshControl={
-                          <RefreshControl
-                            refreshing={refreshing}
-                            onRefresh={onRefresh}
-                            tintColor="#5B9BD5"
+                      <>
+                        {groupedProfiles.length === 1 ? (
+                          // 4개 이하면 스크롤 없이 표시
+                          <View style={styles.singleGroup}>
+                            {renderProfileGroup({ item: groupedProfiles[0] })}
+                          </View>
+                        ) : (
+                          // 5개 이상이면 가로 스크롤
+                          <FlatList
+                            data={groupedProfiles}
+                            renderItem={renderProfileGroup}
+                            keyExtractor={(item, index) => `group-${index}`}
+                            horizontal
+                            showsHorizontalScrollIndicator={false}
+                            contentContainerStyle={styles.horizontalList}
+                            pagingEnabled
+                            refreshControl={
+                              <RefreshControl
+                                refreshing={refreshing}
+                                onRefresh={onRefresh}
+                                tintColor="#5B9BD5"
+                              />
+                            }
                           />
-                        }
-                      />
+                        )}
+                      </>
                     )}
 
                     {/* Create Profile Button */}
@@ -383,18 +421,33 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
 
-  gridContent: {
-    paddingBottom: spacing.md,
+  singleGroup: {
+    alignItems: "center",
+    paddingVertical: spacing.sm,
   },
 
-  row: {
-    justifyContent: "space-between",
+  horizontalList: {
+    paddingVertical: spacing.sm,
+  },
+
+  profileGroup: {
+    paddingHorizontal: spacing.md,
+  },
+
+  profileRow: {
+    flexDirection: "row",
+    justifyContent: "center",
+    gap: spacing.md,
     marginBottom: spacing.md,
   },
 
+  profileRowLeft: {
+    justifyContent: "flex-start",
+  },
+
   profileCard: {
-    flex: 0.48,
-    aspectRatio: 1,
+    width: 140,
+    height: 140,
     backgroundColor: colors.muted,
     borderRadius: borderRadius.xl,
     padding: spacing.md,
