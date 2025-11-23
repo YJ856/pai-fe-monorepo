@@ -435,7 +435,7 @@ export default function ParentQuizScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView style={styles.safeArea} edges={["top"]}>
       <LinearGradient colors={['#EFF6FF', '#E0E7FF']} style={styles.container}>
       {/* Tabs */}
       <View style={styles.tabsContainer}>

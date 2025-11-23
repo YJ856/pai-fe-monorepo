@@ -16,6 +16,7 @@ import { colors } from '../../design/tokens';
 
 // 대시보드 활동 서브 스크린
 import ActivityGalleryScreen from '../../screens/parent/Dashboard/activity/Gallery';
+import ActivityDetailScreen from '../../screens/parent/Dashboard/activity/Detail';
 
 export type ParentTabParamList = {
   Chat: undefined;
@@ -52,7 +53,13 @@ function DashboardStack() {
           headerTintColor: colors.parent.from,
         }}
       />
-      {/* TODO: ActivityDetail 화면 추가 */}
+      <Stack.Screen
+        name="ActivityDetail"
+        component={ActivityDetailScreen}
+        options={{
+          headerShown: false,
+        }}
+      />
     </Stack.Navigator>
   );
 }
