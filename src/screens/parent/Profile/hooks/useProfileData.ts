@@ -22,10 +22,11 @@
  * - onRefresh
  */
 
-import { useState } from 'react';
-import { Alert } from 'react-native';
-import { getProfiles, getMedia } from '../../../../api';
-import { useProfileStore } from '../../../../store/useProfileStore';
+import { useState } from "react";
+import { Alert } from "react-native";
+import { getProfiles } from "../../../../api/profiles";
+import { getMedia } from "../../../../api/media";
+import { useProfileStore } from "../../../../store/useProfileStore";
 
 export function useProfileData() {
   const [isLoading, setIsLoading] = useState(true);
@@ -55,7 +56,7 @@ export function useProfileData() {
       } = useProfileStore.getState();
 
       // API에서 최신 프로필 목록 가져오기
-      const profileList = await getProfiles('all');
+      const profileList = await getProfiles("all");
 
       if (Array.isArray(profileList) && profileList.length > 0) {
         // API 응답을 앱 타입으로 변환 (ProfileSelect와 동일한 로직)
@@ -70,7 +71,7 @@ export function useProfileData() {
             ? BigInt(profile.avatarMediaId)
             : undefined,
           voiceMediaId: profile.voiceMediaId
-            ? BigInt(profile.voiceMediaId)
+            ? String(profile.voiceMediaId)
             : undefined,
           avatarUrl: undefined,
           createdAt: profile.createdAt || profile.createAt,
@@ -111,8 +112,8 @@ export function useProfileData() {
         }
       }
     } catch (error: any) {
-      console.error('프로필 목록 새로고침 오류:', error);
-      Alert.alert('오류', '프로필 정보를 새로고침하는데 실패했습니다.');
+      console.error("프로필 목록 새로고침 오류:", error);
+      Alert.alert("오류", "프로필 정보를 새로고침하는데 실패했습니다.");
     } finally {
       setRefreshing(false);
     }

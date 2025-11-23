@@ -18,6 +18,7 @@
 import {
   BaseResponse,
   CreateProfileRequestDto,
+  CreateVoiceResponseData,
   DeleteProfileResponseData,
   GetProfileResponseData,
   GetProfilesResponseData,
@@ -107,5 +108,44 @@ export const selectProfile = async (profileId: string, pin?: string) => {
     profileId,
     pin,
   });
+  return response.data.data!;
+};
+
+/**
+ * PATCH /api/profiles/:profileId/voice
+ * 음성 등록/수정
+ *
+ * Request (FormData):
+ * - name: string (음성 이름)
+ * - files: File[] (음성 파일들)
+ *
+ * Response:
+ * - voiceId: string (ElevenLabs 음성 ID)
+ *
+ * 사용 예시:
+ * const formData = new FormData();
+ * formData.append('name', 'Parent Voice');
+ * formData.append('files', {
+ *   uri: recordingUri,
+ *   type: 'audio/wav',
+ *   name: 'voice.wav',
+ * });
+ * const { voiceId } = await createProfileVoice(profileId, formData);
+ */
+export const createProfileVoice = async (
+  profileId: string,
+  formData: FormData
+) => {
+  console.log("[VOICE] 음성 등록 요청 시작, profileId:", profileId);
+
+  const response = await userServiceClient.patch<
+    BaseResponse<CreateVoiceResponseData>
+  >(`/api/profiles/${profileId}/voice`, formData, {
+    headers: {
+      "Content-Type": "multipart/form-data",
+    },
+  });
+
+  console.log("[VOICE] 음성 등록 응답:", response.data);
   return response.data.data!;
 };
