@@ -70,7 +70,7 @@ export function useProfileList() {
             ? BigInt(profile.avatarMediaId)
             : undefined,
           voiceMediaId: profile.voiceMediaId
-            ? BigInt(profile.voiceMediaId)
+            ? String(profile.voiceMediaId)
             : undefined,
           avatarUrl: undefined,
 
@@ -81,7 +81,7 @@ export function useProfileList() {
           let avatarUrl = undefined;
           if (profile.avatarMediaId) {
             try {
-              const mediaId = String(profile.avatarMediaId);
+              const mediaId = String(profile.avatarMediaId!);
               const mediaResponse = await getMedia({ mediaIds: mediaId });
               avatarUrl = mediaResponse?.[0].cdnUrl;
             } catch (error) {

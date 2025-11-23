@@ -23,10 +23,26 @@
 import { useState } from "react";
 import { Alert } from "react-native";
 import { useNavigation } from "@react-navigation/native";
+import { Asset } from "expo-asset";
+import * as FileSystem from "expo-file-system";
 import { createProfile, updateProfile } from "../../../../api/profiles";
 import { uploadMedia } from "../../../../api/media";
 import { useProfileStore } from "../../../../store/useProfileStore";
 import { ProfileType, Gender } from "../../../../shared/types";
+
+// 기본 이미지 URI 가져오기
+async function getDefaultImageUri(): Promise<string | null> {
+  try {
+    const defaultImage = Asset.fromModule(
+      require("../../../../assets/images/default_image.png")
+    );
+    await defaultImage.downloadAsync();
+    return defaultImage.localUri || defaultImage.uri;
+  } catch (error) {
+    console.error("기본 이미지 로드 오류:", error);
+    return null;
+  }
+}
 
 export function useProfileCreate(
   profileType: ProfileType,
@@ -65,8 +81,10 @@ export function useProfileCreate(
 
       console.log("프로필 생성 완료:", createdProfile);
 
-      // 2단계: 이미지가 있으면 업로드하고 프로필 업데이트
-      if (avatarImage) {
+      // 2단계: 이미지 처리 (선택된 이미지 또는 기본 이미지)
+      const imageToUpload = avatarImage || await getDefaultImageUri();
+
+      if (imageToUpload) {
         try {
           // 프로필 ID 추출 (백엔드 응답에 따라 profileId 또는 id)
           const profileId = createdProfile.profileId || createdProfile.id;
@@ -81,12 +99,13 @@ export function useProfileCreate(
           console.log("이미지 업로드 시작:");
           console.log("- createdProfile 전체:", createdProfile);
           console.log("- 추출된 프로필 ID:", profileId);
-          console.log("- 이미지 URI:", avatarImage);
+          console.log("- 이미지 URI:", imageToUpload);
+          console.log("- 이미지 타입:", avatarImage ? "사용자 선택" : "기본 이미지");
 
           // FormData 생성 (파일만 전송)
           const formData = new FormData();
           formData.append("file", {
-            uri: avatarImage,
+            uri: imageToUpload,
             type: "image/jpeg",
             name: "avatar.jpg",
           } as any);

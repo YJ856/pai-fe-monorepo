@@ -108,7 +108,7 @@ export default function ParentProfileScreen() {
             ? BigInt(profile.avatarMediaId)
             : undefined,
           voiceMediaId: profile.voiceMediaId
-            ? BigInt(profile.voiceMediaId)
+            ? String(profile.voiceMediaId)
             : undefined,
           avatarUrl: undefined,
           createdAt: profile.createdAt || profile.createAt,
@@ -312,7 +312,10 @@ export default function ParentProfileScreen() {
 
   if (showVoiceRegistration) {
     return (
-      <VoiceRegistrationScreen onBack={() => setShowVoiceRegistration(false)} />
+      <VoiceRegistrationScreen
+        onBack={() => setShowVoiceRegistration(false)}
+        hasExistingVoice={!!currentProfile?.voiceMediaId}
+      />
     );
   }
 
@@ -446,8 +449,8 @@ export default function ParentProfileScreen() {
                             ? "딸"
                             : "아들"
                           : member.gender === "female"
-                          ? "엄마"
-                          : "아빠"}
+                            ? "엄마"
+                            : "아빠"}
                       </Text>
                     </View>
                   </View>
@@ -480,7 +483,9 @@ export default function ParentProfileScreen() {
               onPress={() => setShowVoiceRegistration(true)}
               activeOpacity={0.8}
             >
-              <Text style={styles.voiceButtonText}>음성 등록하기</Text>
+              <Text style={styles.voiceButtonText}>
+                {currentProfile?.voiceMediaId ? '음성 수정하기' : '음성 등록하기'}
+              </Text>
             </TouchableOpacity>
           </LinearGradient>
 

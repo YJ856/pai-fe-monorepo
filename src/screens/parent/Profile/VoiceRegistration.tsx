@@ -22,22 +22,34 @@ import {
   ScrollView,
   TouchableOpacity,
   Animated,
+  Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { ArrowLeft, Mic, Play, StopCircle } from 'lucide-react-native';
+import { Audio } from 'expo-av';
 import { spacing, typography, borderRadius, shadows } from '../../../design/tokens';
+import { createProfileVoice } from '../../../api/profiles';
+import { useProfileStore } from '../../../store/useProfileStore';
 
 interface VoiceRegistrationScreenProps {
   onBack: () => void;
+  hasExistingVoice?: boolean;
 }
 
 const SAMPLE_TEXT =
   '안녕! 오늘은 무엇이 궁금해? 나는 너의 질문에 답해주는 AI 친구야. 함께 재미있게 배워보자!';
 
-export default function VoiceRegistrationScreen({ onBack }: VoiceRegistrationScreenProps) {
+export default function VoiceRegistrationScreen({ onBack, hasExistingVoice = false }: VoiceRegistrationScreenProps) {
   const [isRecording, setIsRecording] = useState(false);
   const [hasRecorded, setHasRecorded] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [recordingUri, setRecordingUri] = useState<string | null>(null);
   const pulseAnim = useRef(new Animated.Value(1)).current;
+  const recordingRef = useRef<Audio.Recording | null>(null);
+  const soundRef = useRef<Audio.Sound | null>(null);
+  const currentProfile = useProfileStore((state) => state.currentProfile);
+  const setCurrentProfile = useProfileStore((state) => state.setCurrentProfile);
 
   useEffect(() => {
     if (isRecording) {
@@ -62,27 +74,171 @@ export default function VoiceRegistrationScreen({ onBack }: VoiceRegistrationScr
     }
   }, [isRecording]);
 
-  const toggleRecording = () => {
+  const toggleRecording = async () => {
     if (isRecording) {
       // Stop recording
-      setIsRecording(false);
-      setHasRecorded(true);
+      try {
+        if (recordingRef.current) {
+          await recordingRef.current.stopAndUnloadAsync();
+          const uri = recordingRef.current.getURI();
+          setRecordingUri(uri);
+          recordingRef.current = null;
+          setIsRecording(false);
+          setHasRecorded(true);
+          console.log('녹음 완료:', uri);
+        }
+      } catch (error) {
+        console.error('녹음 중지 오류:', error);
+        Alert.alert('오류', '녹음을 중지하는데 실패했습니다.');
+      }
     } else {
       // Start recording
-      setIsRecording(true);
+      try {
+        console.log('녹음 권한 요청 중...');
+        const { status } = await Audio.requestPermissionsAsync();
+
+        if (status !== 'granted') {
+          Alert.alert('권한 필요', '음성 녹음 권한이 필요합니다.');
+          return;
+        }
+
+        console.log('오디오 모드 설정 중...');
+        await Audio.setAudioModeAsync({
+          allowsRecordingIOS: true,
+          playsInSilentModeIOS: true,
+        });
+
+        console.log('녹음 시작...');
+        const { recording } = await Audio.Recording.createAsync({
+          isMeteringEnabled: true,
+          android: {
+            extension: '.wav',
+            outputFormat: Audio.AndroidOutputFormat.DEFAULT,
+            audioEncoder: Audio.AndroidAudioEncoder.DEFAULT,
+            sampleRate: 44100,
+            numberOfChannels: 2,
+            bitRate: 128000,
+          },
+          ios: {
+            extension: '.wav',
+            outputFormat: Audio.IOSOutputFormat.LINEARPCM,
+            audioQuality: Audio.IOSAudioQuality.HIGH,
+            sampleRate: 44100,
+            numberOfChannels: 2,
+            bitRate: 128000,
+            linearPCMBitDepth: 16,
+            linearPCMIsBigEndian: false,
+            linearPCMIsFloat: false,
+          },
+          web: {
+            mimeType: 'audio/wav',
+            bitsPerSecond: 128000,
+          },
+        });
+
+        recordingRef.current = recording;
+        setIsRecording(true);
+      } catch (error) {
+        console.error('녹음 시작 오류:', error);
+        Alert.alert('오류', '녹음을 시작하는데 실패했습니다.');
+      }
     }
   };
 
-  const playRecording = () => {
-    // In real app, would play the recorded audio
-    console.log('Playing recorded audio');
+  const playRecording = async () => {
+    try {
+      if (!recordingUri) {
+        Alert.alert('오류', '재생할 녹음 파일이 없습니다.');
+        return;
+      }
+
+      console.log('녹음 재생 중:', recordingUri);
+
+      // 기존 사운드가 있으면 언로드
+      if (soundRef.current) {
+        await soundRef.current.unloadAsync();
+      }
+
+      const { sound } = await Audio.Sound.createAsync(
+        { uri: recordingUri },
+        { shouldPlay: true }
+      );
+
+      soundRef.current = sound;
+
+      sound.setOnPlaybackStatusUpdate((status) => {
+        if (status.isLoaded && status.didJustFinish) {
+          sound.unloadAsync();
+        }
+      });
+    } catch (error) {
+      console.error('재생 오류:', error);
+      Alert.alert('오류', '녹음을 재생하는데 실패했습니다.');
+    }
   };
 
-  const saveRecording = () => {
-    // In real app, would save the recorded audio
-    console.log('Saving recorded audio');
-    onBack();
+  const saveRecording = async () => {
+    if (!recordingUri) {
+      Alert.alert('오류', '저장할 녹음 파일이 없습니다.');
+      return;
+    }
+
+    if (!currentProfile) {
+      Alert.alert('오류', '프로필 정보를 찾을 수 없습니다.');
+      return;
+    }
+
+    setIsSaving(true);
+
+    try {
+      console.log('음성 파일 업로드 시작:', recordingUri);
+
+      // FormData 생성
+      const formData = new FormData();
+      formData.append('name', `${currentProfile.name} Voice`);
+      formData.append('files', {
+        uri: recordingUri,
+        type: 'audio/wav',
+        name: 'voice.wav',
+      } as any);
+
+      // 음성 등록 API 호출 (PATCH /api/profiles/:profileId/voice)
+      const result = await createProfileVoice(
+        String(currentProfile.profileId),
+        formData
+      );
+      console.log('음성 등록 결과:', result);
+
+      const voiceMediaId = result.voiceId;
+
+      // Zustand store 업데이트
+      setCurrentProfile({
+        ...currentProfile,
+        voiceMediaId: voiceMediaId,
+      });
+
+      Alert.alert('성공', '음성이 저장되었습니다.', [
+        { text: '확인', onPress: onBack },
+      ]);
+    } catch (error: any) {
+      console.error('음성 저장 오류:', error);
+      Alert.alert('오류', '음성 저장에 실패했습니다.');
+    } finally {
+      setIsSaving(false);
+    }
   };
+
+  // 컴포넌트 언마운트 시 정리
+  useEffect(() => {
+    return () => {
+      if (recordingRef.current) {
+        recordingRef.current.stopAndUnloadAsync();
+      }
+      if (soundRef.current) {
+        soundRef.current.unloadAsync();
+      }
+    };
+  }, []);
 
   return (
     <View style={styles.container}>
@@ -99,7 +255,7 @@ export default function VoiceRegistrationScreen({ onBack }: VoiceRegistrationScr
 
         {/* Header */}
         <View style={styles.header}>
-          <Text style={styles.headerTitle}>AI 음성 등록</Text>
+          <Text style={styles.headerTitle}>AI 음성 {hasExistingVoice ? '수정' : '등록'}</Text>
           <Text style={styles.headerSubtitle}>내 목소리로 AI가 아이에게 답변해요</Text>
         </View>
 
@@ -172,14 +328,25 @@ export default function VoiceRegistrationScreen({ onBack }: VoiceRegistrationScr
               <Text style={styles.playButtonText}>녹음된 음성 재생</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.saveButton} onPress={saveRecording} activeOpacity={0.7}>
+            <TouchableOpacity
+              style={styles.saveButton}
+              onPress={saveRecording}
+              activeOpacity={0.7}
+              disabled={isSaving}
+            >
               <LinearGradient
                 colors={['#5B9BD5', '#4A8BC2']}
                 style={styles.saveButtonGradient}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 0 }}
               >
-                <Text style={styles.saveButtonText}>음성 저장하기</Text>
+                {isSaving ? (
+                  <ActivityIndicator size="small" color="#FFFFFF" />
+                ) : (
+                  <Text style={styles.saveButtonText}>
+                    {hasExistingVoice ? '음성 수정하기' : '음성 저장하기'}
+                  </Text>
+                )}
               </LinearGradient>
             </TouchableOpacity>
           </View>

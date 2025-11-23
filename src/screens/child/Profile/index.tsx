@@ -123,7 +123,7 @@ export default function ChildProfileScreen() {
           } as any);
 
           const uploadResult = await uploadMedia(formData);
-          newAvatarMediaId = BigInt(uploadResult.mediaId);
+          newAvatarMediaId = String(uploadResult.mediaId);
         } catch (uploadError: any) {
           console.error("이미지 업로드 오류:", uploadError);
           Alert.alert(
