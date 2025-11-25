@@ -47,7 +47,7 @@ export default function InterestsTab({ childId }: InterestsTabProps) {
   const interests =
     interestsData?.interests?.map((item: any) => ({
       topic: item.keyword,
-      count: Math.round(item.rawScore * 10), // rawScore를 적절히 변환
+      count: Math.round(item.rawScore), // rawScore를 그대로 사용
       icon: "💡", // 기본 아이콘
     })) || [];
 
