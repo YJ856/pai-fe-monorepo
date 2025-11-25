@@ -43,6 +43,7 @@ interface Message {
   sender: 'child' | 'ai';
   text: string;
   imageUrl?: string;
+  imageAspectRatio?: number;
   timestamp: Date;
 }
 
@@ -72,6 +73,7 @@ export default function ChildChatScreen() {
   const [messages, setMessages] = useState<Message[]>(MOCK_MESSAGES);
   const [inputText, setInputText] = useState('');
   const [currentImage, setCurrentImage] = useState<string | null>(null);
+  const [currentImageAspectRatio, setCurrentImageAspectRatio] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const scrollViewRef = useRef<ScrollView>(null);
 
@@ -97,11 +99,18 @@ export default function ChildChatScreen() {
     });
 
     if (!result.canceled) {
-      setCurrentImage(result.assets[0].uri);
+      const imageUri = result.assets[0].uri;
+      const width = result.assets[0].width;
+      const height = result.assets[0].height;
+      const aspectRatio = width && height ? width / height : 1;
+
+      console.log('Selected image URI:', imageUri, 'Size:', width, 'x', height, 'AspectRatio:', aspectRatio);
+      setCurrentImage(imageUri);
+      setCurrentImageAspectRatio(aspectRatio);
     }
   };
 
-  const handleSend = () => {
+  const handleSend = async () => {
     if (!inputText.trim()) return;
 
     const questionMessage: Message = {
@@ -109,12 +118,15 @@ export default function ChildChatScreen() {
       sender: 'child',
       text: inputText,
       imageUrl: currentImage || undefined,
+      imageAspectRatio: currentImageAspectRatio || undefined,
       timestamp: new Date(),
     };
 
+    console.log('Sending message with image:', questionMessage.imageUrl, 'aspectRatio:', currentImageAspectRatio);
     setMessages((prev) => [...prev, questionMessage]);
     setInputText('');
     setCurrentImage(null);
+    setCurrentImageAspectRatio(null);
     setIsLoading(true);
 
     // Simulate AI response
@@ -179,27 +191,46 @@ export default function ChildChatScreen() {
                   ]}
                 >
                   {message.sender === 'child' ? (
-                    <LinearGradient
-                      colors={['#FF6B9D', '#FFA06B']}
-                      start={{ x: 0, y: 0 }}
-                      end={{ x: 1, y: 0 }}
-                      style={[styles.messageBubble, styles.childBubble]}
-                    >
+                    <>
                       {message.imageUrl && (
-                        <Image source={{ uri: message.imageUrl }} style={styles.messageImage} />
+                        <LinearGradient
+                          colors={['#FF6B9D', '#FFA06B']}
+                          start={{ x: 0, y: 0 }}
+                          end={{ x: 1, y: 0 }}
+                          style={styles.imageOnlyBubble}
+                        >
+                          <Image
+                            source={{ uri: message.imageUrl }}
+                            style={[
+                              styles.messageImage,
+                              message.imageAspectRatio ? { aspectRatio: message.imageAspectRatio } : null
+                            ]}
+                          />
+                        </LinearGradient>
                       )}
-                      <Text style={[styles.messageText, styles.childMessageText]}>
-                        {message.text}
-                      </Text>
-                      <Text style={[styles.messageTime, styles.childMessageTime]}>
-                        {message.timestamp.toLocaleTimeString('ko-KR', {
-                          hour: '2-digit',
-                          minute: '2-digit',
-                        })}
-                      </Text>
-                    </LinearGradient>
+                      <LinearGradient
+                        colors={['#FF6B9D', '#FFA06B']}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 0 }}
+                        style={[styles.messageBubble, styles.childBubble]}
+                      >
+                        <Text style={[styles.messageText, styles.childMessageText]}>
+                          {message.text}
+                        </Text>
+                        <Text style={[styles.messageTime, styles.childMessageTime]}>
+                          {message.timestamp.toLocaleTimeString('ko-KR', {
+                            hour: '2-digit',
+                            minute: '2-digit',
+                          })}
+                        </Text>
+                      </LinearGradient>
+                    </>
                   ) : (
-                    <View style={[styles.messageBubble, styles.aiBubble]}>
+                    <View style={[
+                      styles.messageBubble,
+                      styles.aiBubble,
+                      message.imageUrl && styles.messageBubbleWithImage
+                    ]}>
                       <View style={styles.aiHeader}>
                         <Image source={mascotImage} style={styles.aiAvatar} />
                         <Text style={styles.aiName}>새싹</Text>
@@ -375,6 +406,16 @@ const styles = StyleSheet.create({
     padding: 16,
     ...shadows.md,
   },
+  messageBubbleWithImage: {
+    maxWidth: '85%',
+  },
+  imageOnlyBubble: {
+    borderRadius: 16,
+    padding: 4,
+    marginBottom: 4,
+    alignSelf: 'flex-end',
+    ...shadows.md,
+  },
   childBubble: {
     // backgroundColor handled by LinearGradient
   },
@@ -396,10 +437,9 @@ const styles = StyleSheet.create({
     color: '#6B7280',
   },
   messageImage: {
-    width: '100%',
-    height: 200,
+    width: 200,
     borderRadius: 12,
-    marginBottom: 8,
+    resizeMode: 'cover',
   },
   messageText: {
     fontSize: 16,
@@ -442,9 +482,10 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-start',
   },
   imagePreview: {
-    width: 80,
-    height: 80,
+    width: 150,
+    height: 150,
     borderRadius: 12,
+    resizeMode: 'contain',
   },
   removeImageButton: {
     position: 'absolute',

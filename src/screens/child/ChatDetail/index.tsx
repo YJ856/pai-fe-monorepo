@@ -24,6 +24,7 @@ import {
   Image,
   Modal,
   Animated,
+  Keyboard,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -51,6 +52,7 @@ interface Message {
   sender: 'child' | 'ai';
   text: string;
   imageUrl?: string;
+  imageAspectRatio?: number;
   hasAudio?: boolean;
   timestamp: Date;
 }
@@ -60,9 +62,10 @@ type ChatDetailNavigationProp = NativeStackNavigationProp<ChildStackParamList, '
 export default function ChildChatDetailScreen() {
   const navigation = useNavigation<ChatDetailNavigationProp>();
   const [messages, setMessages] = useState<Message[]>([]);
-  const [currentQuestion, setCurrentQuestion] = useState('');
+  const [currentQuestionMessage, setCurrentQuestionMessage] = useState<Message | null>(null);
   const [currentAnswer, setCurrentAnswer] = useState<Message | null>(null);
   const [currentImage, setCurrentImage] = useState<string | null>(null);
+  const [currentImageAspectRatio, setCurrentImageAspectRatio] = useState<number | null>(null);
   const [inputText, setInputText] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [showExitDialog, setShowExitDialog] = useState(false);
@@ -106,22 +109,32 @@ export default function ChildChatDetailScreen() {
     });
 
     if (!result.canceled) {
-      setCurrentImage(result.assets[0].uri);
+      const imageUri = result.assets[0].uri;
+      const width = result.assets[0].width;
+      const height = result.assets[0].height;
+      const aspectRatio = width && height ? width / height : 1;
+
+      setCurrentImage(imageUri);
+      setCurrentImageAspectRatio(aspectRatio);
     }
   };
 
   const handleSend = () => {
     if (!inputText.trim()) return;
 
+    // 키보드 내리기
+    Keyboard.dismiss();
+
     const questionMessage: Message = {
       id: Date.now().toString(),
       sender: 'child',
       text: inputText,
       imageUrl: currentImage || undefined,
+      imageAspectRatio: currentImageAspectRatio || undefined,
       timestamp: new Date(),
     };
 
-    setCurrentQuestion(inputText);
+    setCurrentQuestionMessage(questionMessage); // 질문 메시지 전체 저장
     setCurrentAnswer(null);
     setIsLoading(true);
 
@@ -142,18 +155,20 @@ export default function ChildChatDetailScreen() {
 
     setInputText('');
     setCurrentImage(null);
+    setCurrentImageAspectRatio(null);
   };
 
   const handleExit = () => {
-    if (currentQuestion || currentAnswer) {
+    if (currentQuestionMessage || currentAnswer) {
       setShowExitDialog(true);
     }
   };
 
   const confirmExit = () => {
-    setCurrentQuestion('');
+    setCurrentQuestionMessage(null);
     setCurrentAnswer(null);
     setCurrentImage(null);
+    setCurrentImageAspectRatio(null);
     setShowExitDialog(false);
     // TODO: Navigate back
   };
@@ -166,13 +181,17 @@ export default function ChildChatDetailScreen() {
   const getProgress = () => {
     if (isLoading && !currentAnswer) return 0.5;
     if (currentAnswer) return 1;
-    if (currentQuestion) return 0.5;
+    if (currentQuestionMessage) return 0.5;
     return 0;
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <View style={styles.container}>
+    <SafeAreaView style={styles.safeArea} edges={['top']}>
+      <KeyboardAvoidingView
+        style={styles.container}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={0}
+      >
         <LinearGradient
           colors={['#FFE5E0', '#FFF0ED']}
           style={styles.background}
@@ -201,17 +220,19 @@ export default function ChildChatDetailScreen() {
 
         {/* Main Content */}
         <View style={styles.mainContent}>
-          {/* Mascot */}
-          <Animated.View
-            style={[
-              styles.mascotContainer,
-              { transform: [{ translateY: bounceAnim }] },
-            ]}
-          >
-            <Image source={mascotImage} style={styles.mascot} />
-          </Animated.View>
+          {!currentQuestionMessage && !currentAnswer && !isLoading && (
+            /* Mascot - Only show in empty state */
+            <Animated.View
+              style={[
+                styles.mascotContainer,
+                { transform: [{ translateY: bounceAnim }] },
+              ]}
+            >
+              <Image source={mascotImage} style={styles.mascot} />
+            </Animated.View>
+          )}
 
-          {!currentQuestion && !currentAnswer && !isLoading ? (
+          {!currentQuestionMessage && !currentAnswer && !isLoading ? (
             /* Empty State */
             <View style={styles.emptyState}>
               <Text style={styles.emptyTitle}>궁금한 걸 물어봐!</Text>
@@ -233,7 +254,7 @@ export default function ChildChatDetailScreen() {
               </View>
 
               {/* Question Section */}
-              {currentQuestion && (
+              {currentQuestionMessage && (
                 <View style={styles.section}>
                   <View style={styles.questionHeader}>
                     <View style={styles.badge}>
@@ -241,28 +262,34 @@ export default function ChildChatDetailScreen() {
                     </View>
                   </View>
 
-                  {currentImage && (
+                  {currentQuestionMessage.imageUrl && (
                     <TouchableOpacity
                       onPress={() => {
-                        setViewerImage(currentImage);
+                        setViewerImage(currentQuestionMessage.imageUrl!);
                         setShowImageViewer(true);
                       }}
                     >
-                      <Image source={{ uri: currentImage }} style={styles.questionImage} />
+                      <Image
+                        source={{ uri: currentQuestionMessage.imageUrl }}
+                        style={[
+                          styles.questionImage,
+                          currentQuestionMessage.imageAspectRatio ? { aspectRatio: currentQuestionMessage.imageAspectRatio } : null
+                        ]}
+                      />
                     </TouchableOpacity>
                   )}
 
-                  <Text style={styles.questionText}>{currentQuestion}</Text>
+                  <Text style={styles.questionText}>{currentQuestionMessage.text}</Text>
                 </View>
               )}
 
               {/* Divider */}
-              {(currentAnswer || (isLoading && currentQuestion)) && (
+              {(currentAnswer || (isLoading && currentQuestionMessage)) && (
                 <View style={styles.divider} />
               )}
 
               {/* Answer Section */}
-              {(currentAnswer || (isLoading && currentQuestion)) && (
+              {(currentAnswer || (isLoading && currentQuestionMessage)) && (
                 <View style={styles.section}>
                   <View style={styles.answerHeader}>
                     <View style={[styles.badge, styles.badgeAnswer]}>
@@ -410,7 +437,7 @@ export default function ChildChatDetailScreen() {
           </View>
         </Modal>
       </LinearGradient>
-    </View>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
@@ -463,8 +490,8 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 24,
-    paddingBottom: 120,
+    paddingHorizontal: 16,
+    paddingBottom: 100,
   },
   mascotContainer: {
     marginBottom: 16,
@@ -489,10 +516,10 @@ const styles = StyleSheet.create({
   },
   qaCard: {
     width: '100%',
-    maxWidth: 400,
+    maxWidth: 370,
     backgroundColor: '#fff',
     borderRadius: 24,
-    maxHeight: '90%',
+    maxHeight: '95%',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 10 },
     shadowOpacity: 0.3,
@@ -500,7 +527,7 @@ const styles = StyleSheet.create({
     elevation: 10,
   },
   qaCardContent: {
-    padding: 32,
+    padding: 24,
   },
   progressContainer: {
     marginBottom: 16,
@@ -544,9 +571,10 @@ const styles = StyleSheet.create({
   },
   questionImage: {
     width: '100%',
-    aspectRatio: 16 / 9,
+    maxHeight: 200,
     borderRadius: 16,
     marginBottom: 16,
+    resizeMode: 'cover',
   },
   questionText: {
     fontSize: 20,
@@ -595,16 +623,20 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingBottom: 16,
     paddingTop: 12,
+    zIndex: 100,
+    elevation: 100,
   },
   attachedImagePreview: {
     position: 'relative',
     marginBottom: 12,
     alignSelf: 'flex-start',
+    zIndex: 10,
   },
   attachedImage: {
-    width: 80,
-    height: 80,
+    width: 150,
+    height: 150,
     borderRadius: 12,
+    resizeMode: 'contain',
   },
   removeImageButton: {
     position: 'absolute',
