@@ -190,7 +190,7 @@ export default function ChildQuizScreen() {
   );
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView style={styles.safeArea} edges={['top']}>
       <LinearGradient colors={['#FFE5E0', '#FFF0ED']} style={styles.container}>
       {/* Tabs */}
       <View style={styles.tabsContainer}>

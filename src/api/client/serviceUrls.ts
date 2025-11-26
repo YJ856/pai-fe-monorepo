@@ -35,6 +35,11 @@ export const SERVICE_URLS = {
   // pai-service-conversation: 대화
   CONVERSATION_SERVICE:
     process.env.EXPO_PUBLIC_CONVERSATION_SERVICE_URL || "http://10.0.2.2:3005",
+
+  // pai-service-ai: vqa (대화 답변 받기)
+  AI_SERVICE:
+    process.env.EXPO_PUBLIC_AI_SERVICE_URL || "http://10.0.2.2:8080",
+
 } as const;
 
 // 개발 환경에서 URL 확인용
