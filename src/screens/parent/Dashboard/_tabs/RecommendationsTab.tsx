@@ -34,6 +34,7 @@ import {
 import { Card } from "../../../../design/components/Card";
 import { useRecommendations } from "../hooks/useRecommendations";
 import { useProfileStore } from "../../../../store/useProfileStore";
+import PlaceDetailModal from "../components/PlaceDetailModal";
 
 interface Recommendation {
   id: string;
@@ -62,6 +63,8 @@ export default function RecommendationsTab({
   childId,
 }: RecommendationsTabProps) {
   const [selectedCategory, setSelectedCategory] = useState("관광지");
+  const [modalVisible, setModalVisible] = useState(false);
+  const [selectedPlace, setSelectedPlace] = useState("");
   const { childProfiles } = useProfileStore();
 
   // 현재 선택된 자녀 찾기
@@ -131,10 +134,15 @@ export default function RecommendationsTab({
     </View>
   );
 
+  const handleRecommendationClick = (title: string) => {
+    setSelectedPlace(title);
+    setModalVisible(true);
+  };
+
   const renderRecommendationCard = ({ item }: { item: Recommendation }) => (
     <TouchableOpacity
       style={styles.recommendationCard}
-      onPress={() => console.log("Recommendation clicked:", item.id)}
+      onPress={() => handleRecommendationClick(item.title)}
       activeOpacity={0.8}
     >
       {item.imageUrl && (
@@ -187,34 +195,42 @@ export default function RecommendationsTab({
   }
 
   return (
-    <Card style={styles.contentCard}>
-      <View style={styles.cardPadding}>
-        {renderHeader()}
-        {renderCategoryFilter()}
+    <>
+      <Card style={styles.contentCard}>
+        <View style={styles.cardPadding}>
+          {renderHeader()}
+          {renderCategoryFilter()}
 
-        <View style={styles.listContent}>
-          {filteredRecommendations.length === 0 ? (
-            <View style={styles.emptyContainer}>
-              <Text style={styles.emptyText}>추천 콘텐츠가 없습니다</Text>
-            </View>
-          ) : (
-            <>
-              {filteredRecommendations.map((item) => (
-                <View key={item.id}>
-                  {renderRecommendationCard({ item })}
-                </View>
-              ))}
+          <View style={styles.listContent}>
+            {filteredRecommendations.length === 0 ? (
+              <View style={styles.emptyContainer}>
+                <Text style={styles.emptyText}>추천 콘텐츠가 없습니다</Text>
+              </View>
+            ) : (
+              <>
+                {filteredRecommendations.map((item) => (
+                  <View key={item.id}>
+                    {renderRecommendationCard({ item })}
+                  </View>
+                ))}
 
-              {isFetchingNextPage && (
-                <View style={styles.loadingFooter}>
-                  <ActivityIndicator size="small" color={colors.parent.from} />
-                </View>
-              )}
-            </>
-          )}
+                {isFetchingNextPage && (
+                  <View style={styles.loadingFooter}>
+                    <ActivityIndicator size="small" color={colors.parent.from} />
+                  </View>
+                )}
+              </>
+            )}
+          </View>
         </View>
-      </View>
-    </Card>
+      </Card>
+
+      <PlaceDetailModal
+        visible={modalVisible}
+        placeName={selectedPlace}
+        onClose={() => setModalVisible(false)}
+      />
+    </>
   );
 }
 

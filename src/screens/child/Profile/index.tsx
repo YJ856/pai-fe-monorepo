@@ -24,10 +24,11 @@ import {
   Image,
   Modal,
   TextInput,
+  ScrollView,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
-import { LogOut, Users, Edit, X, Camera } from "lucide-react-native";
+import { LogOut, Users, Edit, X, Camera, Volume2 } from "lucide-react-native";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as ImagePicker from "expo-image-picker";
@@ -49,6 +50,16 @@ export default function ChildProfileScreen() {
   const [isLoading, setIsLoading] = useState(false);
   const [editedName, setEditedName] = useState("");
   const [avatarUri, setAvatarUri] = useState<string | undefined>(undefined);
+
+  // 부모 프로필 중 음성이 있는 프로필만 필터링
+  const parentProfilesWithVoice = profiles.filter(
+    (p) => p.profileType === "parent" && p.voiceMediaId
+  );
+
+  // 현재 선택된 음성의 부모 프로필 찾기
+  const selectedParentVoice = currentProfile?.voiceMediaId
+    ? profiles.find((p) => p.voiceMediaId === currentProfile.voiceMediaId)
+    : null;
 
   // 화면 포커스 시 프로필 정보 로드
   useFocusEffect(
@@ -80,6 +91,29 @@ export default function ChildProfileScreen() {
   const handleEditProfile = () => {
     setEditedName(currentProfile?.name || "");
     setShowEditModal(true);
+  };
+
+  const handleChangeVoice = async (voiceMediaId: string | undefined) => {
+    if (!currentProfile) return;
+
+    setIsLoading(true);
+    try {
+      await updateProfile(String(currentProfile.profileId), {
+        voiceMediaId: voiceMediaId,
+      });
+
+      useProfileStore.getState().setCurrentProfile({
+        ...currentProfile,
+        voiceMediaId: voiceMediaId,
+      });
+
+      Alert.alert("성공", "부모님 목소리가 변경되었습니다.");
+    } catch (error: any) {
+      console.error("음성 변경 오류:", error);
+      Alert.alert("오류", `음성 변경에 실패했습니다.\n${error.message}`);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handlePickImage = async () => {
@@ -254,6 +288,80 @@ export default function ChildProfileScreen() {
                 </Text>
               </View>
             </View>
+          </View>
+
+          {/* Parent Voice Selection Card */}
+          <View style={styles.card}>
+            <View style={styles.voiceCardHeader}>
+              <Volume2 size={28} color="#10B981" />
+              <Text style={styles.cardTitle}>들려줄 부모님 목소리</Text>
+            </View>
+
+            {parentProfilesWithVoice.length === 0 ? (
+              <View style={styles.noVoiceContainer}>
+                <Text style={styles.noVoiceText}>
+                  부모 프로필에서 먼저 음성을 등록해주세요
+                </Text>
+              </View>
+            ) : (
+              <View style={styles.voiceCardList}>
+                {/* 선택 안 함 옵션 */}
+                <TouchableOpacity
+                  style={[
+                    styles.voiceCardOption,
+                    !currentProfile?.voiceMediaId && styles.voiceCardOptionSelected,
+                  ]}
+                  onPress={() => handleChangeVoice(undefined)}
+                  activeOpacity={0.7}
+                  disabled={isLoading}
+                >
+                  <View style={styles.voiceCardOptionContent}>
+                    <View style={styles.voiceCardEmptyIcon}>
+                      <X size={24} color="#6B7280" />
+                    </View>
+                    <View style={styles.voiceCardInfo}>
+                      <Text style={styles.voiceCardName}>선택 안 함</Text>
+                      <Text style={styles.voiceCardDetail}>
+                        기본 목소리로 들려드려요
+                      </Text>
+                    </View>
+                  </View>
+                  {!currentProfile?.voiceMediaId && (
+                    <View style={styles.selectedIndicator} />
+                  )}
+                </TouchableOpacity>
+
+                {/* 부모 목소리 옵션들 */}
+                {parentProfilesWithVoice.map((parent) => (
+                  <TouchableOpacity
+                    key={parent.profileId}
+                    style={[
+                      styles.voiceCardOption,
+                      currentProfile?.voiceMediaId === parent.voiceMediaId &&
+                        styles.voiceCardOptionSelected,
+                    ]}
+                    onPress={() => handleChangeVoice(parent.voiceMediaId!)}
+                    activeOpacity={0.7}
+                    disabled={isLoading}
+                  >
+                    <View style={styles.voiceCardOptionContent}>
+                      <Text style={styles.voiceCardEmoji}>
+                        {parent.gender === "male" ? "👨" : "👩"}
+                      </Text>
+                      <View style={styles.voiceCardInfo}>
+                        <Text style={styles.voiceCardName}>{parent.name}</Text>
+                        <Text style={styles.voiceCardDetail}>
+                          {parent.gender === "male" ? "아빠" : "엄마"}의 목소리
+                        </Text>
+                      </View>
+                    </View>
+                    {currentProfile?.voiceMediaId === parent.voiceMediaId && (
+                      <View style={styles.selectedIndicator} />
+                    )}
+                  </TouchableOpacity>
+                ))}
+              </View>
+            )}
           </View>
 
           {/* Family Members Card */}
@@ -458,6 +566,12 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
   },
   familyCardHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.md,
+    marginBottom: spacing.md,
+  },
+  voiceCardHeader: {
     flexDirection: "row",
     alignItems: "center",
     gap: spacing.md,
@@ -668,5 +782,73 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "600",
     color: "#FFFFFF",
+  },
+  // Voice Selection Card Styles
+  noVoiceContainer: {
+    padding: spacing.md,
+    backgroundColor: "#FEF3C7",
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#FDE68A",
+  },
+  noVoiceText: {
+    fontSize: 14,
+    color: "#92400E",
+    textAlign: "center",
+  },
+  voiceCardList: {
+    gap: spacing.sm,
+  },
+  voiceCardOption: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    padding: spacing.md,
+    backgroundColor: "#FFFFFF",
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: "#E5E7EB",
+  },
+  voiceCardOptionSelected: {
+    borderColor: "#10B981",
+    backgroundColor: "#D1FAE5",
+  },
+  voiceCardOptionContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.md,
+    flex: 1,
+  },
+  voiceCardEmptyIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: "#F3F4F6",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  voiceCardEmoji: {
+    fontSize: 48,
+  },
+  voiceCardInfo: {
+    flex: 1,
+  },
+  voiceCardName: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#111827",
+  },
+  voiceCardDetail: {
+    fontSize: 14,
+    color: "#6B7280",
+    marginTop: 2,
+  },
+  selectedIndicator: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: "#10B981",
+    alignItems: "center",
+    justifyContent: "center",
   },
 });

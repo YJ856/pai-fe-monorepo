@@ -17,7 +17,7 @@
  * - GET /api/profiles (api/profiles.ts)
  */
 
-import React from "react";
+import React, { useEffect } from "react";
 import {
   View,
   Text,
@@ -29,15 +29,11 @@ import {
   Image,
   ActivityIndicator,
   RefreshControl,
-  Dimensions,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect } from "@react-navigation/native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Card, CardContent } from "../../../design/components/Card";
-import { Input } from "../../../design/components/Input";
-import { Label } from "../../../design/components/Label";
-import { Button } from "../../../design/components/Button";
 import { Avatar } from "../../../design/components/Avatar";
 import {
   colors,
@@ -67,6 +63,13 @@ export default function ProfileSelectScreen() {
     handleProfileClick,
     handlePinSubmit,
   } = useProfileSelection();
+
+  // PIN이 4자리가 되면 자동 제출
+  useEffect(() => {
+    if (pin.length === 4 && showPinModal) {
+      setTimeout(() => handlePinSubmit(), 200);
+    }
+  }, [pin, showPinModal]);
 
   // 프로필 액션 Hook
   const { handleCreateProfile, handleLogout } = useProfileActions();
@@ -236,59 +239,69 @@ export default function ProfileSelectScreen() {
           {/* PIN Modal */}
           <Modal
             visible={showPinModal}
-            transparent
-            animationType="fade"
+            transparent={false}
+            animationType="slide"
             onRequestClose={() => setShowPinModal(false)}
           >
-            <View style={styles.modalOverlay}>
-              <Card style={styles.modalCard}>
-                <CardContent style={styles.modalContent}>
-                  {/* Modal Header */}
-                  <View style={styles.modalHeader}>
-                    <Text style={styles.lockIconLarge}>🔒</Text>
-                    <Text style={styles.modalTitle}>PIN 입력</Text>
-                    <Text style={styles.modalSubtitle}>
-                      {selectedProfile?.name}님의 PIN을 입력하세요
-                    </Text>
-                  </View>
+            <View style={styles.pinContainer}>
+              <Text style={styles.pinTitle}>부모 프로필 인증</Text>
+              <Text style={styles.pinSubtitle}>PIN 입력</Text>
+              <Text style={styles.pinDescription}>
+                {selectedProfile?.name} 프로필에 접근하려면 PIN을 입력하세요
+              </Text>
 
-                  {/* PIN Input */}
-                  <View style={styles.inputGroup}>
-                    <Label>PIN</Label>
-                    <Input
-                      placeholder="4자리 PIN"
-                      value={pin}
-                      onChangeText={setPin}
-                      keyboardType="number-pad"
-                      secureTextEntry
-                      maxLength={4}
-                      style={styles.pinInput}
-                    />
-                    {pinError && (
-                      <Text style={styles.errorText}>{pinError}</Text>
-                    )}
+              {/* PIN 표시칸 */}
+              <View style={styles.pinRow}>
+                {[0, 1, 2, 3].map((i) => (
+                  <View key={i} style={styles.pinBox}>
+                    <Text style={styles.pinDot}>{pin[i] ? '●' : ''}</Text>
                   </View>
+                ))}
+              </View>
 
-                  {/* Modal Buttons */}
-                  <View style={styles.modalButtons}>
-                    <Button
-                      variant="outline"
-                      onPress={() => setShowPinModal(false)}
-                      style={styles.modalButton}
-                    >
-                      취소
-                    </Button>
-                    <Button
-                      variant="gradient"
-                      gradient={colors.auth}
-                      onPress={handlePinSubmit}
-                      style={styles.modalButton}
-                    >
-                      확인
-                    </Button>
+              {pinError ? <Text style={styles.pinError}>{pinError}</Text> : null}
+
+              {/* 숫자 키패드 */}
+              <View style={styles.keypad}>
+                {[
+                  ['1', '2', '3'],
+                  ['4', '5', '6'],
+                  ['7', '8', '9'],
+                  ['', '0', '⌫'],
+                ].map((row, rowIndex) => (
+                  <View key={rowIndex} style={styles.keypadRow}>
+                    {row.map((key) => {
+                      if (key === '') {
+                        return <View key="empty" style={styles.keypadKey} />;
+                      }
+                      if (key === '⌫') {
+                        return (
+                          <TouchableOpacity
+                            key="del"
+                            style={styles.keypadKey}
+                            onPress={() => setPin((prev) => prev.slice(0, -1))}
+                          >
+                            <Text style={styles.keypadKeyText}>⌫</Text>
+                          </TouchableOpacity>
+                        );
+                      }
+                      return (
+                        <TouchableOpacity
+                          key={key}
+                          style={styles.keypadKey}
+                          onPress={() => {
+                            if (pin.length < 4) {
+                              setPin(pin + key);
+                            }
+                          }}
+                        >
+                          <Text style={styles.keypadKeyText}>{key}</Text>
+                        </TouchableOpacity>
+                      );
+                    })}
                   </View>
-                </CardContent>
-              </Card>
+                ))}
+              </View>
             </View>
           </Modal>
         </LinearGradient>
@@ -576,5 +589,109 @@ const styles = StyleSheet.create({
 
   modalButton: {
     flex: 1,
+  },
+
+  // PIN Screen styles (full screen)
+  pinContainer: {
+    flex: 1,
+    backgroundColor: '#fff',
+    alignItems: 'center',
+    padding: 24,
+  },
+
+  pinTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    marginTop: 40,
+  },
+
+  pinSubtitle: {
+    fontSize: 18,
+    marginTop: 20,
+  },
+
+  pinDescription: {
+    fontSize: 14,
+    color: '#555',
+    marginTop: 10,
+  },
+
+  pinRow: {
+    flexDirection: 'row',
+    marginVertical: 30,
+  },
+
+  pinBox: {
+    width: 40,
+    height: 40,
+    marginHorizontal: 8,
+    borderWidth: 1,
+    borderColor: '#ccc',
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  pinDot: {
+    fontSize: 20,
+  },
+
+  pinError: {
+    color: 'red',
+    marginBottom: 10,
+  },
+
+  keypad: {
+    marginTop: 20,
+  },
+
+  keypadRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+  },
+
+  keypadKey: {
+    width: 70,
+    height: 70,
+    margin: 10,
+    borderRadius: 35,
+    backgroundColor: '#f3f4f6',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  keypadKeyText: {
+    fontSize: 22,
+    fontWeight: 'bold',
+  },
+
+  submitButton: {
+    width: '80%',
+    paddingVertical: 16,
+    backgroundColor: '#3b82f6',
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 32,
+  },
+
+  submitButtonDisabled: {
+    backgroundColor: '#cbd5e1',
+  },
+
+  submitButtonText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#fff',
+  },
+
+  cancelButton: {
+    marginTop: 16,
+    paddingVertical: 12,
+  },
+
+  cancelButtonText: {
+    fontSize: 14,
+    color: '#64748b',
   },
 });
