@@ -5,15 +5,18 @@
  * - 메인 대화 화면: ChatDetail (단일 대화 포커스 모드)
  */
 
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { MessageCircle, FileQuestion, User } from 'lucide-react-native';
+import { useIsFocused } from '@react-navigation/native';
 import ChatScreen from '../../screens/child/Chat';
 import ChatDetailScreen from '../../screens/child/ChatDetail';
 import QuizScreen from '../../screens/child/Quiz';
 import ProfileScreen from '../../screens/child/Profile';
 import { colors } from '../../design/tokens';
+import { ChatProvider, useChatContext } from '../../contexts/ChatContext';
+import { endConversation } from '../../api/conversations';
 
 export type ChildTabParamList = {
   Chat: undefined;
@@ -29,13 +32,60 @@ export type ChildStackParamList = {
 const Tab = createBottomTabNavigator<ChildTabParamList>();
 const Stack = createNativeStackNavigator<ChildStackParamList>();
 
-function ChatStack() {
+function ChatStackContent() {
   return (
     <Stack.Navigator>
       <Stack.Screen name="ChatDetail" component={ChatDetailScreen} options={{ headerShown: false }} />
       <Stack.Screen name="ChatList" component={ChatScreen} options={{ headerShown: false }} />
     </Stack.Navigator>
   );
+}
+
+function ChatStack() {
+  const isFocused = useIsFocused();
+  const previousFocusedRef = useRef(isFocused);
+
+  return (
+    <ChatProvider>
+      <ChatStackUnmountHandler />
+      <ChatStackContent />
+    </ChatProvider>
+  );
+}
+
+// Chat 탭을 벗어날 때 대화 종료 처리
+function ChatStackUnmountHandler() {
+  const isFocused = useIsFocused();
+  const { conversationSessionId, clearChat } = useChatContext();
+  const previousFocusedRef = useRef(isFocused);
+
+  useEffect(() => {
+    // 탭에서 벗어날 때 (focused: true -> false)
+    if (previousFocusedRef.current && !isFocused && conversationSessionId) {
+      console.log('[ChatStack] Chat 탭 벗어남 - 대화 종료:', conversationSessionId);
+
+      // 대화 종료 API 호출
+      endConversation({ conversationSessionId })
+        .then(() => {
+          console.log('[ChatStack] 대화 종료 완료');
+        })
+        .catch((error: any) => {
+          // 404는 이미 종료되었거나 세션이 없는 경우이므로 무시
+          if (error?.response?.status === 404) {
+            console.log('[ChatStack] 대화 세션이 이미 종료되었거나 존재하지 않음');
+          } else {
+            console.error('[ChatStack] 대화 종료 에러:', error);
+          }
+        });
+
+      // 캐시 초기화
+      clearChat();
+    }
+
+    previousFocusedRef.current = isFocused;
+  }, [isFocused, conversationSessionId, clearChat]);
+
+  return null;
 }
 
 export function ChildNavigator() {

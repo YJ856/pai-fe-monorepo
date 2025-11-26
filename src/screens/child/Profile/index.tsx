@@ -240,7 +240,7 @@ export default function ChildProfileScreen() {
 
   if (!currentProfile) {
     return (
-      <SafeAreaView style={styles.safeArea}>
+      <SafeAreaView style={styles.safeArea} edges={['top']}>
         <View style={[styles.container, styles.centered]}>
           <ActivityIndicator size="large" color="#10B981" />
           <Text style={styles.loadingText}>프로필 로드 중...</Text>
@@ -251,7 +251,7 @@ export default function ChildProfileScreen() {
 
   return (
     <LinearGradient colors={["#FFE5E0", "#FFF0ED"]} style={styles.gradientContainer}>
-      <SafeAreaView style={styles.safeArea}>
+      <SafeAreaView style={styles.safeArea} edges={['top']}>
         <View style={styles.container}>
           <RefreshableScrollView
             style={styles.scroll}

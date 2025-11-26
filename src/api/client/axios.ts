@@ -61,6 +61,16 @@ export const mediaServiceClient = axios.create({
   },
 });
 
+// ai 서비스 (vqa 답변 받기)
+export const aiServiceClient = axios.create({
+  baseURL: SERVICE_URLS.AI_SERVICE,
+  timeout: 30000, // AI 동작 시간 고려
+  headers: {
+    "Content-Type": "application/json",
+  },
+});
+
+
 // 인증 토큰 인터셉터
 const addAuthInterceptor = (client: any) => {
   client.interceptors.request.use(
@@ -159,6 +169,7 @@ addAuthInterceptor(insightServiceClient);
 addAuthInterceptor(quizServiceClient);
 addAuthInterceptor(conversationServiceClient);
 addAuthInterceptor(mediaServiceClient);
+addAuthInterceptor(aiServiceClient);
 
 // 모든 클라이언트에 디버깅 인터셉터 추가
 addDebugInterceptor(userServiceClient, "USER");
@@ -166,3 +177,4 @@ addDebugInterceptor(insightServiceClient, "INSIGHT");
 addDebugInterceptor(quizServiceClient, "QUIZ");
 addDebugInterceptor(conversationServiceClient, "CONVERSATION");
 addDebugInterceptor(mediaServiceClient, "MEDIA");
+addDebugInterceptor(aiServiceClient, "AI");

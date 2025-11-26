@@ -13,7 +13,7 @@
  * - AI 메시지: 흰색 말풍선, 마스코트 아바타
  */
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -33,47 +33,28 @@ import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { ChildStackParamList } from '../../../app/navigation/ChildNavigator';
 import { spacing, typography, borderRadius, shadows } from '../../../design/tokens';
+import { useChatContext } from '../../../contexts/ChatContext';
 
 const mascotImage = require('../../../assets/images/mascot.png');
+const mascotPinkImage = require('../../../assets/images/mascot_pink.png');
 
 type ChatListNavigationProp = NativeStackNavigationProp<ChildStackParamList, 'ChatList'>;
 
-interface Message {
-  id: string;
-  sender: 'child' | 'ai';
-  text: string;
-  imageUrl?: string;
-  timestamp: Date;
-}
-
-const MOCK_MESSAGES: Message[] = [
-  {
-    id: '1',
-    sender: 'ai',
-    text: `안녕! 🌱 궁금한 게 있으면 뭐든지 물어봐!`,
-    timestamp: new Date(Date.now() - 3600000),
-  },
-  {
-    id: '2',
-    sender: 'child',
-    text: '공룡은 왜 멸종했어?',
-    timestamp: new Date(Date.now() - 3500000),
-  },
-  {
-    id: '3',
-    sender: 'ai',
-    text: '아주 오래전에 큰 운석이 지구에 떨어져서 공룡들이 살 수 없게 되었어요. 🌍 운석이 떨어지면서 먼지가 하늘을 덮어서 햇빛이 차단되고, 식물들이 자라지 못했어요.',
-    timestamp: new Date(Date.now() - 3400000),
-  },
-];
-
 export default function ChildChatScreen() {
   const navigation = useNavigation<ChatListNavigationProp>();
-  const [messages, setMessages] = useState<Message[]>(MOCK_MESSAGES);
-  const [inputText, setInputText] = useState('');
-  const [currentImage, setCurrentImage] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
   const scrollViewRef = useRef<ScrollView>(null);
+
+  // Context에서 공용 데이터 사용
+  const {
+    messages,
+    inputText,
+    setInputText,
+    currentImage,
+    setCurrentImage,
+    setCurrentImageAspectRatio,
+    isLoading,
+    handleSend,
+  } = useChatContext();
 
   useEffect(() => {
     // Auto scroll to bottom when messages change
@@ -97,38 +78,15 @@ export default function ChildChatScreen() {
     });
 
     if (!result.canceled) {
-      setCurrentImage(result.assets[0].uri);
+      const imageUri = result.assets[0].uri;
+      const width = result.assets[0].width;
+      const height = result.assets[0].height;
+      const aspectRatio = width && height ? width / height : 1;
+
+      console.log('Selected image URI:', imageUri, 'Size:', width, 'x', height, 'AspectRatio:', aspectRatio);
+      setCurrentImage(imageUri);
+      setCurrentImageAspectRatio(aspectRatio);
     }
-  };
-
-  const handleSend = () => {
-    if (!inputText.trim()) return;
-
-    const questionMessage: Message = {
-      id: Date.now().toString(),
-      sender: 'child',
-      text: inputText,
-      imageUrl: currentImage || undefined,
-      timestamp: new Date(),
-    };
-
-    setMessages((prev) => [...prev, questionMessage]);
-    setInputText('');
-    setCurrentImage(null);
-    setIsLoading(true);
-
-    // Simulate AI response
-    setTimeout(() => {
-      const answerMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        sender: 'ai',
-        text: `그거 정말 재밌는 질문이야! 🤔 "${questionMessage.text}"에 대해 알려줄게. 이건 아주 흥미로운 주제야!`,
-        timestamp: new Date(),
-      };
-
-      setMessages((prev) => [...prev, answerMessage]);
-      setIsLoading(false);
-    }, 1500);
   };
 
   return (
@@ -144,13 +102,6 @@ export default function ChildChatScreen() {
           <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
             <ArrowLeft size={24} color="#4a4a4a" />
           </TouchableOpacity>
-          <View style={styles.headerContent}>
-            <Image source={mascotImage} style={styles.headerMascot} />
-            <View>
-              <Text style={styles.headerTitle}>전체 대화</Text>
-              <Text style={styles.headerSubtitle}>지금까지 나눈 이야기들</Text>
-            </View>
-          </View>
         </View>
 
         {/* Messages */}
@@ -162,7 +113,7 @@ export default function ChildChatScreen() {
         >
           {messages.length === 0 ? (
             <View style={styles.emptyState}>
-              <Text style={styles.emptyIcon}>💬</Text>
+              <Image source={mascotPinkImage} style={styles.emptyMascot} />
               <Text style={styles.emptyTitle}>아직 대화가 없어요</Text>
               <Text style={styles.emptySubtitle}>궁금한 게 있으면 물어봐주세요!</Text>
             </View>
@@ -179,27 +130,46 @@ export default function ChildChatScreen() {
                   ]}
                 >
                   {message.sender === 'child' ? (
-                    <LinearGradient
-                      colors={['#FF6B9D', '#FFA06B']}
-                      start={{ x: 0, y: 0 }}
-                      end={{ x: 1, y: 0 }}
-                      style={[styles.messageBubble, styles.childBubble]}
-                    >
+                    <>
                       {message.imageUrl && (
-                        <Image source={{ uri: message.imageUrl }} style={styles.messageImage} />
+                        <LinearGradient
+                          colors={['#FF6B9D', '#FFA06B']}
+                          start={{ x: 0, y: 0 }}
+                          end={{ x: 1, y: 0 }}
+                          style={styles.imageOnlyBubble}
+                        >
+                          <Image
+                            source={{ uri: message.imageUrl }}
+                            style={[
+                              styles.messageImage,
+                              message.imageAspectRatio ? { aspectRatio: message.imageAspectRatio } : null
+                            ]}
+                          />
+                        </LinearGradient>
                       )}
-                      <Text style={[styles.messageText, styles.childMessageText]}>
-                        {message.text}
-                      </Text>
-                      <Text style={[styles.messageTime, styles.childMessageTime]}>
-                        {message.timestamp.toLocaleTimeString('ko-KR', {
-                          hour: '2-digit',
-                          minute: '2-digit',
-                        })}
-                      </Text>
-                    </LinearGradient>
+                      <LinearGradient
+                        colors={['#FF6B9D', '#FFA06B']}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 0 }}
+                        style={[styles.messageBubble, styles.childBubble]}
+                      >
+                        <Text style={[styles.messageText, styles.childMessageText]}>
+                          {message.text}
+                        </Text>
+                        <Text style={[styles.messageTime, styles.childMessageTime]}>
+                          {message.timestamp.toLocaleTimeString('ko-KR', {
+                            hour: '2-digit',
+                            minute: '2-digit',
+                          })}
+                        </Text>
+                      </LinearGradient>
+                    </>
                   ) : (
-                    <View style={[styles.messageBubble, styles.aiBubble]}>
+                    <View style={[
+                      styles.messageBubble,
+                      styles.aiBubble,
+                      message.imageUrl && styles.messageBubbleWithImage
+                    ]}>
                       <View style={styles.aiHeader}>
                         <Image source={mascotImage} style={styles.aiAvatar} />
                         <Text style={styles.aiName}>새싹</Text>
@@ -276,7 +246,7 @@ export default function ChildChatScreen() {
 
             <TouchableOpacity
               style={[styles.sendButton, !inputText.trim() && styles.sendButtonDisabled]}
-              onPress={handleSend}
+              onPress={() => handleSend('child')}
               disabled={!inputText.trim()}
               activeOpacity={0.7}
             >
@@ -347,8 +317,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingVertical: spacing.xl * 3,
   },
-  emptyIcon: {
-    fontSize: 64,
+  emptyMascot: {
+    width: 120,
+    height: 120,
     marginBottom: 16,
   },
   emptyTitle: {
@@ -375,6 +346,16 @@ const styles = StyleSheet.create({
     padding: 16,
     ...shadows.md,
   },
+  messageBubbleWithImage: {
+    maxWidth: '85%',
+  },
+  imageOnlyBubble: {
+    borderRadius: 16,
+    padding: 4,
+    marginBottom: 4,
+    alignSelf: 'flex-end',
+    ...shadows.md,
+  },
   childBubble: {
     // backgroundColor handled by LinearGradient
   },
@@ -396,10 +377,9 @@ const styles = StyleSheet.create({
     color: '#6B7280',
   },
   messageImage: {
-    width: '100%',
-    height: 200,
+    width: 200,
     borderRadius: 12,
-    marginBottom: 8,
+    resizeMode: 'cover',
   },
   messageText: {
     fontSize: 16,
@@ -442,9 +422,10 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-start',
   },
   imagePreview: {
-    width: 80,
-    height: 80,
+    width: 150,
+    height: 150,
     borderRadius: 12,
+    resizeMode: 'contain',
   },
   removeImageButton: {
     position: 'absolute',
