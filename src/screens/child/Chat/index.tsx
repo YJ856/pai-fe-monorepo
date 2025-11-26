@@ -13,7 +13,7 @@
  * - AI 메시지: 흰색 말풍선, 마스코트 아바타
  */
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -33,49 +33,28 @@ import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { ChildStackParamList } from '../../../app/navigation/ChildNavigator';
 import { spacing, typography, borderRadius, shadows } from '../../../design/tokens';
+import { useChatContext } from '../../../contexts/ChatContext';
 
 const mascotImage = require('../../../assets/images/mascot.png');
+const mascotPinkImage = require('../../../assets/images/mascot_pink.png');
 
 type ChatListNavigationProp = NativeStackNavigationProp<ChildStackParamList, 'ChatList'>;
 
-interface Message {
-  id: string;
-  sender: 'child' | 'ai';
-  text: string;
-  imageUrl?: string;
-  imageAspectRatio?: number;
-  timestamp: Date;
-}
-
-const MOCK_MESSAGES: Message[] = [
-  {
-    id: '1',
-    sender: 'ai',
-    text: `안녕! 🌱 궁금한 게 있으면 뭐든지 물어봐!`,
-    timestamp: new Date(Date.now() - 3600000),
-  },
-  {
-    id: '2',
-    sender: 'child',
-    text: '공룡은 왜 멸종했어?',
-    timestamp: new Date(Date.now() - 3500000),
-  },
-  {
-    id: '3',
-    sender: 'ai',
-    text: '아주 오래전에 큰 운석이 지구에 떨어져서 공룡들이 살 수 없게 되었어요. 🌍 운석이 떨어지면서 먼지가 하늘을 덮어서 햇빛이 차단되고, 식물들이 자라지 못했어요.',
-    timestamp: new Date(Date.now() - 3400000),
-  },
-];
-
 export default function ChildChatScreen() {
   const navigation = useNavigation<ChatListNavigationProp>();
-  const [messages, setMessages] = useState<Message[]>(MOCK_MESSAGES);
-  const [inputText, setInputText] = useState('');
-  const [currentImage, setCurrentImage] = useState<string | null>(null);
-  const [currentImageAspectRatio, setCurrentImageAspectRatio] = useState<number | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
   const scrollViewRef = useRef<ScrollView>(null);
+
+  // Context에서 공용 데이터 사용
+  const {
+    messages,
+    inputText,
+    setInputText,
+    currentImage,
+    setCurrentImage,
+    setCurrentImageAspectRatio,
+    isLoading,
+    handleSend,
+  } = useChatContext();
 
   useEffect(() => {
     // Auto scroll to bottom when messages change
@@ -110,39 +89,6 @@ export default function ChildChatScreen() {
     }
   };
 
-  const handleSend = async () => {
-    if (!inputText.trim()) return;
-
-    const questionMessage: Message = {
-      id: Date.now().toString(),
-      sender: 'child',
-      text: inputText,
-      imageUrl: currentImage || undefined,
-      imageAspectRatio: currentImageAspectRatio || undefined,
-      timestamp: new Date(),
-    };
-
-    console.log('Sending message with image:', questionMessage.imageUrl, 'aspectRatio:', currentImageAspectRatio);
-    setMessages((prev) => [...prev, questionMessage]);
-    setInputText('');
-    setCurrentImage(null);
-    setCurrentImageAspectRatio(null);
-    setIsLoading(true);
-
-    // Simulate AI response
-    setTimeout(() => {
-      const answerMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        sender: 'ai',
-        text: `그거 정말 재밌는 질문이야! 🤔 "${questionMessage.text}"에 대해 알려줄게. 이건 아주 흥미로운 주제야!`,
-        timestamp: new Date(),
-      };
-
-      setMessages((prev) => [...prev, answerMessage]);
-      setIsLoading(false);
-    }, 1500);
-  };
-
   return (
     <LinearGradient colors={['#FFE5E0', '#FFF0ED']} style={styles.gradientContainer}>
       <SafeAreaView style={styles.safeArea} edges={['top']}>
@@ -156,13 +102,6 @@ export default function ChildChatScreen() {
           <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
             <ArrowLeft size={24} color="#4a4a4a" />
           </TouchableOpacity>
-          <View style={styles.headerContent}>
-            <Image source={mascotImage} style={styles.headerMascot} />
-            <View>
-              <Text style={styles.headerTitle}>전체 대화</Text>
-              <Text style={styles.headerSubtitle}>지금까지 나눈 이야기들</Text>
-            </View>
-          </View>
         </View>
 
         {/* Messages */}
@@ -174,7 +113,7 @@ export default function ChildChatScreen() {
         >
           {messages.length === 0 ? (
             <View style={styles.emptyState}>
-              <Text style={styles.emptyIcon}>💬</Text>
+              <Image source={mascotPinkImage} style={styles.emptyMascot} />
               <Text style={styles.emptyTitle}>아직 대화가 없어요</Text>
               <Text style={styles.emptySubtitle}>궁금한 게 있으면 물어봐주세요!</Text>
             </View>
@@ -307,7 +246,7 @@ export default function ChildChatScreen() {
 
             <TouchableOpacity
               style={[styles.sendButton, !inputText.trim() && styles.sendButtonDisabled]}
-              onPress={handleSend}
+              onPress={() => handleSend('child')}
               disabled={!inputText.trim()}
               activeOpacity={0.7}
             >
@@ -378,8 +317,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingVertical: spacing.xl * 3,
   },
-  emptyIcon: {
-    fontSize: 64,
+  emptyMascot: {
+    width: 120,
+    height: 120,
     marginBottom: 16,
   },
   emptyTitle: {

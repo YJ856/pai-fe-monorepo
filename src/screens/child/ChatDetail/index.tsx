@@ -44,30 +44,34 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { ChildStackParamList } from '../../../app/navigation/ChildNavigator';
 import { Button } from '../../../design/components/Button';
 import { colors, spacing, typography, borderRadius } from '../../../design/tokens';
+import { useChatContext, type Message } from '../../../contexts/ChatContext';
+import { endConversation } from '../../../api/conversations';
 
 const mascotImage = require('../../../assets/images/mascot.png');
-
-interface Message {
-  id: string;
-  sender: 'child' | 'ai';
-  text: string;
-  imageUrl?: string;
-  imageAspectRatio?: number;
-  hasAudio?: boolean;
-  timestamp: Date;
-}
 
 type ChatDetailNavigationProp = NativeStackNavigationProp<ChildStackParamList, 'ChatDetail'>;
 
 export default function ChildChatDetailScreen() {
   const navigation = useNavigation<ChatDetailNavigationProp>();
-  const [messages, setMessages] = useState<Message[]>([]);
+
+  // Context에서 공용 데이터 사용
+  const {
+    messages,
+    inputText,
+    setInputText,
+    currentImage,
+    setCurrentImage,
+    currentImageAspectRatio,
+    setCurrentImageAspectRatio,
+    isLoading,
+    handleSend: contextHandleSend,
+    conversationSessionId,
+    clearChat,
+  } = useChatContext();
+
+  // ChatDetail 전용 로컬 state
   const [currentQuestionMessage, setCurrentQuestionMessage] = useState<Message | null>(null);
   const [currentAnswer, setCurrentAnswer] = useState<Message | null>(null);
-  const [currentImage, setCurrentImage] = useState<string | null>(null);
-  const [currentImageAspectRatio, setCurrentImageAspectRatio] = useState<number | null>(null);
-  const [inputText, setInputText] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
   const [showExitDialog, setShowExitDialog] = useState(false);
   const [showImageViewer, setShowImageViewer] = useState(false);
   const [viewerImage, setViewerImage] = useState<string | null>(null);
@@ -119,44 +123,37 @@ export default function ChildChatDetailScreen() {
     }
   };
 
-  const handleSend = () => {
+  const handleSend = async () => {
     if (!inputText.trim()) return;
 
     // 키보드 내리기
     Keyboard.dismiss();
 
-    const questionMessage: Message = {
-      id: Date.now().toString(),
-      sender: 'child',
-      text: inputText,
-      imageUrl: currentImage || undefined,
-      imageAspectRatio: currentImageAspectRatio || undefined,
-      timestamp: new Date(),
-    };
-
-    setCurrentQuestionMessage(questionMessage); // 질문 메시지 전체 저장
+    // ChatDetail용: 현재 표시 초기화
+    setCurrentQuestionMessage(null);
     setCurrentAnswer(null);
-    setIsLoading(true);
 
-    // Simulate AI response
-    setTimeout(() => {
-      const answerMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        sender: 'ai',
-        text: `그거 정말 재밌는 질문이야! 🤔 "${inputText}"에 대해 알려줄게. 이건 아주 흥미로운 주제야!`,
-        hasAudio: true,
-        timestamp: new Date(),
-      };
-
-      setCurrentAnswer(answerMessage);
-      setMessages((prev) => [...prev, questionMessage, answerMessage]);
-      setIsLoading(false);
-    }, 1500);
-
-    setInputText('');
-    setCurrentImage(null);
-    setCurrentImageAspectRatio(null);
+    // Context의 handleSend 호출 (실제 API 통신 및 messages 업데이트)
+    await contextHandleSend('child');
   };
+
+  // messages가 업데이트되면 ChatDetail의 currentQuestionMessage와 currentAnswer 업데이트
+  useEffect(() => {
+    if (messages.length >= 2) {
+      // 마지막 2개 메시지 (질문, 답변)
+      const lastQuestion = messages[messages.length - 2];
+      const lastAnswer = messages[messages.length - 1];
+
+      if (lastQuestion.sender === 'child' && lastAnswer.sender === 'ai') {
+        setCurrentQuestionMessage(lastQuestion);
+        setCurrentAnswer(lastAnswer);
+      }
+    } else if (messages.length === 0) {
+      // messages가 비어있으면 (대화 종료 후) 로컬 state도 초기화
+      setCurrentQuestionMessage(null);
+      setCurrentAnswer(null);
+    }
+  }, [messages]);
 
   const handleExit = () => {
     if (currentQuestionMessage || currentAnswer) {
@@ -164,13 +161,37 @@ export default function ChildChatDetailScreen() {
     }
   };
 
-  const confirmExit = () => {
-    setCurrentQuestionMessage(null);
-    setCurrentAnswer(null);
-    setCurrentImage(null);
-    setCurrentImageAspectRatio(null);
-    setShowExitDialog(false);
-    // TODO: Navigate back
+  const confirmExit = async () => {
+    try {
+      // 1. endConversation API 호출 (conversationSessionId가 있을 때만)
+      if (conversationSessionId) {
+        console.log('[ChatDetail] endConversation 호출:', conversationSessionId);
+        await endConversation({ conversationSessionId });
+        console.log('[ChatDetail] 대화 종료 완료');
+      }
+
+      // 2. Context 캐시 초기화
+      clearChat();
+
+      // 3. 로컬 state 초기화
+      setCurrentQuestionMessage(null);
+      setCurrentAnswer(null);
+      setShowExitDialog(false);
+
+      // 4. 대화 종료 완료 - 새로운 대화 시작 가능
+    } catch (error: any) {
+      // 404는 이미 종료되었거나 세션이 없는 경우이므로 무시
+      if (error?.response?.status === 404) {
+        console.log('[ChatDetail] 대화 세션이 이미 종료되었거나 존재하지 않음');
+      } else {
+        console.error('[ChatDetail] 대화 종료 에러:', error);
+      }
+      // 에러가 나도 일단 캐시는 지우고 초기화
+      clearChat();
+      setCurrentQuestionMessage(null);
+      setCurrentAnswer(null);
+      setShowExitDialog(false);
+    }
   };
 
   const toggleAudioPlayback = () => {

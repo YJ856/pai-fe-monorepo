@@ -1,4 +1,4 @@
-import { conversationServiceClient, quizServiceClient } from './client/axios';
+import { conversationServiceClient } from './client/axios';
 import { 
   BaseResponse,
   RecordConversationRequestDto,

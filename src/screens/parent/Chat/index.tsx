@@ -15,7 +15,7 @@
  * - 하단 고정 입력창
  */
 
-import React, { useRef, useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -26,14 +26,15 @@ import {
   Image,
   KeyboardAvoidingView,
   Platform,
-  Animated,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Send, ImageIcon as ImagePlus, Sparkles } from 'lucide-react-native';
+import { useIsFocused } from '@react-navigation/native';
 import { spacing, typography, borderRadius, shadows } from '../../../design/tokens';
-import { useChatMessages } from './hooks/useChatMessages';
+import { useChatMessages } from '@/hooks/useChatMessages';
 import { useChatImagePicker } from './hooks/useChatImagePicker';
+import { endConversation } from '../../../api/conversations';
 
 const SUGGESTED_QUESTIONS = [
   '아이가 공룡에 관심이 많은데 어떻게 교육하면 좋을까요?',
@@ -43,6 +44,9 @@ const SUGGESTED_QUESTIONS = [
 ];
 
 export default function ParentChatScreen() {
+  const isFocused = useIsFocused();
+  const previousFocusedRef = useRef(isFocused);
+
   // 메시지 관리 Hook
   const {
     messages,
@@ -53,48 +57,39 @@ export default function ParentChatScreen() {
     isLoading,
     handleSend,
     scrollViewRef,
+    conversationSessionId,
+    clearChat,
   } = useChatMessages();
 
   // 이미지 선택 Hook
   const { handleImagePick } = useChatImagePicker(setCurrentImage);
 
-  const renderLoadingDots = () => {
-    const dot1 = useRef(new Animated.Value(0)).current;
-    const dot2 = useRef(new Animated.Value(0)).current;
-    const dot3 = useRef(new Animated.Value(0)).current;
+  // Chat 탭을 벗어날 때 대화 종료 처리
+  useEffect(() => {
+    // 탭에서 벗어날 때 (focused: true -> false)
+    if (previousFocusedRef.current && !isFocused && conversationSessionId) {
+      console.log('[ParentChat] Chat 탭 벗어남 - 대화 종료:', conversationSessionId);
 
-    useEffect(() => {
-      const animate = (dot: Animated.Value, delay: number) => {
-        Animated.loop(
-          Animated.sequence([
-            Animated.delay(delay),
-            Animated.timing(dot, {
-              toValue: -8,
-              duration: 400,
-              useNativeDriver: true,
-            }),
-            Animated.timing(dot, {
-              toValue: 0,
-              duration: 400,
-              useNativeDriver: true,
-            }),
-          ])
-        ).start();
-      };
+      // 대화 종료 API 호출
+      endConversation({ conversationSessionId })
+        .then(() => {
+          console.log('[ParentChat] 대화 종료 완료');
+        })
+        .catch((error: any) => {
+          // 404는 이미 종료되었거나 세션이 없는 경우이므로 무시
+          if (error?.response?.status === 404) {
+            console.log('[ParentChat] 대화 세션이 이미 종료되었거나 존재하지 않음');
+          } else {
+            console.error('[ParentChat] 대화 종료 에러:', error);
+          }
+        });
 
-      animate(dot1, 0);
-      animate(dot2, 150);
-      animate(dot3, 300);
-    }, []);
+      // 캐시 초기화
+      clearChat();
+    }
 
-    return (
-      <View style={styles.loadingDots}>
-        <Animated.View style={[styles.dot, { transform: [{ translateY: dot1 }] }]} />
-        <Animated.View style={[styles.dot, { transform: [{ translateY: dot2 }] }]} />
-        <Animated.View style={[styles.dot, { transform: [{ translateY: dot3 }] }]} />
-      </View>
-    );
-  };
+    previousFocusedRef.current = isFocused;
+  }, [isFocused, conversationSessionId, clearChat]);
 
   return (
     <SafeAreaView style={styles.safeArea} edges={["top"]}>
@@ -196,7 +191,10 @@ export default function ParentChatScreen() {
               {isLoading && (
                 <View style={styles.messageContainer}>
                   <View style={[styles.messageBubble, styles.aiBubble]}>
-                    {renderLoadingDots()}
+                    <View style={styles.loadingContainer}>
+                      <View style={styles.loadingBar} />
+                      <View style={[styles.loadingBar, { width: 128 }]} />
+                    </View>
                   </View>
                 </View>
               )}
@@ -240,7 +238,7 @@ export default function ParentChatScreen() {
 
             <TouchableOpacity
               style={[styles.sendButton, !inputText.trim() && styles.sendButtonDisabled]}
-              onPress={handleSend}
+              onPress={() => handleSend('parent')}
               disabled={!inputText.trim()}
               activeOpacity={0.7}
             >
@@ -270,12 +268,12 @@ const styles = StyleSheet.create({
   },
   messagesContent: {
     padding: spacing.md,
-    paddingTop: spacing.xl,
-    paddingBottom: spacing.xl * 2,
+    paddingTop: spacing.md,
+    paddingBottom: 0,
   },
   emptyState: {
     alignItems: 'center',
-    paddingVertical: spacing.xl,
+    paddingVertical: spacing.sm,
   },
   emptyIcon: {
     width: 96,
@@ -362,15 +360,14 @@ const styles = StyleSheet.create({
   aiMessageTime: {
     color: '#6B7280',
   },
-  loadingDots: {
-    flexDirection: 'row',
-    gap: spacing.xs,
+  loadingContainer: {
+    gap: 8,
   },
-  dot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#9CA3AF',
+  loadingBar: {
+    height: 16,
+    backgroundColor: '#E5E7EB',
+    borderRadius: 8,
+    width: 160,
   },
   inputContainer: {
     backgroundColor: '#FFFFFF',
