@@ -23,6 +23,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
+import { Calendar } from "lucide-react-native";
 import { useRoute, useNavigation, RouteProp } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import GalleryGrid from "../../components/GalleryGrid";
@@ -31,6 +32,7 @@ import {
   colors,
   spacing,
   typography,
+  borderRadius,
 } from "../../../../../design/tokens";
 import { ParentStackParamList } from "../../../../../app/navigation/ParentNavigator";
 
@@ -69,7 +71,10 @@ export default function GalleryScreen() {
         >
           {/* Header */}
           <View style={styles.header}>
-            <Text style={styles.headerTitle}>{date} 대화 기록</Text>
+            <View style={styles.dateBadge}>
+              <Calendar size={18} color={colors.parent.from} />
+              <Text style={styles.dateText}>{date}</Text>
+            </View>
             <Text style={styles.headerSubtitle}>
               {conversations.length}개의 대화
             </Text>
@@ -124,10 +129,21 @@ const styles = StyleSheet.create({
     padding: spacing.lg,
     paddingBottom: spacing.md,
   },
-  headerTitle: {
-    ...typography.h3,
-    color: colors.text.primary,
-    marginBottom: spacing.xs,
+  dateBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.xs,
+    backgroundColor: "rgba(91, 155, 213, 0.15)",
+    borderRadius: 100,
+    paddingVertical: spacing.xs,
+    paddingHorizontal: spacing.md,
+    alignSelf: "flex-start",
+    marginBottom: spacing.sm,
+  },
+  dateText: {
+    ...typography.h4,
+    fontWeight: "600",
+    color: colors.parent.from,
   },
   headerSubtitle: {
     ...typography.body2,

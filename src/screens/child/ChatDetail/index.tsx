@@ -29,7 +29,6 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import {
-  ArrowLeft,
   Volume2,
   VolumeX,
   Send,
@@ -37,13 +36,14 @@ import {
   X,
   MessageSquare,
   List,
+  LogOut,
 } from 'lucide-react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { ChildStackParamList } from '../../../app/navigation/ChildNavigator';
 import { Button } from '../../../design/components/Button';
-import { colors, spacing, typography, borderRadius } from '../../../design/tokens';
+import { colors, spacing, typography, borderRadius, shadows } from '../../../design/tokens';
 import { useChatContext, type Message } from '../../../contexts/ChatContext';
 import { endConversation } from '../../../api/conversations';
 
@@ -80,6 +80,9 @@ export default function ChildChatDetailScreen() {
   // 마스코트 bounce 애니메이션
   const bounceAnim = useRef(new Animated.Value(0)).current;
 
+  // Progress bar 애니메이션
+  const progressAnim = useRef(new Animated.Value(0)).current;
+
   useEffect(() => {
     // Bounce 애니메이션
     Animated.loop(
@@ -97,6 +100,16 @@ export default function ChildChatDetailScreen() {
       ])
     ).start();
   }, []);
+
+  // Progress bar 애니메이션 효과
+  useEffect(() => {
+    const targetProgress = getProgress();
+    Animated.timing(progressAnim, {
+      toValue: targetProgress,
+      duration: 500,
+      useNativeDriver: false,
+    }).start();
+  }, [currentQuestionMessage, currentAnswer, isLoading]);
 
   const handleImageAttach = async () => {
     const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -220,7 +233,7 @@ export default function ChildChatDetailScreen() {
         {/* Top Bar */}
         <View style={styles.topBar}>
           <TouchableOpacity onPress={handleExit} style={styles.exitButton}>
-            <ArrowLeft size={24} color="#4a4a4a" />
+            <LogOut size={24} color="#FF6B9D" />
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -265,53 +278,65 @@ export default function ChildChatDetailScreen() {
               {/* Progress Bar */}
               <View style={styles.progressContainer}>
                 <View style={styles.progressBackground}>
-                  <LinearGradient
-                    colors={['#FF6B9D', '#FFA06B']}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 0 }}
-                    style={[styles.progressBar, { width: `${getProgress() * 100}%` }]}
-                  />
+                  <Animated.View
+                    style={{
+                      width: progressAnim.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: ['0%', '100%'],
+                      }),
+                      height: '100%',
+                    }}
+                  >
+                    <LinearGradient
+                      colors={['#FF6B9D', '#FFA06B']}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 0 }}
+                      style={styles.progressBar}
+                    />
+                  </Animated.View>
                 </View>
               </View>
 
               {/* Question Section */}
               {currentQuestionMessage && (
-                <View style={styles.section}>
+                <View style={styles.questionSection}>
                   <View style={styles.questionHeader}>
                     <View style={styles.badge}>
                       <Text style={styles.badgeText}>질문</Text>
                     </View>
                   </View>
 
-                  {currentQuestionMessage.imageUrl && (
-                    <TouchableOpacity
-                      onPress={() => {
-                        setViewerImage(currentQuestionMessage.imageUrl!);
-                        setShowImageViewer(true);
-                      }}
-                    >
-                      <Image
-                        source={{ uri: currentQuestionMessage.imageUrl }}
-                        style={[
-                          styles.questionImage,
-                          currentQuestionMessage.imageAspectRatio ? { aspectRatio: currentQuestionMessage.imageAspectRatio } : null
-                        ]}
-                      />
-                    </TouchableOpacity>
-                  )}
+                  <View style={styles.questionContent}>
+                    {currentQuestionMessage.imageUrl && (
+                      <View style={styles.questionImageContainer}>
+                        <TouchableOpacity
+                          onPress={() => {
+                            setViewerImage(currentQuestionMessage.imageUrl!);
+                            setShowImageViewer(true);
+                          }}
+                        >
+                          <Image
+                            source={{ uri: currentQuestionMessage.imageUrl }}
+                            style={[
+                              styles.questionImage,
+                              currentQuestionMessage.imageAspectRatio ? { aspectRatio: currentQuestionMessage.imageAspectRatio } : null
+                            ]}
+                          />
+                        </TouchableOpacity>
+                      </View>
+                    )}
 
-                  <Text style={styles.questionText}>{currentQuestionMessage.text}</Text>
+                    <Text style={styles.questionText}>{currentQuestionMessage.text}</Text>
+                  </View>
                 </View>
-              )}
-
-              {/* Divider */}
-              {(currentAnswer || (isLoading && currentQuestionMessage)) && (
-                <View style={styles.divider} />
               )}
 
               {/* Answer Section */}
               {(currentAnswer || (isLoading && currentQuestionMessage)) && (
-                <View style={styles.section}>
+                <View style={styles.answerSection}>
+                  {/* Divider */}
+                  <View style={styles.divider} />
+
                   <View style={styles.answerHeader}>
                     <View style={[styles.badge, styles.badgeAnswer]}>
                       <Text style={styles.badgeText}>답변</Text>
@@ -352,26 +377,47 @@ export default function ChildChatDetailScreen() {
           )}
         </View>
 
+        {/* Image Preview - Outside Input Container */}
+        {currentImage && (
+          <LinearGradient
+            colors={['#FF6B9D', '#FFA06B']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={styles.attachedImagePreview}
+          >
+            <Image
+              source={{ uri: currentImage }}
+              style={[
+                styles.attachedImage,
+                currentImageAspectRatio ? { aspectRatio: currentImageAspectRatio } : null
+              ]}
+            />
+            <TouchableOpacity
+              style={styles.removeImageButton}
+              onPress={() => setCurrentImage(null)}
+              activeOpacity={0.7}
+            >
+              <X size={18} color="#FF6B9D" strokeWidth={3} />
+            </TouchableOpacity>
+          </LinearGradient>
+        )}
+
         {/* Input Bar */}
         <View style={styles.inputContainer}>
-          {currentImage && (
-            <View style={styles.attachedImagePreview}>
-              <Image source={{ uri: currentImage }} style={styles.attachedImage} />
-              <TouchableOpacity
-                style={styles.removeImageButton}
-                onPress={() => setCurrentImage(null)}
-              >
-                <X size={12} color="#fff" />
-              </TouchableOpacity>
-            </View>
-          )}
-
           <View style={styles.inputRow}>
             <TouchableOpacity
               style={styles.attachButton}
               onPress={handleImageAttach}
+              activeOpacity={0.7}
             >
-              <ImageIcon size={20} color="#666" />
+              <LinearGradient
+                colors={['#FF6B9D', '#FFA06B']}
+                style={styles.attachButtonGradient}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+              >
+                <ImageIcon size={20} color="#FFFFFF" />
+              </LinearGradient>
             </TouchableOpacity>
 
             <TextInput
@@ -390,9 +436,10 @@ export default function ChildChatDetailScreen() {
               ]}
               onPress={handleSend}
               disabled={!inputText.trim()}
+              activeOpacity={0.7}
             >
               <LinearGradient
-                colors={inputText.trim() ? ['#FF6B9D', '#FFA06B'] : ['#ccc', '#ccc']}
+                colors={inputText.trim() ? ['#FF6B9D', '#FFA06B'] : ['#E5E7EB', '#E5E7EB']}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 0 }}
                 style={styles.sendGradient}
@@ -443,19 +490,18 @@ export default function ChildChatDetailScreen() {
           visible={showImageViewer}
           transparent
           animationType="fade"
+          statusBarTranslucent
           onRequestClose={() => setShowImageViewer(false)}
         >
-          <View style={styles.imageViewerOverlay}>
-            <TouchableOpacity
-              style={styles.imageViewerClose}
-              onPress={() => setShowImageViewer(false)}
-            >
-              <X size={32} color="#fff" />
-            </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.imageViewerOverlay}
+            activeOpacity={1}
+            onPress={() => setShowImageViewer(false)}
+          >
             {viewerImage && (
               <Image source={{ uri: viewerImage }} style={styles.imageViewerImage} />
             )}
-          </View>
+          </TouchableOpacity>
         </Modal>
       </LinearGradient>
       </KeyboardAvoidingView>
@@ -479,7 +525,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
-    paddingTop: 3,
+    paddingTop: spacing.md,
     paddingBottom: 5,
   },
   exitButton: {
@@ -549,6 +595,7 @@ const styles = StyleSheet.create({
   },
   qaCardContent: {
     padding: 24,
+    flexGrow: 1,
   },
   progressContainer: {
     marginBottom: 16,
@@ -564,7 +611,18 @@ const styles = StyleSheet.create({
     borderRadius: 999,
   },
   section: {
-    marginBottom: 24,
+    marginBottom: 3,
+  },
+  questionSection: {
+    flex: 1,
+  },
+  questionContent: {
+    flex: 1,
+    justifyContent: 'center',
+  },
+  answerSection: {
+    flex: 1,
+    justifyContent: 'center',
   },
   badge: {
     alignSelf: 'center',
@@ -572,7 +630,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 999,
-    marginBottom: 16,
+    marginBottom: 10,
   },
   badgeAnswer: {
     backgroundColor: 'rgba(255, 160, 107, 0.2)',
@@ -590,15 +648,18 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
   },
+  questionImageContainer: {
+    alignItems: 'center',
+    marginTop: -8,
+    marginBottom: 20,
+  },
   questionImage: {
-    width: '100%',
-    maxHeight: 200,
-    borderRadius: 16,
-    marginBottom: 16,
+    width: 100,
+    borderRadius: 12,
     resizeMode: 'cover',
   },
   questionText: {
-    fontSize: 20,
+    fontSize: 19,
     textAlign: 'center',
     color: '#333',
     lineHeight: 28,
@@ -606,11 +667,11 @@ const styles = StyleSheet.create({
   divider: {
     height: 2,
     backgroundColor: '#e5e7eb',
-    marginVertical: 24,
+    marginVertical: 15,
     borderStyle: 'dashed',
   },
   loadingContainer: {
-    gap: 12,
+    // gap: 12,
   },
   loadingBar: {
     height: 20,
@@ -642,38 +703,36 @@ const styles = StyleSheet.create({
     right: 0,
     backgroundColor: '#fff',
     paddingHorizontal: 16,
-    paddingBottom: 16,
+    paddingBottom: 12,
     paddingTop: 12,
     zIndex: 100,
     elevation: 100,
   },
   attachedImagePreview: {
-    position: 'relative',
-    marginBottom: 12,
-    alignSelf: 'flex-start',
-    zIndex: 10,
+    position: 'absolute',
+    bottom: 80,
+    left: 16,
+    zIndex: 200,
+    elevation: 200,
+    borderRadius: 16,
+    padding: 6,
   },
   attachedImage: {
-    width: 150,
-    height: 150,
+    width: 120,
     borderRadius: 12,
-    resizeMode: 'contain',
+    resizeMode: 'cover',
   },
   removeImageButton: {
     position: 'absolute',
-    top: -8,
-    right: -8,
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: '#ef4444',
+    top: -10,
+    right: -10,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#FFFFFF',
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 3,
+    ...shadows.md,
   },
   inputRow: {
     flexDirection: 'row',
@@ -683,15 +742,22 @@ const styles = StyleSheet.create({
     marginHorizontal: 'auto',
   },
   attachButton: {
-    padding: 12,
-    borderRadius: 999,
-    backgroundColor: '#f3f4f6',
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    overflow: 'hidden',
+  },
+  attachButtonGradient: {
+    width: '100%',
+    height: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   input: {
     flex: 1,
-    borderRadius: 999,
+    borderRadius: 24,
     borderWidth: 2,
-    borderColor: '#e5e7eb',
+    borderColor: '#E5E7EB',
     paddingHorizontal: 23,
     paddingVertical: 10,
     fontSize: 16,
@@ -700,7 +766,7 @@ const styles = StyleSheet.create({
   sendButton: {
     width: 48,
     height: 48,
-    borderRadius: 999,
+    borderRadius: 24,
     overflow: 'hidden',
   },
   sendButtonActive: {
@@ -780,18 +846,9 @@ const styles = StyleSheet.create({
   },
   imageViewerOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.9)',
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  imageViewerClose: {
-    position: 'absolute',
-    top: 60,
-    right: 24,
-    zIndex: 1,
-    padding: 8,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    borderRadius: 999,
   },
   imageViewerImage: {
     width: '90%',

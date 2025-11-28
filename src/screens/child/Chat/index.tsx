@@ -13,7 +13,7 @@
  * - AI 메시지: 흰색 말풍선, 마스코트 아바타
  */
 
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -24,6 +24,7 @@ import {
   Platform,
   ScrollView,
   Image,
+  Modal,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -51,10 +52,15 @@ export default function ChildChatScreen() {
     setInputText,
     currentImage,
     setCurrentImage,
+    currentImageAspectRatio,
     setCurrentImageAspectRatio,
     isLoading,
     handleSend,
   } = useChatContext();
+
+  // 이미지 뷰어 상태
+  const [showImageViewer, setShowImageViewer] = useState(false);
+  const [viewerImage, setViewerImage] = useState<string | null>(null);
 
   useEffect(() => {
     // Auto scroll to bottom when messages change
@@ -100,7 +106,7 @@ export default function ChildChatScreen() {
           {/* Header */}
           <View style={styles.header}>
           <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
-            <ArrowLeft size={24} color="#4a4a4a" />
+            <ArrowLeft size={28} color="#FF6B9D" />
           </TouchableOpacity>
         </View>
 
@@ -138,13 +144,20 @@ export default function ChildChatScreen() {
                           end={{ x: 1, y: 0 }}
                           style={styles.imageOnlyBubble}
                         >
-                          <Image
-                            source={{ uri: message.imageUrl }}
-                            style={[
-                              styles.messageImage,
-                              message.imageAspectRatio ? { aspectRatio: message.imageAspectRatio } : null
-                            ]}
-                          />
+                          <TouchableOpacity
+                            onPress={() => {
+                              setViewerImage(message.imageUrl!);
+                              setShowImageViewer(true);
+                            }}
+                          >
+                            <Image
+                              source={{ uri: message.imageUrl }}
+                              style={[
+                                styles.messageImage,
+                                message.imageAspectRatio ? { aspectRatio: message.imageAspectRatio } : null
+                              ]}
+                            />
+                          </TouchableOpacity>
                         </LinearGradient>
                       )}
                       <LinearGradient
@@ -172,10 +185,17 @@ export default function ChildChatScreen() {
                     ]}>
                       <View style={styles.aiHeader}>
                         <Image source={mascotImage} style={styles.aiAvatar} />
-                        <Text style={styles.aiName}>새싹</Text>
+                        <Text style={styles.aiName}>PAI</Text>
                       </View>
                       {message.imageUrl && (
-                        <Image source={{ uri: message.imageUrl }} style={styles.messageImage} />
+                        <TouchableOpacity
+                          onPress={() => {
+                            setViewerImage(message.imageUrl!);
+                            setShowImageViewer(true);
+                          }}
+                        >
+                          <Image source={{ uri: message.imageUrl }} style={styles.messageImage} />
+                        </TouchableOpacity>
                       )}
                       <Text style={[styles.messageText, styles.aiMessageText]}>
                         {message.text}
@@ -197,7 +217,7 @@ export default function ChildChatScreen() {
                   <View style={[styles.messageBubble, styles.aiBubble]}>
                     <View style={styles.aiHeader}>
                       <Image source={mascotImage} style={styles.aiAvatar} />
-                      <Text style={styles.aiName}>새싹</Text>
+                      <Text style={styles.aiName}>PAI</Text>
                     </View>
                     <View style={styles.loadingContainer}>
                       <View style={styles.loadingBar} />
@@ -210,28 +230,47 @@ export default function ChildChatScreen() {
           )}
         </ScrollView>
 
+        {/* Image Preview - Outside Input Container */}
+        {currentImage && (
+          <LinearGradient
+            colors={['#FF6B9D', '#FFA06B']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={styles.imagePreviewContainer}
+          >
+            <Image
+              source={{ uri: currentImage }}
+              style={[
+                styles.imagePreview,
+                currentImageAspectRatio ? { aspectRatio: currentImageAspectRatio } : null
+              ]}
+            />
+            <TouchableOpacity
+              style={styles.removeImageButton}
+              onPress={() => setCurrentImage(null)}
+              activeOpacity={0.7}
+            >
+              <X size={18} color="#FF6B9D" strokeWidth={3} />
+            </TouchableOpacity>
+          </LinearGradient>
+        )}
+
         {/* Input Bar */}
         <View style={styles.inputContainer}>
-          {currentImage && (
-            <View style={styles.imagePreviewContainer}>
-              <Image source={{ uri: currentImage }} style={styles.imagePreview} />
-              <TouchableOpacity
-                style={styles.removeImageButton}
-                onPress={() => setCurrentImage(null)}
-                activeOpacity={0.7}
-              >
-                <X size={12} color="#fff" />
-              </TouchableOpacity>
-            </View>
-          )}
-
           <View style={styles.inputRow}>
             <TouchableOpacity
               style={styles.imageButton}
               onPress={handleImageAttach}
               activeOpacity={0.7}
             >
-              <ImageIcon size={20} color="#666" />
+              <LinearGradient
+                colors={['#FF6B9D', '#FFA06B']}
+                style={styles.imageButtonGradient}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+              >
+                <ImageIcon size={20} color="#FFFFFF" />
+              </LinearGradient>
             </TouchableOpacity>
 
             <TextInput
@@ -251,7 +290,7 @@ export default function ChildChatScreen() {
               activeOpacity={0.7}
             >
               <LinearGradient
-                colors={inputText.trim() ? ['#FF6B9D', '#FFA06B'] : ['#ccc', '#ccc']}
+                colors={inputText.trim() ? ['#FF6B9D', '#FFA06B'] : ['#E5E7EB', '#E5E7EB']}
                 style={styles.sendButtonGradient}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 0 }}
@@ -263,6 +302,25 @@ export default function ChildChatScreen() {
         </View>
         </KeyboardAvoidingView>
       </SafeAreaView>
+
+      {/* Image Viewer - Outside SafeAreaView */}
+      <Modal
+        visible={showImageViewer}
+        transparent
+        animationType="fade"
+        statusBarTranslucent
+        onRequestClose={() => setShowImageViewer(false)}
+      >
+        <TouchableOpacity
+          style={styles.imageViewerOverlay}
+          activeOpacity={1}
+          onPress={() => setShowImageViewer(false)}
+        >
+          {viewerImage && (
+            <Image source={{ uri: viewerImage }} style={styles.imageViewerImage} />
+          )}
+        </TouchableOpacity>
+      </Modal>
     </LinearGradient>
   );
 }
@@ -281,6 +339,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 20,
+    paddingVertical: 10,
+    paddingTop: spacing.md,
   },
   backButton: {
     borderRadius: 999,
@@ -411,33 +471,36 @@ const styles = StyleSheet.create({
     width: 160,
   },
   inputContainer: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#fff',
     paddingHorizontal: 16,
-    paddingTop: 12,
     paddingBottom: 12,
+    paddingTop: 12,
   },
   imagePreviewContainer: {
-    position: 'relative',
-    marginBottom: 12,
-    alignSelf: 'flex-start',
+    position: 'absolute',
+    bottom: 80,
+    left: 16,
+    zIndex: 200,
+    elevation: 200,
+    borderRadius: 16,
+    padding: 6,
   },
   imagePreview: {
-    width: 150,
-    height: 150,
+    width: 120,
     borderRadius: 12,
-    resizeMode: 'contain',
+    resizeMode: 'cover',
   },
   removeImageButton: {
     position: 'absolute',
-    top: -8,
-    right: -8,
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: '#EF4444',
+    top: -10,
+    right: -10,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#FFFFFF',
     alignItems: 'center',
     justifyContent: 'center',
-    ...shadows.sm,
+    ...shadows.md,
   },
   inputRow: {
     flexDirection: 'row',
@@ -448,7 +511,11 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: '#F3F4F6',
+    overflow: 'hidden',
+  },
+  imageButtonGradient: {
+    width: '100%',
+    height: '100%',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -476,5 +543,16 @@ const styles = StyleSheet.create({
     height: '100%',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  imageViewerOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  imageViewerImage: {
+    width: '90%',
+    height: '70%',
+    resizeMode: 'contain',
   },
 });
