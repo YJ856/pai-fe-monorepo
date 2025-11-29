@@ -26,6 +26,7 @@ import {
   ScrollView,
   TouchableOpacity,
   Image,
+  RefreshControl,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
@@ -51,6 +52,7 @@ export default function ParentDashboard() {
   const navigation = useNavigation<DashboardNavigationProp>();
   const [activeTab, setActiveTab] = useState<TabValue>("interests");
   const [showChildDropdown, setShowChildDropdown] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
 
   // Zustand store에서 자녀 프로필 가져오기
   const { childProfiles } = useProfileStore();
@@ -63,6 +65,15 @@ export default function ParentDashboard() {
 
   console.log("[Dashboard] childProfiles:", childProfiles);
   console.log("[Dashboard] selectedChildId:", selectedChildId);
+
+  // 새로고침 핸들러
+  const onRefresh = async () => {
+    setRefreshing(true);
+    // 2초 후 새로고침 완료 (실제로는 데이터를 다시 불러오는 작업을 수행)
+    setTimeout(() => {
+      setRefreshing(false);
+    }, 2000);
+  };
 
   // 자녀 카드 클릭 핸들러 (Gallery 화면으로 이동)
   const handleChildPress = (childId: string, date: string) => {
@@ -80,6 +91,14 @@ export default function ParentDashboard() {
           style={styles.scrollView}
           contentContainerStyle={styles.content}
           showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              tintColor="#5B9BD5"
+              colors={["#5B9BD5"]}
+            />
+          }
         >
           {/* Tab Navigation with Child Selector */}
           <View style={styles.tabContainer}>
