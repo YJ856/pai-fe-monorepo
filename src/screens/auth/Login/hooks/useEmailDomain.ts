@@ -15,6 +15,7 @@
  */
 
 import { useState } from "react";
+import { Keyboard } from "react-native";
 
 export function useEmailDomain(
   setLoginEmailDomain: (domain: string) => void,
@@ -26,6 +27,7 @@ export function useEmailDomain(
     useState(false);
 
   const handleSelectLoginDomain = (domain: string) => {
+    Keyboard.dismiss(); // 키보드 닫기
     setLoginEmailDomain(domain);
     setLoginDomainModalVisible(false);
     if (domain === "직접 입력") {
@@ -34,6 +36,7 @@ export function useEmailDomain(
   };
 
   const handleSelectSignupDomain = (domain: string) => {
+    Keyboard.dismiss(); // 키보드 닫기
     handleSignupDomainChange(domain);
     setSignupDomainModalVisible(false);
   };

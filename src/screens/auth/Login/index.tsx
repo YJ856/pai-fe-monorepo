@@ -28,6 +28,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  Keyboard,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Input } from "../../../design/components/Input";
@@ -162,11 +163,12 @@ export default function LoginScreen() {
                           <View style={styles.domainSelectWrapper}>
                             <TouchableOpacity
                               style={styles.domainButton}
-                              onPress={() =>
+                              onPress={() => {
+                                Keyboard.dismiss();
                                 setLoginDomainModalVisible(
                                   !loginDomainModalVisible
-                                )
-                              }
+                                );
+                              }}
                               activeOpacity={0.7}
                             >
                               <Text style={styles.domainButtonText}>
@@ -293,11 +295,12 @@ export default function LoginScreen() {
                           <View style={styles.domainSelectWrapper}>
                             <TouchableOpacity
                               style={styles.domainButton}
-                              onPress={() =>
+                              onPress={() => {
+                                Keyboard.dismiss();
                                 setSignupDomainModalVisible(
                                   !signupDomainModalVisible
-                                )
-                              }
+                                );
+                              }}
                               activeOpacity={0.7}
                             >
                               <Text style={styles.domainButtonText}>

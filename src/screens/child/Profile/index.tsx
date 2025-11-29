@@ -37,11 +37,12 @@ import { RefreshableScrollView } from "../../../design/components/RefreshableScr
 import { updateProfile } from "../../../api/profiles";
 import { uploadMedia, deleteMedia, getMedia } from "../../../api/media";
 import { logout } from "../../../api/auth";
-import { useProfileStore } from "@/store/useProfileStore";
+import { useProfileStore } from "../../../store/useProfileStore";
 
 export default function ChildProfileScreen() {
   const navigation = useNavigation<any>();
   const [showEditModal, setShowEditModal] = useState(false);
+  const [showVoiceModal, setShowVoiceModal] = useState(false);
   const currentProfile = useProfileStore((state) => state.currentProfile);
   const profiles = useProfileStore((state) => state.profiles);
   const familyMembers =
@@ -50,6 +51,59 @@ export default function ChildProfileScreen() {
   const [isLoading, setIsLoading] = useState(false);
   const [editedName, setEditedName] = useState("");
   const [avatarUri, setAvatarUri] = useState<string | undefined>(undefined);
+
+  // 나이 계산 함수
+  const calculateAge = (birthDate: string | undefined): number | null => {
+    if (!birthDate) return null;
+    const today = new Date();
+    const birth = new Date(birthDate);
+    let age = today.getFullYear() - birth.getFullYear();
+    const monthDiff = today.getMonth() - birth.getMonth();
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
+      age--;
+    }
+    return age;
+  };
+
+  // 형제자매 관계 표시 함수
+  const getSiblingRelation = (member: any): string => {
+    if (!currentProfile || !currentProfile.birthDate || !member.birthDate) {
+      return member.profileType === "child"
+        ? member.gender === "female"
+          ? "딸"
+          : "아들"
+        : member.gender === "female"
+          ? "엄마"
+          : "아빠";
+    }
+
+    // 부모인 경우
+    if (member.profileType === "parent") {
+      return member.gender === "female" ? "엄마" : "아빠";
+    }
+
+    // 자녀인 경우 - 나이 비교
+    const myAge = calculateAge(currentProfile.birthDate);
+    const memberAge = calculateAge(member.birthDate);
+
+    if (myAge === null || memberAge === null) {
+      return member.gender === "female" ? "딸" : "아들";
+    }
+
+    // 나이가 어리면 동생
+    if (memberAge < myAge) {
+      return "동생";
+    }
+
+    // 나이가 많으면 성별에 따라 호칭 결정
+    if (currentProfile.gender === "female") {
+      // 내가 여자인 경우
+      return member.gender === "female" ? "언니" : "오빠";
+    } else {
+      // 내가 남자인 경우
+      return member.gender === "female" ? "누나" : "형";
+    }
+  };
 
   // 부모 프로필 중 음성이 있는 프로필만 필터링
   const parentProfilesWithVoice = profiles.filter(
@@ -97,6 +151,7 @@ export default function ChildProfileScreen() {
     if (!currentProfile) return;
 
     setIsLoading(true);
+    setShowVoiceModal(false);
     try {
       await updateProfile(String(currentProfile.profileId), {
         voiceMediaId: voiceMediaId,
@@ -250,15 +305,14 @@ export default function ChildProfileScreen() {
   }
 
   return (
-    <LinearGradient colors={["#FFE5E0", "#FFF0ED"]} style={styles.gradientContainer}>
-      <SafeAreaView style={styles.safeArea} edges={['top']}>
-        <View style={styles.container}>
-          <RefreshableScrollView
-            style={styles.scroll}
-            contentContainerStyle={styles.scrollContent}
-            onRefresh={loadProfileData}
-            refreshing={isLoading}
-          >
+    <SafeAreaView style={styles.safeArea} edges={["top", "left", "right"]}>
+      <View style={styles.container}>
+        <RefreshableScrollView
+          style={styles.scroll}
+          contentContainerStyle={styles.scrollContent}
+          onRefresh={loadProfileData}
+          refreshing={isLoading}
+        >
           {/* Profile Info Card */}
           <View style={styles.card}>
             <View style={styles.cardHeader}>
@@ -291,83 +345,33 @@ export default function ChildProfileScreen() {
           </View>
 
           {/* Parent Voice Selection Card */}
-          <View style={styles.card}>
+          <TouchableOpacity
+            style={styles.card}
+            onPress={() => setShowVoiceModal(true)}
+            activeOpacity={0.8}
+          >
             <View style={styles.voiceCardHeader}>
-              <Volume2 size={28} color="#10B981" />
-              <Text style={styles.cardTitle}>들려줄 부모님 목소리</Text>
-            </View>
-
-            {parentProfilesWithVoice.length === 0 ? (
-              <View style={styles.noVoiceContainer}>
-                <Text style={styles.noVoiceText}>
-                  부모 프로필에서 먼저 음성을 등록해주세요
+              <View style={styles.iconCircle}>
+                <Volume2 size={20} color="#10B981" />
+              </View>
+              <View style={styles.voiceCardInfo}>
+                <Text style={styles.cardTitle}>부모님 목소리</Text>
+                <Text style={styles.voiceCardSubtitle}>
+                  {selectedParentVoice
+                    ? `${selectedParentVoice.name}의 목소리`
+                    : "기본 목소리"}
                 </Text>
               </View>
-            ) : (
-              <View style={styles.voiceCardList}>
-                {/* 선택 안 함 옵션 */}
-                <TouchableOpacity
-                  style={[
-                    styles.voiceCardOption,
-                    !currentProfile?.voiceMediaId && styles.voiceCardOptionSelected,
-                  ]}
-                  onPress={() => handleChangeVoice(undefined)}
-                  activeOpacity={0.7}
-                  disabled={isLoading}
-                >
-                  <View style={styles.voiceCardOptionContent}>
-                    <View style={styles.voiceCardEmptyIcon}>
-                      <X size={24} color="#6B7280" />
-                    </View>
-                    <View style={styles.voiceCardInfo}>
-                      <Text style={styles.voiceCardName}>선택 안 함</Text>
-                      <Text style={styles.voiceCardDetail}>
-                        기본 목소리로 들려드려요
-                      </Text>
-                    </View>
-                  </View>
-                  {!currentProfile?.voiceMediaId && (
-                    <View style={styles.selectedIndicator} />
-                  )}
-                </TouchableOpacity>
-
-                {/* 부모 목소리 옵션들 */}
-                {parentProfilesWithVoice.map((parent) => (
-                  <TouchableOpacity
-                    key={parent.profileId}
-                    style={[
-                      styles.voiceCardOption,
-                      currentProfile?.voiceMediaId === parent.voiceMediaId &&
-                        styles.voiceCardOptionSelected,
-                    ]}
-                    onPress={() => handleChangeVoice(parent.voiceMediaId!)}
-                    activeOpacity={0.7}
-                    disabled={isLoading}
-                  >
-                    <View style={styles.voiceCardOptionContent}>
-                      <Text style={styles.voiceCardEmoji}>
-                        {parent.gender === "male" ? "👨" : "👩"}
-                      </Text>
-                      <View style={styles.voiceCardInfo}>
-                        <Text style={styles.voiceCardName}>{parent.name}</Text>
-                        <Text style={styles.voiceCardDetail}>
-                          {parent.gender === "male" ? "아빠" : "엄마"}의 목소리
-                        </Text>
-                      </View>
-                    </View>
-                    {currentProfile?.voiceMediaId === parent.voiceMediaId && (
-                      <View style={styles.selectedIndicator} />
-                    )}
-                  </TouchableOpacity>
-                ))}
-              </View>
-            )}
-          </View>
+              <Text style={styles.changeText}>변경</Text>
+            </View>
+          </TouchableOpacity>
 
           {/* Family Members Card */}
           <View style={styles.card}>
             <View style={styles.familyCardHeader}>
-              <Users size={28} color="#10B981" />
+              <View style={styles.iconCircle}>
+                <Users size={20} color="#10B981" />
+              </View>
               <Text style={styles.cardTitle}>우리 가족들</Text>
             </View>
 
@@ -394,16 +398,11 @@ export default function ChildProfileScreen() {
                     <View style={styles.familyInfo}>
                       <Text style={styles.familyName}>{member.name}</Text>
                       <Text style={styles.familyDetail}>
-                        {member.profileType === "child"
-                          ? member.gender === "female"
-                            ? "딸"
-                            : "아들"
-                          : member.gender === "female"
-                          ? "엄마"
-                          : "아빠"}
+                        {getSiblingRelation(member)}
                       </Text>
                       <Text style={styles.familyDetail}>
                         {member.birthDate}
+                        {calculateAge(member.birthDate) !== null && ` (${calculateAge(member.birthDate)}세)`}
                       </Text>
                     </View>
                   </View>
@@ -427,7 +426,6 @@ export default function ChildProfileScreen() {
           </TouchableOpacity>
         </RefreshableScrollView>
       </View>
-      </SafeAreaView>
 
       {/* Edit Profile Modal */}
       <Modal
@@ -508,35 +506,98 @@ export default function ChildProfileScreen() {
           </View>
         </View>
       </Modal>
-    </LinearGradient>
+
+      {/* Voice Selection Modal */}
+      <Modal
+        visible={showVoiceModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowVoiceModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>부모님 목소리 선택</Text>
+              <TouchableOpacity
+                onPress={() => setShowVoiceModal(false)}
+                activeOpacity={0.7}
+              >
+                <X size={24} color="#6B7280" />
+              </TouchableOpacity>
+            </View>
+
+            {parentProfilesWithVoice.length === 0 ? (
+              <View style={styles.noVoiceContainer}>
+                <Text style={styles.noVoiceText}>
+                  부모 프로필에서 먼저 음성을 등록해주세요
+                </Text>
+              </View>
+            ) : (
+              <ScrollView style={styles.voiceModalList}>
+                {/* 부모 목소리 옵션들 */}
+                {parentProfilesWithVoice.map((parent) => (
+                  <TouchableOpacity
+                    key={parent.profileId}
+                    style={[
+                      styles.voiceModalOption,
+                      currentProfile?.voiceMediaId === parent.voiceMediaId &&
+                        styles.voiceModalOptionSelected,
+                    ]}
+                    onPress={() => handleChangeVoice(parent.voiceMediaId!)}
+                    activeOpacity={0.7}
+                    disabled={isLoading}
+                  >
+                    <View style={styles.voiceModalOptionContent}>
+                      {parent.avatarUrl ? (
+                        <Image
+                          source={{ uri: parent.avatarUrl }}
+                          style={styles.voiceParentAvatar}
+                        />
+                      ) : (
+                        <Text style={styles.voiceCardEmoji}>
+                          {parent.gender === "male" ? "👨" : "👩"}
+                        </Text>
+                      )}
+                      <View style={styles.voiceCardInfo}>
+                        <Text style={styles.voiceModalName}>{parent.name}</Text>
+                        <Text style={styles.voiceModalDetail}>
+                          {parent.gender === "male" ? "아빠" : "엄마"}의 목소리
+                        </Text>
+                      </View>
+                    </View>
+                    {currentProfile?.voiceMediaId === parent.voiceMediaId && (
+                      <View style={styles.selectedIndicator} />
+                    )}
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            )}
+          </View>
+        </View>
+      </Modal>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  gradientContainer: {
-    flex: 1,
-  },
   safeArea: {
     flex: 1,
+    backgroundColor: "#f9fafb",
   },
   container: {
     flex: 1,
+    backgroundColor: "#f9fafb",
   },
   scroll: {
     flex: 1,
   },
   scrollContent: {
-    padding: spacing.lg,
-    paddingTop: spacing.xl,
+    padding: 16,
+    paddingTop: 24,
   },
   avatarWrapper: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: "#D1FAE5",
     alignItems: "center",
-    justifyContent: "center",
-    ...shadows.md,
+    marginBottom: 12,
   },
   avatarImage: {
     width: 80,
@@ -547,122 +608,151 @@ const styles = StyleSheet.create({
     fontSize: 40,
   },
   card: {
-    backgroundColor: "#F9FAFB",
-    borderRadius: 16,
-    padding: spacing.lg,
-    ...shadows.sm,
-    marginBottom: spacing.md,
+    backgroundColor: "#FFFFFF",
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
+    shadowColor: "#000",
+    shadowOpacity: 0.05,
+    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 8,
+    elevation: 2,
   },
   cardHeader: {
-    flexDirection: "row",
+    flexDirection: "column",
     alignItems: "center",
-    gap: spacing.md,
-    marginBottom: spacing.md,
+    marginBottom: 16,
   },
   profileNameContainer: {
-    flex: 1,
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
+    justifyContent: "center",
+    gap: 8,
+    marginBottom: 12,
   },
   familyCardHeader: {
     flexDirection: "row",
     alignItems: "center",
-    gap: spacing.md,
-    marginBottom: spacing.md,
+    gap: 12,
+    marginBottom: 16,
   },
   voiceCardHeader: {
     flexDirection: "row",
     alignItems: "center",
-    gap: spacing.md,
-    marginBottom: spacing.md,
+    gap: 12,
+  },
+  voiceCardSubtitle: {
+    fontSize: 13,
+    color: "#6b7280",
+    marginTop: 2,
+  },
+  changeText: {
+    fontSize: 13,
+    color: "#10B981",
+    fontWeight: "600",
+    marginLeft: "auto",
+  },
+  iconCircle: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "#f3f4f6",
+    alignItems: "center",
+    justifyContent: "center",
   },
   editButton: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 4,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
-    backgroundColor: "#D1FAE5",
+    gap: 6,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    backgroundColor: "#f3f4f6",
+    borderRadius: 20,
   },
   editButtonText: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: "600",
     color: "#10B981",
   },
   cardTitle: {
-    fontSize: 24,
-    fontWeight: "700",
+    fontSize: 18,
+    fontWeight: "bold",
     color: "#111827",
   },
   infoList: {
-    gap: spacing.sm,
+    gap: 0,
   },
   infoRow: {
     flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "flex-start",
-    paddingVertical: spacing.xs,
+    alignItems: "center",
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: "#f3f4f6",
   },
   infoLabel: {
-    ...typography.body1,
-    color: "#6B7280",
+    fontSize: 12,
+    color: "#6b7280",
+    marginBottom: 2,
     flex: 1,
   },
   infoValue: {
-    ...typography.body1,
+    fontSize: 14,
     color: "#111827",
-    fontWeight: "600",
-    flex: 2,
+    fontWeight: "500",
+    flex: 1,
     textAlign: "right",
   },
   familyList: {
-    gap: spacing.sm,
+    gap: 8,
   },
   familyItem: {
     flexDirection: "row",
     alignItems: "center",
-    padding: spacing.md,
-    backgroundColor: "#FFFFFF",
+    padding: 12,
+    backgroundColor: "#f9fafb",
     borderRadius: 12,
-    gap: spacing.md,
   },
   familyAvatar: {
-    fontSize: 40,
+    fontSize: 32,
+    marginRight: 12,
   },
   familyAvatarImage: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    marginRight: 12,
   },
   familyInfo: {
     flex: 1,
   },
   familyName: {
-    ...typography.body1,
+    fontSize: 15,
+    fontWeight: "600",
     color: "#111827",
-    fontWeight: "700",
+    marginBottom: 2,
   },
   familyDetail: {
-    fontSize: 14,
-    color: "#6B7280",
+    fontSize: 13,
+    color: "#6b7280",
   },
   logoutButton: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    height: 56,
-    borderRadius: 28,
-    borderWidth: 2,
-    borderColor: "#D1D5DB",
+    paddingVertical: 14,
+    borderRadius: 12,
     backgroundColor: "#FFFFFF",
-    gap: spacing.sm,
-    marginTop: spacing.xs,
+    gap: 8,
+    marginTop: 8,
+    shadowColor: "#000",
+    shadowOpacity: 0.05,
+    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 8,
+    elevation: 2,
   },
   logoutText: {
-    fontSize: 18,
-    color: "#6B7280",
+    fontSize: 14,
+    color: "#6b7280",
     fontWeight: "600",
   },
   centered: {
@@ -670,15 +760,15 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   loadingText: {
-    marginTop: spacing.md,
-    fontSize: 16,
+    marginTop: 12,
+    fontSize: 14,
     color: "#6B7280",
   },
   emptyText: {
-    fontSize: 14,
+    fontSize: 13,
     color: "#9CA3AF",
     textAlign: "center",
-    paddingVertical: spacing.lg,
+    paddingVertical: 16,
   },
   // Modal Styles
   modalOverlay: {
@@ -690,80 +780,78 @@ const styles = StyleSheet.create({
     backgroundColor: "#FFFFFF",
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
-    padding: spacing.lg,
-    paddingBottom: spacing.xl,
+    padding: 20,
+    maxHeight: "80%",
   },
   modalHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: spacing.lg,
+    marginBottom: 20,
   },
   modalTitle: {
-    fontSize: 24,
-    fontWeight: "700",
+    fontSize: 18,
+    fontWeight: "bold",
     color: "#111827",
   },
   modalAvatarContainer: {
     alignItems: "center",
-    marginBottom: spacing.lg,
+    marginBottom: 20,
   },
   modalAvatarWrapper: {
     position: "relative",
-    width: 100,
-    height: 100,
+    width: 80,
+    height: 80,
   },
   modalAvatarImage: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
+    width: 80,
+    height: 80,
+    borderRadius: 40,
   },
   modalAvatarEmoji: {
-    fontSize: 80,
-    lineHeight: 100,
+    fontSize: 40,
   },
   cameraButton: {
     position: "absolute",
-    bottom: 0,
-    right: 0,
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    bottom: -4,
+    right: -4,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
     backgroundColor: "#10B981",
     alignItems: "center",
     justifyContent: "center",
-    borderWidth: 3,
+    borderWidth: 2,
     borderColor: "#FFFFFF",
-    ...shadows.sm,
   },
   inputGroup: {
-    marginBottom: spacing.md,
+    marginBottom: 16,
+    gap: 6,
   },
   inputLabel: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: "600",
     color: "#374151",
-    marginBottom: spacing.xs,
   },
   input: {
     height: 48,
     borderWidth: 1,
-    borderColor: "#D1D5DB",
+    borderColor: "#e5e7eb",
     borderRadius: 12,
-    paddingHorizontal: spacing.md,
-    fontSize: 16,
+    paddingHorizontal: 16,
+    fontSize: 14,
     color: "#111827",
     backgroundColor: "#FFFFFF",
   },
   modalButtons: {
     flexDirection: "row",
-    gap: spacing.sm,
-    marginTop: spacing.lg,
+    gap: 8,
+    marginTop: 20,
   },
   modalButton: {
     flex: 1,
     height: 48,
-    borderRadius: 24,
+    borderRadius: 12,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -771,7 +859,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#F3F4F6",
   },
   cancelButtonText: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: "600",
     color: "#6B7280",
   },
@@ -779,74 +867,80 @@ const styles = StyleSheet.create({
     backgroundColor: "#10B981",
   },
   saveButtonText: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: "600",
     color: "#FFFFFF",
   },
-  // Voice Selection Card Styles
+  // Voice Selection Modal Styles
   noVoiceContainer: {
-    padding: spacing.md,
+    padding: 12,
     backgroundColor: "#FEF3C7",
     borderRadius: 12,
     borderWidth: 1,
     borderColor: "#FDE68A",
   },
   noVoiceText: {
-    fontSize: 14,
+    fontSize: 13,
     color: "#92400E",
     textAlign: "center",
   },
-  voiceCardList: {
-    gap: spacing.sm,
+  voiceModalList: {
+    maxHeight: 400,
   },
-  voiceCardOption: {
+  voiceModalOption: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    padding: spacing.md,
-    backgroundColor: "#FFFFFF",
+    padding: 12,
+    backgroundColor: "#f9fafb",
     borderRadius: 12,
     borderWidth: 2,
-    borderColor: "#E5E7EB",
+    borderColor: "#e5e7eb",
+    marginBottom: 8,
   },
-  voiceCardOptionSelected: {
+  voiceModalOptionSelected: {
     borderColor: "#10B981",
     backgroundColor: "#D1FAE5",
   },
-  voiceCardOptionContent: {
+  voiceModalOptionContent: {
     flexDirection: "row",
     alignItems: "center",
-    gap: spacing.md,
+    gap: 12,
     flex: 1,
   },
   voiceCardEmptyIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     backgroundColor: "#F3F4F6",
     alignItems: "center",
     justifyContent: "center",
   },
   voiceCardEmoji: {
-    fontSize: 48,
+    fontSize: 32,
+  },
+  voiceParentAvatar: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
   },
   voiceCardInfo: {
     flex: 1,
   },
-  voiceCardName: {
-    fontSize: 16,
-    fontWeight: "700",
+  voiceModalName: {
+    fontSize: 15,
+    fontWeight: "600",
     color: "#111827",
   },
-  voiceCardDetail: {
-    fontSize: 14,
+  voiceModalDetail: {
+    fontSize: 13,
     color: "#6B7280",
     marginTop: 2,
   },
   selectedIndicator: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
     backgroundColor: "#10B981",
     alignItems: "center",
     justifyContent: "center",

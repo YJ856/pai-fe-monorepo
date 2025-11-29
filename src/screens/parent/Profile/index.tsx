@@ -39,7 +39,7 @@ import VoiceRegistrationScreen from "./VoiceRegistration";
 import { getProfiles, updateProfile } from "../../../api/profiles";
 import { uploadMedia, deleteMedia, getMedia } from "../../../api/media";
 import { logout } from "../../../api/auth";
-import { useProfileStore } from "@/store/useProfileStore";
+import { useProfileStore } from "../../../store/useProfileStore";
 
 export default function ParentProfileScreen() {
   const navigation = useNavigation<any>();
@@ -53,6 +53,19 @@ export default function ParentProfileScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [editName, setEditName] = useState("");
   const [editAddress, setEditAddress] = useState("");
+
+  // 나이 계산 함수
+  const calculateAge = (birthDate: string | undefined): number | null => {
+    if (!birthDate) return null;
+    const today = new Date();
+    const birth = new Date(birthDate);
+    let age = today.getFullYear() - birth.getFullYear();
+    const monthDiff = today.getMonth() - birth.getMonth();
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
+      age--;
+    }
+    return age;
+  };
 
   // 프로필 데이터 로드
   useFocusEffect(
@@ -331,7 +344,7 @@ export default function ParentProfileScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={["left", "right"]}>
+    <SafeAreaView style={styles.safeArea} edges={["top", "left", "right"]}>
       <View style={styles.container}>
         <RefreshableScrollView
           style={styles.scroll}
@@ -366,15 +379,15 @@ export default function ParentProfileScreen() {
                 <Text style={styles.cardTitle}>
                   {currentProfile?.name || "사용자"}
                 </Text>
-                <TouchableOpacity
-                  style={styles.editButton}
-                  onPress={handleEditProfile}
-                  activeOpacity={0.7}
-                >
-                  <Edit size={18} color="#5B9BD5" />
-                  <Text style={styles.editButtonText}>수정</Text>
-                </TouchableOpacity>
               </View>
+              <TouchableOpacity
+                style={styles.editButton}
+                onPress={handleEditProfile}
+                activeOpacity={0.7}
+              >
+                <Edit size={16} color="#5B9BD5" />
+                <Text style={styles.editButtonText}>프로필 수정</Text>
+              </TouchableOpacity>
             </View>
 
             <View style={styles.infoList}>
@@ -413,11 +426,11 @@ export default function ParentProfileScreen() {
 
           {/* Family Members Card */}
           <View style={styles.card}>
-            <View style={styles.cardHeader}>
+            <View style={styles.sectionHeaderRow}>
               <View style={styles.iconCircle}>
-                <Users size={24} color="#FFFFFF" />
+                <Users size={20} color="#6b7280" />
               </View>
-              <Text style={styles.cardTitle}>우리 가족들</Text>
+              <Text style={styles.sectionTitle}>우리 가족들</Text>
             </View>
 
             <View style={styles.familyList}>
@@ -442,6 +455,7 @@ export default function ParentProfileScreen() {
                       <Text style={styles.familyName}>{member.name}</Text>
                       <Text style={styles.familyDetail}>
                         {member.birthDate}
+                        {calculateAge(member.birthDate) !== null && ` (${calculateAge(member.birthDate)}세)`}
                       </Text>
                       <Text style={styles.familyDetail}>
                         {member.profileType === "child"
@@ -581,22 +595,23 @@ export default function ParentProfileScreen() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: "#EFF6FF",
+    backgroundColor: "#f9fafb",
   },
   container: {
     flex: 1,
-    backgroundColor: "#FFFFFF",
+    backgroundColor: "#f9fafb",
   },
   scroll: {
     flex: 1,
   },
   scrollContent: {
-    padding: spacing.md,
-    paddingTop: spacing.xl,
+    padding: 16,
+    paddingTop: 24,
   },
   avatarContainer: {
     position: "relative",
-    marginRight: spacing.md,
+    alignItems: "center",
+    marginBottom: 12,
   },
   avatarImage: {
     width: 80,
@@ -607,138 +622,159 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: "#EFF6FF",
+    backgroundColor: "#f3f4f6",
     alignItems: "center",
     justifyContent: "center",
   },
   cameraButton: {
     position: "absolute",
-    bottom: 0,
-    right: 0,
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    bottom: -4,
+    right: "35%",
+    width: 28,
+    height: 28,
+    borderRadius: 14,
     backgroundColor: "#5B9BD5",
     alignItems: "center",
     justifyContent: "center",
-    borderWidth: 3,
+    borderWidth: 2,
     borderColor: "#FFFFFF",
-    ...shadows.sm,
   },
   card: {
-    backgroundColor: "#F9FAFB",
-    borderRadius: 16,
-    padding: spacing.lg,
-    ...shadows.sm,
-    marginBottom: spacing.md,
+    backgroundColor: "#FFFFFF",
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
+    shadowColor: "#000",
+    shadowOpacity: 0.05,
+    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 8,
+    elevation: 2,
   },
   cardHeader: {
-    flexDirection: "row",
+    flexDirection: "column",
     alignItems: "center",
-    gap: spacing.md,
-    marginBottom: spacing.md,
+    marginBottom: 16,
   },
   profileNameContainer: {
-    flex: 1,
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
+    justifyContent: "center",
+    gap: 8,
   },
   editButton: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 4,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
-    backgroundColor: "#EFF6FF",
+    gap: 6,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    backgroundColor: "#f3f4f6",
+    borderRadius: 20,
   },
   editButtonText: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: "600",
     color: "#5B9BD5",
   },
+  sectionHeaderRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 16,
+  },
   iconCircle: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: "#5B9BD5",
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "#f3f4f6",
     alignItems: "center",
     justifyContent: "center",
+    marginRight: 12,
   },
   cardTitle: {
-    fontSize: 24,
-    fontWeight: "700",
+    fontSize: 18,
+    fontWeight: "bold",
+    color: "#111827",
+  },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: "bold",
     color: "#111827",
   },
   infoList: {
-    gap: spacing.sm,
+    gap: 0,
   },
   infoRow: {
     flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "flex-start",
-    paddingVertical: spacing.xs,
+    alignItems: "center",
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: "#f3f4f6",
   },
   infoLabel: {
-    ...typography.body1,
-    color: "#6B7280",
+    fontSize: 12,
+    color: "#6b7280",
+    marginBottom: 2,
     flex: 1,
   },
   infoValue: {
-    ...typography.body1,
+    fontSize: 14,
     color: "#111827",
-    fontWeight: "600",
-    flex: 2,
+    fontWeight: "500",
+    flex: 1,
     textAlign: "right",
   },
   familyList: {
-    gap: spacing.sm,
+    gap: 8,
   },
   familyItem: {
     flexDirection: "row",
     alignItems: "center",
-    padding: spacing.md,
-    backgroundColor: "#FFFFFF",
+    padding: 12,
+    backgroundColor: "#f9fafb",
     borderRadius: 12,
-    gap: spacing.md,
   },
   familyAvatar: {
-    fontSize: 40,
+    fontSize: 32,
+    marginRight: 12,
   },
   familyAvatarImage: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    marginRight: 12,
   },
   familyInfo: {
     flex: 1,
   },
   familyName: {
-    ...typography.body1,
+    fontSize: 15,
+    fontWeight: "600",
     color: "#111827",
-    fontWeight: "700",
+    marginBottom: 2,
   },
   familyDetail: {
-    fontSize: 14,
-    color: "#6B7280",
+    fontSize: 13,
+    color: "#6b7280",
   },
   voiceCard: {
-    borderRadius: 16,
-    padding: spacing.lg,
-    ...shadows.sm,
-    marginBottom: spacing.md,
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
+    shadowColor: "#000",
+    shadowOpacity: 0.05,
+    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 8,
+    elevation: 2,
   },
   voiceHeader: {
     flexDirection: "row",
     alignItems: "center",
-    gap: spacing.md,
-    marginBottom: spacing.md,
+    gap: 12,
+    marginBottom: 12,
   },
   voiceIconCircle: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     backgroundColor: "rgba(255, 255, 255, 0.2)",
     alignItems: "center",
     justifyContent: "center",
@@ -747,47 +783,50 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   voiceTitle: {
-    fontSize: 18,
+    fontSize: 15,
     fontWeight: "600",
     color: "#FFFFFF",
-    marginBottom: 4,
+    marginBottom: 2,
   },
   voiceSubtitle: {
-    fontSize: 14,
-    color: "rgba(255, 255, 255, 0.8)",
+    fontSize: 12,
+    color: "rgba(255, 255, 255, 0.85)",
   },
   voiceButton: {
-    height: 48,
+    height: 44,
     backgroundColor: "#FFFFFF",
-    borderRadius: 24,
+    borderRadius: 22,
     alignItems: "center",
     justifyContent: "center",
   },
   voiceButtonText: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: "600",
     color: "#5B9BD5",
   },
   buttonContainer: {
     flexDirection: "row",
-    gap: spacing.sm,
-    marginTop: spacing.md,
+    gap: 8,
+    marginTop: 8,
   },
   actionButton: {
     flex: 1,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    height: 56,
-    borderRadius: 28,
-    borderWidth: 2,
-    borderColor: "#D1D5DB",
+    paddingVertical: 14,
+    borderRadius: 12,
     backgroundColor: "#FFFFFF",
-    gap: spacing.xs,
+    gap: 8,
+    shadowColor: "#000",
+    shadowOpacity: 0.05,
+    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 8,
+    elevation: 2,
   },
   actionButtonText: {
-    fontSize: 16,
-    color: "#6B7280",
+    fontSize: 14,
+    color: "#6b7280",
     fontWeight: "600",
   },
   centered: {
@@ -795,15 +834,15 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   loadingText: {
-    marginTop: spacing.md,
-    fontSize: 16,
+    marginTop: 12,
+    fontSize: 14,
     color: "#6B7280",
   },
   emptyText: {
-    fontSize: 14,
+    fontSize: 13,
     color: "#9CA3AF",
     textAlign: "center",
-    paddingVertical: spacing.lg,
+    paddingVertical: 16,
   },
   // Modal Styles
   modalOverlay: {
@@ -815,50 +854,50 @@ const styles = StyleSheet.create({
     backgroundColor: "#FFFFFF",
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
-    padding: spacing.lg,
+    padding: 20,
     maxHeight: "80%",
   },
   modalHeader: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    marginBottom: spacing.lg,
+    marginBottom: 20,
   },
   modalTitle: {
-    fontSize: 24,
-    fontWeight: "700",
+    fontSize: 18,
+    fontWeight: "bold",
     color: "#111827",
   },
   modalBody: {
-    gap: spacing.md,
-    marginBottom: spacing.lg,
+    gap: 16,
+    marginBottom: 20,
   },
   inputGroup: {
-    gap: spacing.xs,
+    gap: 6,
   },
   inputLabel: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: "600",
     color: "#374151",
   },
   input: {
     height: 48,
     borderWidth: 1,
-    borderColor: "#D1D5DB",
+    borderColor: "#e5e7eb",
     borderRadius: 12,
-    paddingHorizontal: spacing.md,
-    fontSize: 16,
+    paddingHorizontal: 16,
+    fontSize: 14,
     color: "#111827",
-    backgroundColor: "#F9FAFB",
+    backgroundColor: "#FFFFFF",
   },
   modalFooter: {
     flexDirection: "row",
-    gap: spacing.sm,
+    gap: 8,
   },
   modalButton: {
     flex: 1,
     height: 48,
-    borderRadius: 24,
+    borderRadius: 12,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -866,15 +905,15 @@ const styles = StyleSheet.create({
     backgroundColor: "#F3F4F6",
   },
   cancelButtonText: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: "600",
     color: "#6B7280",
   },
   saveButton: {
-    backgroundColor: "#5B9BD5",
+    backgroundColor: "#2563eb",
   },
   saveButtonText: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: "600",
     color: "#FFFFFF",
   },
