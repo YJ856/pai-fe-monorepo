@@ -373,8 +373,9 @@ const styles = StyleSheet.create({
   tabList: {
     flex: 1,
     flexDirection: "row",
-    padding: spacing.sm,
-    borderRadius: borderRadius.full,
+    backgroundColor: "rgba(255, 255, 255, 0.5)",
+    borderRadius: 100,
+    padding: 6,
     ...shadows.lg,
   },
 
@@ -383,8 +384,8 @@ const styles = StyleSheet.create({
   },
 
   tabActive: {
-    height: 48,
-    borderRadius: borderRadius.full,
+    borderRadius: 100,
+    paddingVertical: 8,
     alignItems: "center",
     justifyContent: "center",
     ...shadows.lg,
@@ -399,9 +400,9 @@ const styles = StyleSheet.create({
   tabTextInactive: {
     ...typography.button,
     fontSize: 15,
-    color: "#6b7280", // text-gray-600
+    color: "#6b7280",
     textAlign: "center",
-    paddingVertical: spacing.md,
+    paddingVertical: 8,
   },
 
   // Content Card

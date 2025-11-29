@@ -30,6 +30,8 @@ import {
   shadows,
 } from "../../../../design/tokens";
 
+const noPhotoImage = require("../../../../assets/images/no_photo.png");
+
 interface ConversationCardViewModel {
   conversationId: string;
   childProfileId: number;
@@ -79,9 +81,11 @@ export default function GalleryGrid({
               resizeMode="cover"
             />
           ) : (
-            <View style={styles.placeholderImage}>
-              <Text style={styles.placeholderIcon}>💬</Text>
-            </View>
+            <Image
+              source={noPhotoImage}
+              style={styles.image}
+              resizeMode="cover"
+            />
           )}
         </TouchableOpacity>
       ))}

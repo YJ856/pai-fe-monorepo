@@ -194,7 +194,8 @@ export default function ChildQuizScreen() {
       <LinearGradient colors={['#FFE5E0', '#FFF0ED']} style={styles.container}>
       {/* Tabs */}
       <View style={styles.tabsContainer}>
-        <View style={styles.tabsList}>
+        <View style={styles.tabsWrapper}>
+          <View style={styles.tabsList}>
           <TouchableOpacity
             style={styles.tabTrigger}
             onPress={() => setActiveTab('today')}
@@ -231,6 +232,7 @@ export default function ChildQuizScreen() {
               <Text style={styles.tabText}>풀었던 퀴즈</Text>
             )}
           </TouchableOpacity>
+        </View>
         </View>
       </View>
 
@@ -344,14 +346,18 @@ const styles = StyleSheet.create({
   },
   tabsContainer: {
     paddingHorizontal: spacing.md,
-    paddingTop: spacing.md,
+    paddingTop: spacing.xl,
+  },
+  tabsWrapper: {
+    alignItems: 'center',
+    marginBottom: spacing.md,
   },
   tabsList: {
     flexDirection: 'row',
     backgroundColor: 'rgba(255, 255, 255, 0.5)',
     borderRadius: 100,
-    padding: 8,
-    marginBottom: spacing.md,
+    padding: 4,
+    width: '95%',
     ...shadows.lg,
   },
   tabTrigger: {
@@ -359,7 +365,7 @@ const styles = StyleSheet.create({
   },
   tabTriggerActive: {
     borderRadius: 100,
-    paddingVertical: 12,
+    paddingVertical: 8,
     alignItems: 'center',
     justifyContent: 'center',
     ...shadows.lg,
@@ -368,7 +374,7 @@ const styles = StyleSheet.create({
     ...typography.button,
     color: '#6B7280',
     textAlign: 'center',
-    paddingVertical: 12,
+    paddingVertical: 8,
   },
   tabTextActive: {
     ...typography.button,
@@ -387,9 +393,16 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     padding: spacing.lg,
     marginBottom: spacing.md,
-    ...shadows.xl,
     borderWidth: 1,
     borderColor: '#F3F4F6',
+    shadowColor: '#FF6B9D',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 5,
   },
   quizCardSolved: {
     opacity: 0.75,

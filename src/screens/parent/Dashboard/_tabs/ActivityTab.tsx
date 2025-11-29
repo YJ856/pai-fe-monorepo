@@ -26,6 +26,7 @@ import {
   Image,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
+import { Calendar } from "lucide-react-native";
 import {
   colors,
   spacing,
@@ -86,11 +87,12 @@ export default function ActivityTab({ childId, childProfiles, onChildPress }: Ac
         />
 
         {/* Children Grid - 대화가 있는 자녀만 표시 */}
-        <Text style={styles.dateTitle}>
-          {selectedDate
-            ? `${selectedDate} 대화 기록`
-            : "오늘의 대화 기록"}
-        </Text>
+        <View style={styles.dateBadge}>
+          <Calendar size={16} color={colors.parent.from} />
+          <Text style={styles.dateText}>
+            {selectedDate || today}
+          </Text>
+        </View>
         {childrenWithConversations.length > 0 ? (
           <View style={styles.childrenGrid}>
             {childrenWithConversations.map((childData) => {
@@ -151,18 +153,30 @@ const styles = StyleSheet.create({
   cardPadding: {
     padding: spacing.xl,
   },
-  dateTitle: {
-    ...typography.h3,
-    fontSize: 18,
-    color: "#111827",
-    marginBottom: spacing.lg,
+  dateBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.xs,
+    backgroundColor: "rgba(91, 155, 213, 0.15)",
+    borderRadius: 100,
+    paddingVertical: spacing.xs,
+    paddingHorizontal: spacing.md,
+    alignSelf: "flex-start",
+    marginTop: spacing.md,
+    marginBottom: spacing.md,
+  },
+  dateText: {
+    ...typography.body1,
+    fontWeight: "600",
+    color: colors.parent.from,
   },
   childrenGrid: {
     flexDirection: "row",
-    gap: spacing.lg,
+    flexWrap: "wrap",
+    gap: spacing.md,
   },
   childCard: {
-    flex: 1,
+    width: "48%",
     aspectRatio: 1,
     borderRadius: borderRadius["2xl"],
     overflow: "hidden",
@@ -174,23 +188,23 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   childAvatar: {
-    fontSize: 60,
-    marginBottom: spacing.lg,
+    fontSize: 40,
+    marginBottom: spacing.sm,
   },
   childAvatarImage: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    marginBottom: spacing.lg,
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    marginBottom: spacing.sm,
   },
   childName: {
-    ...typography.h2,
-    fontSize: 24,
+    ...typography.h3,
+    fontSize: 18,
     color: colors.primaryForeground,
   },
   childConversationCount: {
     ...typography.caption,
-    fontSize: 14,
+    fontSize: 12,
     color: colors.primaryForeground,
     marginTop: spacing.xs,
     opacity: 0.9,
