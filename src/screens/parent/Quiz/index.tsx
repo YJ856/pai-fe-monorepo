@@ -29,7 +29,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
-import { CheckCircle, XCircle, Gift, Calendar, User, Edit, Trash2 } from 'lucide-react-native';
+import { CheckCircle, XCircle, Gift, Calendar, User, Edit, Trash2, X } from 'lucide-react-native';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { spacing, typography, borderRadius, shadows } from '../../../design/tokens';
 import { Button } from '../../../design/components/Button';
@@ -76,20 +76,45 @@ export default function ParentQuizScreen() {
   const {
     todayQuizzes: todayQuizzesData,
     isLoading: isLoadingTodayQuizzes,
+    isError: isErrorTodayQuizzes,
+    error: errorTodayQuizzes,
   } = useTodayQuizzes();
 
   const {
     pastQuizzes: pastQuizzesData,
     isLoading: isLoadingPastQuizzes,
+    isError: isErrorPastQuizzes,
+    error: errorPastQuizzes,
   } = usePastQuizzes();
+
+  console.log('[ParentQuiz] Today Quizzes:', {
+    count: todayQuizzesData?.length,
+    isLoading: isLoadingTodayQuizzes,
+    isError: isErrorTodayQuizzes,
+    error: errorTodayQuizzes?.message,
+  });
+
+  console.log('[ParentQuiz] Past Quizzes:', {
+    count: pastQuizzesData?.length,
+    isLoading: isLoadingPastQuizzes,
+    isError: isErrorPastQuizzes,
+    error: errorPastQuizzes?.message,
+  });
 
   const {
     scheduledQuizzes: scheduledQuizzesData,
     isLoading: isLoadingScheduledQuizzes,
+    isError: isErrorScheduledQuizzes,
+    error: errorScheduledQuizzes,
   } = useScheduledQuizzes();
 
-  console.log(scheduledQuizzesData);
-  
+  console.log('[ParentQuiz] Scheduled Quizzes:', {
+    data: scheduledQuizzesData,
+    count: scheduledQuizzesData?.length,
+    isLoading: isLoadingScheduledQuizzes,
+    isError: isErrorScheduledQuizzes,
+    error: errorScheduledQuizzes?.message,
+  });
 
   const queryClient = useQueryClient();
 
@@ -115,7 +140,6 @@ export default function ParentQuizScreen() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['parent-quizzes', 'today'] });
       queryClient.invalidateQueries({ queryKey: ['parent-quizzes', 'scheduled'] });
-      // 퀴즈 수정 시 출제일이 변경될 수 있으므로 캐시 무효화
       queryClient.invalidateQueries({ queryKey: ['parent-quizzes', 'next-publish-date'] });
     },
   });
@@ -367,29 +391,36 @@ export default function ParentQuizScreen() {
               {solutions.map((solution) => (
                 <View
                   key={solution.childId}
-                  style={[
-                    styles.solutionCard,
-                    solution.solved ? styles.solutionCardSolved : styles.solutionCardPending,
-                  ]}
+                  style={styles.solutionCard}
                 >
-                  <View style={styles.solutionInfo}>
+                  {/* 원형 아바타 */}
+                  <View style={[
+                    styles.solutionAvatarContainer,
+                    solution.solved ? styles.solutionAvatarSolved : styles.solutionAvatarPending
+                  ]}>
                     {solution.childAvatar ? (
                       <Image
                         source={{ uri: solution.childAvatar }}
-                        style={styles.childAvatar}
+                        style={styles.solutionAvatarImage}
                       />
                     ) : (
-                      <View style={styles.childAvatarPlaceholder}>
-                        <User size={14} color="#9CA3AF" />
-                      </View>
+                      <User size={24} color={solution.solved ? "#10B981" : "#9CA3AF"} />
                     )}
-                    <Text style={styles.solutionName}>{solution.childName}</Text>
+                    {/* 상태 뱃지 */}
+                    <View style={[
+                      styles.solutionStatusBadge,
+                      solution.solved ? styles.solutionStatusSolved : styles.solutionStatusPending
+                    ]}>
+                      {solution.solved ? (
+                        <CheckCircle size={12} color="#FFFFFF" />
+                      ) : (
+                        <XCircle size={12} color="#FFFFFF" />
+                      )}
+                    </View>
                   </View>
-                  {solution.solved ? (
-                    <CheckCircle size={20} color="#10B981" />
-                  ) : (
-                    <XCircle size={20} color="#9CA3AF" />
-                  )}
+
+                  {/* 이름 */}
+                  <Text style={styles.solutionName}>{solution.childName}</Text>
                 </View>
               ))}
             </View>
@@ -558,61 +589,93 @@ export default function ParentQuizScreen() {
           visible={showDetailModal}
           transparent
           animationType="fade"
+          statusBarTranslucent
           onRequestClose={() => setShowDetailModal(false)}
         >
-          <View style={styles.modalOverlay}>
-            <View style={styles.modalContent}>
-              <Text style={styles.modalTitle}>퀴즈 풀이 기록</Text>
-              <Text style={styles.modalQuestion}>{selectedQuiz.question}</Text>
+          <TouchableOpacity
+            style={styles.modalOverlay}
+            activeOpacity={1}
+            onPress={() => setShowDetailModal(false)}
+          >
+            <TouchableOpacity
+              style={styles.modalContent}
+              activeOpacity={1}
+              onPress={(e) => e.stopPropagation()}
+            >
+              {/* Header */}
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>퀴즈 풀이 기록</Text>
+                <TouchableOpacity
+                  onPress={() => setShowDetailModal(false)}
+                  style={styles.modalCloseButton}
+                >
+                  <X size={24} color="#6B7280" />
+                </TouchableOpacity>
+              </View>
 
               <View style={styles.modalSolutions}>
                 {selectedQuiz.childSolutions.map((solution) => (
                   <View
                     key={solution.childId}
-                    style={[
-                      styles.modalSolutionCard,
-                      solution.solved
-                        ? styles.modalSolutionCardSolved
-                        : styles.modalSolutionCardPending,
-                    ]}
+                    style={styles.modalSolutionCard}
                   >
-                    <View style={styles.modalSolutionHeader}>
-                      <View style={styles.modalSolutionInfo}>
-                        <Text style={styles.modalSolutionName}>{solution.childName}</Text>
+                    {/* 프로필 영역 */}
+                    <View style={styles.modalSolutionProfile}>
+                      {/* 아바타 */}
+                      <View style={[
+                        styles.modalAvatarContainer,
+                        solution.solved ? styles.modalAvatarSolved : styles.modalAvatarPending
+                      ]}>
+                        {solution.childAvatar ? (
+                          <Image
+                            source={{ uri: solution.childAvatar }}
+                            style={styles.modalAvatarImage}
+                          />
+                        ) : (
+                          <User size={32} color={solution.solved ? "#10B981" : "#9CA3AF"} />
+                        )}
+                        {/* 상태 뱃지 */}
+                        <View style={[
+                          styles.modalStatusBadge,
+                          solution.solved ? styles.modalStatusSolved : styles.modalStatusPending
+                        ]}>
+                          {solution.solved ? (
+                            <CheckCircle size={16} color="#FFFFFF" />
+                          ) : (
+                            <XCircle size={16} color="#FFFFFF" />
+                          )}
+                        </View>
                       </View>
-                      {solution.solved ? (
-                        <CheckCircle size={20} color="#10B981" />
-                      ) : (
-                        <XCircle size={20} color="#9CA3AF" />
-                      )}
+
+                      {/* 이름 */}
+                      <Text style={styles.modalSolutionName}>{solution.childName}</Text>
                     </View>
+
+                    {/* 보상 버튼 (풀이 완료 + 보상 있을 때만) */}
                     {solution.solved && selectedQuiz.reward && (
-                      <Button
-                        variant={solution.rewardGiven ? 'outline' : 'default'}
+                      <TouchableOpacity
                         onPress={() => handleGrantReward(selectedQuiz.id, solution.childId)}
                         disabled={solution.rewardGiven || isGranting}
-                        style={{
-                          ...styles.rewardButton,
-                          ...(!solution.rewardGiven && { backgroundColor: '#10B981' })
-                        }}
+                        style={[
+                          styles.modalRewardButton,
+                          solution.rewardGiven && styles.modalRewardButtonDisabled
+                        ]}
+                        activeOpacity={0.7}
                       >
-                        <View style={styles.rewardButtonContent}>
-                          <Gift size={16} color={solution.rewardGiven ? '#6B7280' : '#FFFFFF'} />
-                          <Text style={[styles.rewardButtonText, { color: solution.rewardGiven ? '#6B7280' : '#FFFFFF' }]}>
-                            {isGranting ? '처리 중...' : solution.rewardGiven ? '보상 지급 완료' : '보상 지급'}
-                          </Text>
-                        </View>
-                      </Button>
+                        <Gift size={14} color={solution.rewardGiven ? '#9CA3AF' : '#10B981'} />
+                        <Text style={[
+                          styles.modalRewardButtonText,
+                          solution.rewardGiven && styles.modalRewardButtonTextDisabled
+                        ]}>
+                          {isGranting ? '처리 중...' : solution.rewardGiven ? '보상 지급 완료' : '보상 지급'}
+                        </Text>
+                      </TouchableOpacity>
                     )}
                   </View>
                 ))}
               </View>
-
-              <Button variant="outline" onPress={() => setShowDetailModal(false)}>
-                닫기
-              </Button>
-            </View>
-          </View>
+            </TouchableOpacity>
+          </TouchableOpacity>
         </Modal>
       )}
 
@@ -777,50 +840,61 @@ const styles = StyleSheet.create({
   },
   solutionsGrid: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'flex-start',
     gap: spacing.sm,
   },
   solutionCard: {
-    flex: 1,
-    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: spacing.sm,
-    borderRadius: borderRadius.md,
-    borderWidth: 1,
+    width: '23%',
+    maxWidth: 80,
   },
-  solutionCardSolved: {
-    backgroundColor: '#ECFDF5',
-    borderColor: '#BBF7D0',
-  },
-  solutionCardPending: {
-    backgroundColor: '#F3F4F6',
-    borderColor: '#E5E7EB',
-  },
-  solutionInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-  },
-  solutionAvatar: {
-    fontSize: 24,
-  },
-  solutionName: {
-    ...typography.body2,
-    color: '#111827',
-  },
-  childAvatar: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: '#E5E7EB',
-  },
-  childAvatarPlaceholder: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: '#F3F4F6',
+  solutionAvatarContainer: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
     justifyContent: 'center',
     alignItems: 'center',
+    borderWidth: 2,
+    marginBottom: spacing.xs,
+    position: 'relative',
+  },
+  solutionAvatarSolved: {
+    backgroundColor: '#ECFDF5',
+    borderColor: '#10B981',
+  },
+  solutionAvatarPending: {
+    backgroundColor: '#F3F4F6',
+    borderColor: '#D1D5DB',
+  },
+  solutionAvatarImage: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+  },
+  solutionStatusBadge: {
+    position: 'absolute',
+    bottom: -2,
+    right: -2,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
+  },
+  solutionStatusSolved: {
+    backgroundColor: '#10B981',
+  },
+  solutionStatusPending: {
+    backgroundColor: '#9CA3AF',
+  },
+  solutionName: {
+    ...typography.caption,
+    color: '#111827',
+    fontWeight: '500',
+    textAlign: 'center',
   },
   actionsContainer: {
     flexDirection: 'row',
@@ -895,23 +969,31 @@ const styles = StyleSheet.create({
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
     justifyContent: 'center',
     alignItems: 'center',
-    padding: spacing.lg,
   },
   modalContent: {
-    width: '100%',
+    width: '90%',
     maxWidth: 400,
     backgroundColor: '#FFFFFF',
     borderRadius: borderRadius.lg,
     padding: spacing.xl,
+    margin: spacing.lg,
     ...shadows.lg,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: spacing.md,
   },
   modalTitle: {
     ...typography.h3,
     color: '#5B9BD5',
-    marginBottom: spacing.md,
+  },
+  modalCloseButton: {
+    padding: spacing.xs,
   },
   modalQuestion: {
     ...typography.body1,
@@ -920,50 +1002,107 @@ const styles = StyleSheet.create({
   },
   modalSolutions: {
     marginBottom: spacing.lg,
-    gap: spacing.sm,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-around',
+    gap: spacing.lg,
+    paddingHorizontal: spacing.sm,
   },
   modalSolutionCard: {
-    padding: spacing.md,
-    borderRadius: borderRadius.md,
-    borderWidth: 1,
-  },
-  modalSolutionCardSolved: {
-    backgroundColor: '#ECFDF5',
-    borderColor: '#BBF7D0',
-  },
-  modalSolutionCardPending: {
-    backgroundColor: '#F3F4F6',
-    borderColor: '#E5E7EB',
-  },
-  modalSolutionHeader: {
-    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    width: '42%',
+    maxWidth: 140,
+    marginBottom: spacing.md,
+  },
+  modalSolutionProfile: {
+    alignItems: 'center',
+    width: '100%',
+  },
+  modalAvatarContainer: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 3,
+    position: 'relative',
     marginBottom: spacing.sm,
   },
-  modalSolutionInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
+  modalAvatarSolved: {
+    borderColor: '#10B981',
+    backgroundColor: '#ECFDF5',
   },
-  modalSolutionAvatar: {
-    fontSize: 24,
+  modalAvatarPending: {
+    borderColor: '#E5E7EB',
+    backgroundColor: '#F9FAFB',
+  },
+  modalAvatarImage: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 40,
+  },
+  modalStatusBadge: {
+    position: 'absolute',
+    bottom: -4,
+    right: -4,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
+  },
+  modalStatusSolved: {
+    backgroundColor: '#10B981',
+  },
+  modalStatusPending: {
+    backgroundColor: '#9CA3AF',
   },
   modalSolutionName: {
     ...typography.body1,
+    fontSize: 14,
+    fontWeight: '600',
     color: '#111827',
+    marginTop: spacing.xs,
   },
-  rewardButton: {
-    marginTop: spacing.sm,
+  modalStatusText: {
+    ...typography.caption,
+    fontSize: 11,
+    marginBottom: spacing.xs,
   },
-  rewardButtonContent: {
+  modalStatusTextSolved: {
+    color: '#10B981',
+    fontWeight: '600',
+  },
+  modalStatusTextPending: {
+    color: '#9CA3AF',
+  },
+  modalRewardButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: spacing.xs,
+    gap: 4,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    backgroundColor: '#ECFDF5',
+    borderRadius: borderRadius.full,
+    borderWidth: 1,
+    borderColor: '#BBF7D0',
+    marginTop: spacing.xs,
   },
-  rewardButtonText: {
-    ...typography.body2,
+  modalRewardButtonDisabled: {
+    backgroundColor: '#F9FAFB',
+    borderColor: '#E5E7EB',
+  },
+  modalRewardButtonText: {
+    ...typography.caption,
+    fontSize: 10,
+    color: '#10B981',
+    fontWeight: '600',
+  },
+  modalRewardButtonTextDisabled: {
+    color: '#9CA3AF',
   },
   centerContainer: {
     flex: 1,

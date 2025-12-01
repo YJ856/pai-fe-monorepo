@@ -48,14 +48,13 @@ interface ActivityTabProps {
 export default function ActivityTab({ childId, childProfiles, onChildPress }: ActivityTabProps) {
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
 
-  // 현재 연/월
+  // 현재 연/월을 초기값으로 설정
   const now = new Date();
-  const currentYear = now.getFullYear();
-  const currentMonth = now.getMonth() + 1;
+  const [currentYear, setCurrentYear] = useState(now.getFullYear());
+  const [currentMonth, setCurrentMonth] = useState(now.getMonth() + 1);
 
-  // 캘린더 데이터 조회 (자녀별 대화 개수 포함)
+  // 캘린더 데이터 조회 (모든 자녀의 대화 개수 포함)
   const { days } = useConversationsCalendar({
-    childProfileId: Number(childId),
     year: currentYear,
     month: currentMonth,
   });
@@ -83,6 +82,11 @@ export default function ActivityTab({ childId, childProfiles, onChildPress }: Ac
           onDateSelect={(date) => {
             setSelectedDate(date);
             console.log("Selected date:", date);
+          }}
+          onMonthChange={(year, month) => {
+            setCurrentYear(year);
+            setCurrentMonth(month);
+            console.log("Month changed:", year, month);
           }}
         />
 

@@ -164,8 +164,8 @@ export default function ParentDashboard() {
               </TouchableOpacity>
             </LinearGradient>
 
-            {/* Child Selector - Same Row */}
-            {childProfiles.length > 1 && (
+            {/* Child Selector - Same Row (관심사/추천 탭에서만 표시) */}
+            {childProfiles.length > 1 && activeTab !== "calendar" && (
               <View style={styles.childSelector}>
                 <TouchableOpacity
                   style={styles.childDropdownButton}

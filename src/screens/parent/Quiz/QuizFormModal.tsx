@@ -119,6 +119,7 @@ export function QuizFormModal({
       visible={visible}
       animationType="slide"
       transparent={true}
+      statusBarTranslucent
       onRequestClose={onClose}
     >
       <View style={styles.modalOverlay}>
@@ -133,7 +134,11 @@ export function QuizFormModal({
             </TouchableOpacity>
           </View>
 
-          <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+          <ScrollView
+            style={styles.scrollView}
+            contentContainerStyle={styles.scrollContent}
+            showsVerticalScrollIndicator={false}
+          >
             {/* 질문 */}
             <View style={styles.formGroup}>
               <Text style={styles.label}>
@@ -186,7 +191,7 @@ export function QuizFormModal({
             </View>
 
             {/* 출제일 */}
-            <View style={styles.formGroup}>
+            <View style={[styles.formGroup, { marginBottom: 0 }]}>
               <Text style={styles.label}>
                 출제일 <Text style={styles.required}>*</Text>
               </Text>
@@ -245,15 +250,15 @@ export function QuizFormModal({
 const styles = StyleSheet.create({
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
     justifyContent: 'flex-end',
   },
   modalContainer: {
     backgroundColor: '#FFFFFF',
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
-    maxHeight: '90%',
-    paddingBottom: spacing.xl,
+    height: '92%',
+    paddingBottom: spacing.md,
   },
   modalHeader: {
     flexDirection: 'row',
@@ -274,10 +279,13 @@ const styles = StyleSheet.create({
   },
   scrollView: {
     paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
+  },
+  scrollContent: {
+    paddingTop: spacing.md,
+    paddingBottom: spacing.xs,
   },
   formGroup: {
-    marginBottom: spacing.lg,
+    marginBottom: spacing.md,
   },
   label: {
     ...typography.body1,
@@ -317,14 +325,15 @@ const styles = StyleSheet.create({
   modalFooter: {
     flexDirection: 'row',
     paddingHorizontal: spacing.lg,
-    paddingTop: spacing.md,
+    paddingTop: spacing.xs,
+    paddingBottom: spacing.xs,
     gap: spacing.sm,
   },
   cancelButton: {
     flex: 1,
     backgroundColor: '#F3F4F6',
-    borderRadius: borderRadius.lg,
-    paddingVertical: spacing.md,
+    borderRadius: borderRadius.md,
+    paddingVertical: spacing.sm,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -334,11 +343,11 @@ const styles = StyleSheet.create({
   },
   submitButtonContainer: {
     flex: 1,
-    borderRadius: borderRadius.lg,
+    borderRadius: borderRadius.md,
     overflow: 'hidden',
   },
   submitButton: {
-    paddingVertical: spacing.md,
+    paddingVertical: spacing.sm,
     alignItems: 'center',
     justifyContent: 'center',
   },
