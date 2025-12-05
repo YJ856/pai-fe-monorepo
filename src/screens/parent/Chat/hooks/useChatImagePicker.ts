@@ -13,7 +13,10 @@
 
 import * as ImagePicker from 'expo-image-picker';
 
-export function useChatImagePicker(setCurrentImage: (uri: string | null) => void) {
+export function useChatImagePicker(
+  setCurrentImage: (uri: string | null) => void,
+  setCurrentImageAspectRatio: (ratio: number) => void
+) {
   const handleImagePick = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
@@ -22,7 +25,14 @@ export function useChatImagePicker(setCurrentImage: (uri: string | null) => void
     });
 
     if (!result.canceled && result.assets[0]) {
-      setCurrentImage(result.assets[0].uri);
+      const imageUri = result.assets[0].uri;
+      const width = result.assets[0].width;
+      const height = result.assets[0].height;
+      const aspectRatio = width && height ? width / height : 1;
+
+      console.log('Selected image URI:', imageUri, 'Size:', width, 'x', height, 'AspectRatio:', aspectRatio);
+      setCurrentImage(imageUri);
+      setCurrentImageAspectRatio(aspectRatio);
     }
   };
 

@@ -370,7 +370,6 @@ const styles = StyleSheet.create({
   messagesContent: {
     flexGrow: 1,
     padding: 20,
-    marginTop: 10,
   },
   emptyState: {
     alignItems: 'center',

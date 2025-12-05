@@ -118,20 +118,22 @@ export default function ActivityTab({ childId, childProfiles, onChildPress }: Ac
                     end={{ x: 1, y: 1 }}
                     style={styles.childCardGradient}
                   >
-                    {/* API에서 받은 아바타 또는 프로필 아바타 */}
-                    {childData.childAvatarMediaId || childProfile?.avatarUrl ? (
-                      <Image
-                        source={{
-                          uri: childProfile?.avatarUrl || `https://api.example.com/media/${childData.childAvatarMediaId}`
-                        }}
-                        style={styles.childAvatarImage}
-                      />
-                    ) : (
-                      <Text style={styles.childAvatar}>
-                        {childProfile?.gender === "male" ? "👦" : "👧"}
-                      </Text>
-                    )}
-                    <Text style={styles.childName}>{childData.childName}</Text>
+                    <View style={styles.childCardCenter}>
+                      {/* API에서 받은 아바타 또는 프로필 아바타 */}
+                      {childData.childAvatarMediaId || childProfile?.avatarUrl ? (
+                        <Image
+                          source={{
+                            uri: childProfile?.avatarUrl || `https://api.example.com/media/${childData.childAvatarMediaId}`
+                          }}
+                          style={styles.childAvatarImage}
+                        />
+                      ) : (
+                        <Text style={styles.childAvatar}>
+                          {childProfile?.gender === "male" ? "👦" : "👧"}
+                        </Text>
+                      )}
+                      <Text style={styles.childName}>{childData.childName}</Text>
+                    </View>
                     <Text style={styles.childConversationCount}>{childData.count}개 대화</Text>
                   </LinearGradient>
                 </TouchableOpacity>
@@ -155,7 +157,7 @@ const styles = StyleSheet.create({
     ...shadows.sm,
   },
   cardPadding: {
-    padding: spacing.xl,
+    padding: spacing.lg,
   },
   dateBadge: {
     flexDirection: "row",
@@ -166,11 +168,11 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.xs,
     paddingHorizontal: spacing.md,
     alignSelf: "flex-start",
-    marginTop: spacing.md,
-    marginBottom: spacing.md,
+    marginTop: spacing.sm,
+    marginBottom: spacing.sm,
   },
   dateText: {
-    ...typography.body1,
+    ...typography.body2,
     fontWeight: "600",
     color: colors.parent.from,
   },
@@ -181,7 +183,7 @@ const styles = StyleSheet.create({
   },
   childCard: {
     width: "48%",
-    aspectRatio: 1,
+    aspectRatio: 1.2,
     borderRadius: borderRadius["2xl"],
     overflow: "hidden",
     ...shadows.md,
@@ -189,28 +191,33 @@ const styles = StyleSheet.create({
   childCardGradient: {
     flex: 1,
     alignItems: "center",
+    justifyContent: "space-between",
+    paddingVertical: spacing.md,
+  },
+  childCardCenter: {
+    flex: 1,
+    alignItems: "center",
     justifyContent: "center",
   },
   childAvatar: {
-    fontSize: 40,
-    marginBottom: spacing.sm,
+    fontSize: 32,
+    marginBottom: spacing.xs / 2,
   },
   childAvatarImage: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    marginBottom: spacing.sm,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    marginBottom: spacing.xs / 2,
   },
   childName: {
     ...typography.h3,
-    fontSize: 18,
+    fontSize: 16,
     color: colors.primaryForeground,
   },
   childConversationCount: {
     ...typography.caption,
-    fontSize: 12,
+    fontSize: 11,
     color: colors.primaryForeground,
-    marginTop: spacing.xs,
     opacity: 0.9,
   },
   emptyState: {

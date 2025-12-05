@@ -276,8 +276,8 @@ const styles = StyleSheet.create({
 
   content: {
     padding: spacing.lg,
-    paddingTop: spacing.sm,
-    paddingBottom: spacing.xl * 2,
+    paddingTop: spacing.md,
+    paddingBottom: spacing.md,
   },
 
   // Child Selector

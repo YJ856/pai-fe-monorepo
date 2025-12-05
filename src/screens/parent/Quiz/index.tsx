@@ -32,7 +32,6 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { CheckCircle, XCircle, Gift, Calendar, User, Edit, Trash2, X } from 'lucide-react-native';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { spacing, typography, borderRadius, shadows } from '../../../design/tokens';
-import { Button } from '../../../design/components/Button';
 import { useTodayQuizzes } from './_hooks/useTodayQuizzes';
 import { usePastQuizzes } from './_hooks/usePastQuizzes';
 import { useScheduledQuizzes } from './_hooks/useScheduledQuizzes';
@@ -609,7 +608,7 @@ export default function ParentQuizScreen() {
                   onPress={() => setShowDetailModal(false)}
                   style={styles.modalCloseButton}
                 >
-                  <X size={24} color="#6B7280" />
+                  <X size={24} color="#5B9BD5" />
                 </TouchableOpacity>
               </View>
 
@@ -766,13 +765,14 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingHorizontal: spacing.md,
-    paddingBottom: spacing.xl * 2,
+    paddingTop: spacing.sm,
+    paddingBottom: spacing.xs,
   },
   quizCard: {
     backgroundColor: '#F9FAFB',
     borderRadius: 16,
     padding: spacing.lg,
-    marginBottom: spacing.md,
+    marginBottom: spacing.xs,
     ...shadows.sm,
   },
   quizQuestion: {
@@ -793,6 +793,7 @@ const styles = StyleSheet.create({
   },
   authorBadgeContainer: {
     alignItems: 'flex-end',
+    marginTop: -spacing.sm,
     marginBottom: spacing.sm,
   },
   authorBadge: {
@@ -938,7 +939,7 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.xs,
     paddingHorizontal: spacing.md,
     alignSelf: 'flex-start',
-    marginBottom: spacing.md,
+    marginBottom: spacing.sm,
   },
   dateText: {
     ...typography.body2,
@@ -974,26 +975,28 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   modalContent: {
-    width: '90%',
+    width: '85%',
     maxWidth: 400,
     backgroundColor: '#FFFFFF',
     borderRadius: borderRadius.lg,
-    padding: spacing.xl,
+    padding: spacing.lg,
     margin: spacing.lg,
     ...shadows.lg,
   },
   modalHeader: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     justifyContent: 'space-between',
     marginBottom: spacing.md,
   },
   modalTitle: {
     ...typography.h3,
     color: '#5B9BD5',
+    flex: 1,
   },
   modalCloseButton: {
-    padding: spacing.xs,
+    padding: 0,
+    marginLeft: spacing.sm,
   },
   modalQuestion: {
     ...typography.body1,
@@ -1112,7 +1115,7 @@ const styles = StyleSheet.create({
   fab: {
     position: 'absolute',
     right: spacing.lg,
-    bottom: spacing.xl * 2,
+    bottom: spacing.xl,
     width: 56,
     height: 56,
     borderRadius: 28,
