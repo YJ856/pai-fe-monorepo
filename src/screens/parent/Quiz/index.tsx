@@ -347,7 +347,17 @@ export default function ParentQuizScreen() {
         }}
         activeOpacity={0.7}
       >
-        <Text style={styles.quizQuestion}>{quiz.question}</Text>
+        <View style={styles.quizQuestionContainer}>
+          <LinearGradient
+            colors={['#5B9BD5', '#667BC6']}
+            style={styles.quizQuestionBadge}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+          >
+            <Text style={styles.quizQuestionIcon}>?</Text>
+          </LinearGradient>
+          <Text style={styles.quizQuestion}>{quiz.question}</Text>
+        </View>
 
         <View style={styles.quizDetails}>
           <Text style={styles.quizDetail}>
@@ -773,12 +783,38 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     padding: spacing.lg,
     marginBottom: spacing.xs,
-    ...shadows.sm,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 6,
+  },
+  quizQuestionContainer: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: spacing.md,
+    gap: spacing.sm,
+  },
+  quizQuestionBadge: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  quizQuestionIcon: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#FFFFFF',
   },
   quizQuestion: {
     ...typography.h4,
     color: '#111827',
-    marginBottom: spacing.sm,
+    flex: 1,
+    lineHeight: 24,
   },
   quizDetails: {
     marginBottom: spacing.sm,
@@ -948,6 +984,8 @@ const styles = StyleSheet.create({
   horizontalCards: {
     flexDirection: 'row',
     gap: spacing.md,
+    paddingVertical: 12,
+    paddingHorizontal: 8,
   },
   horizontalCard: {
     width: 320,
@@ -975,23 +1013,28 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   modalContent: {
-    width: '85%',
-    maxWidth: 400,
+    width: '90%',
+    maxWidth: 420,
     backgroundColor: '#FFFFFF',
-    borderRadius: borderRadius.lg,
-    padding: spacing.lg,
+    borderRadius: 24,
+    padding: spacing.xl,
     margin: spacing.lg,
-    ...shadows.lg,
+    ...shadows.xl,
   },
   modalHeader: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
+    alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: spacing.md,
+    marginBottom: spacing.xl,
+    paddingBottom: spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
   },
   modalTitle: {
     ...typography.h3,
-    color: '#5B9BD5',
+    fontSize: 20,
+    color: '#1F2937',
+    fontWeight: '700',
     flex: 1,
   },
   modalCloseButton: {

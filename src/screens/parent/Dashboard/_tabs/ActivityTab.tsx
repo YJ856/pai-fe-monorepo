@@ -113,7 +113,7 @@ export default function ActivityTab({ childId, childProfiles, onChildPress }: Ac
                   onPress={() => onChildPress(String(childData.childProfileId), selectedDate || today)}
                 >
                   <LinearGradient
-                    colors={["#5B9BD5", "#4A8BC2"]}
+                    colors={["#5B9BD5", "#667BC6"]}
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 1 }}
                     style={styles.childCardGradient}
@@ -198,21 +198,23 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
+    paddingTop: spacing.md,
   },
   childAvatar: {
     fontSize: 32,
-    marginBottom: spacing.xs / 2,
+    marginBottom: 2,
   },
   childAvatarImage: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    marginBottom: spacing.xs / 2,
+    marginBottom: 2,
   },
   childName: {
     ...typography.h3,
     fontSize: 16,
     color: colors.primaryForeground,
+    marginTop: -4,
   },
   childConversationCount: {
     ...typography.caption,
