@@ -33,9 +33,12 @@ export function useGrantQuizReward() {
             return grantQuizReward(path, payload);
         },
 
-        // 2. 성공 시 캐시 무효화
-        onSuccess: (result, varaibles) => {
-            queryClient.invalidateQueries({ queryKey: ['parent-quizzes', 'completed']});
+        // 2. 성공 시 캐시 무효화 및 리패치
+        onSuccess: (result, variables) => {
+            queryClient.invalidateQueries({
+                queryKey: ['parent-quizzes', 'completed'],
+                refetchType: 'active' // 활성화된 쿼리만 즉시 리패치
+            });
         },
     });
 

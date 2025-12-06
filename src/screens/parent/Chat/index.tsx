@@ -29,12 +29,14 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Send, ImageIcon as ImagePlus, Sparkles } from 'lucide-react-native';
+import { Send, ImageIcon as ImagePlus, Sparkles, X } from 'lucide-react-native';
 import { useIsFocused } from '@react-navigation/native';
 import { spacing, typography, borderRadius, shadows } from '../../../design/tokens';
 import { useChatMessages } from '@/hooks/useChatMessages';
 import { useChatImagePicker } from './hooks/useChatImagePicker';
 import { endConversation } from '../../../api/conversations';
+
+const mascotImage = require('../../../assets/images/mascot.png');
 
 const SUGGESTED_QUESTIONS = [
   '아이가 공룡에 관심이 많은데 어떻게 교육하면 좋을까요?',
@@ -54,6 +56,8 @@ export default function ParentChatScreen() {
     setInputText,
     currentImage,
     setCurrentImage,
+    currentImageAspectRatio,
+    setCurrentImageAspectRatio,
     isLoading,
     handleSend,
     scrollViewRef,
@@ -62,7 +66,7 @@ export default function ParentChatScreen() {
   } = useChatMessages();
 
   // 이미지 선택 Hook
-  const { handleImagePick } = useChatImagePicker(setCurrentImage);
+  const { handleImagePick } = useChatImagePicker(setCurrentImage, setCurrentImageAspectRatio);
 
   // Chat 탭을 벗어날 때 대화 종료 처리
   useEffect(() => {
@@ -92,13 +96,13 @@ export default function ParentChatScreen() {
   }, [isFocused, conversationSessionId, clearChat]);
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={["top"]}>
-      <KeyboardAvoidingView
-        style={styles.container}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
-      >
-        <LinearGradient colors={['#EFF6FF', '#E0E7FF']} style={styles.background}>
+    <LinearGradient colors={['#EFF6FF', '#E0E7FF']} style={styles.gradientContainer}>
+      <SafeAreaView style={styles.safeArea} edges={["top"]}>
+        <KeyboardAvoidingView
+          style={styles.container}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          keyboardVerticalOffset={0}
+        >
         {/* Messages Area */}
         <ScrollView
           ref={scrollViewRef}
@@ -149,41 +153,69 @@ export default function ParentChatScreen() {
                       : styles.aiMessageContainer,
                   ]}
                 >
-                  <View
-                    style={[
+                  {message.sender === 'parent' ? (
+                    <>
+                      {message.imageUrl && (
+                        <LinearGradient
+                          colors={['#5B9BD5', '#667BC6']}
+                          start={{ x: 0, y: 0 }}
+                          end={{ x: 1, y: 0 }}
+                          style={styles.imageOnlyBubble}
+                        >
+                          <TouchableOpacity>
+                            <Image
+                              source={{ uri: message.imageUrl }}
+                              style={[
+                                styles.messageImage,
+                                message.imageAspectRatio ? { aspectRatio: message.imageAspectRatio } : null
+                              ]}
+                            />
+                          </TouchableOpacity>
+                        </LinearGradient>
+                      )}
+                      <LinearGradient
+                        colors={['#5B9BD5', '#667BC6']}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 0 }}
+                        style={[styles.messageBubble, styles.parentBubble]}
+                      >
+                        <Text style={[styles.messageText, styles.parentMessageText]}>
+                          {message.text}
+                        </Text>
+                        <Text style={[styles.messageTime, styles.parentMessageTime]}>
+                          {message.timestamp.toLocaleTimeString('ko-KR', {
+                            hour: '2-digit',
+                            minute: '2-digit',
+                          })}
+                        </Text>
+                      </LinearGradient>
+                    </>
+                  ) : (
+                    <View style={[
                       styles.messageBubble,
-                      message.sender === 'parent'
-                        ? styles.parentBubble
-                        : styles.aiBubble,
-                    ]}
-                  >
-                    {message.imageUrl && (
-                      <Image source={{ uri: message.imageUrl }} style={styles.messageImage} />
-                    )}
-                    <Text
-                      style={[
-                        styles.messageText,
-                        message.sender === 'parent'
-                          ? styles.parentMessageText
-                          : styles.aiMessageText,
-                      ]}
-                    >
-                      {message.text}
-                    </Text>
-                    <Text
-                      style={[
-                        styles.messageTime,
-                        message.sender === 'parent'
-                          ? styles.parentMessageTime
-                          : styles.aiMessageTime,
-                      ]}
-                    >
-                      {message.timestamp.toLocaleTimeString('ko-KR', {
-                        hour: '2-digit',
-                        minute: '2-digit',
-                      })}
-                    </Text>
-                  </View>
+                      styles.aiBubble,
+                      message.imageUrl && styles.messageBubbleWithImage
+                    ]}>
+                      <View style={styles.aiHeader}>
+                        <Image source={mascotImage} style={styles.aiAvatar} />
+                        <Text style={styles.aiName}>PAI</Text>
+                      </View>
+                      {message.imageUrl && (
+                        <TouchableOpacity>
+                          <Image source={{ uri: message.imageUrl }} style={styles.messageImage} />
+                        </TouchableOpacity>
+                      )}
+                      <Text style={[styles.messageText, styles.aiMessageText]}>
+                        {message.text}
+                      </Text>
+                      <Text style={[styles.messageTime, styles.aiMessageTime]}>
+                        {message.timestamp.toLocaleTimeString('ko-KR', {
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        })}
+                      </Text>
+                    </View>
+                  )}
                 </View>
               ))}
 
@@ -191,6 +223,10 @@ export default function ParentChatScreen() {
               {isLoading && (
                 <View style={styles.messageContainer}>
                   <View style={[styles.messageBubble, styles.aiBubble]}>
+                    <View style={styles.aiHeader}>
+                      <Image source={mascotImage} style={styles.aiAvatar} />
+                      <Text style={styles.aiName}>PAI</Text>
+                    </View>
                     <View style={styles.loadingContainer}>
                       <View style={styles.loadingBar} />
                       <View style={[styles.loadingBar, { width: 128 }]} />
@@ -202,28 +238,47 @@ export default function ParentChatScreen() {
           )}
         </ScrollView>
 
-        {/* Input Area */}
-        <View style={styles.inputContainer}>
-          {currentImage && (
-            <View style={styles.imagePreviewContainer}>
-              <Image source={{ uri: currentImage }} style={styles.imagePreview} />
-              <TouchableOpacity
-                style={styles.removeImageButton}
-                onPress={() => setCurrentImage(null)}
-                activeOpacity={0.7}
-              >
-                <Text style={styles.removeImageText}>✕</Text>
-              </TouchableOpacity>
-            </View>
-          )}
+        {/* Image Preview - Outside Input Container */}
+        {currentImage && (
+          <LinearGradient
+            colors={['#5B9BD5', '#667BC6']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={styles.imagePreviewContainer}
+          >
+            <Image
+              source={{ uri: currentImage }}
+              style={[
+                styles.imagePreview,
+                currentImageAspectRatio ? { aspectRatio: currentImageAspectRatio } : null
+              ]}
+            />
+            <TouchableOpacity
+              style={styles.removeImageButton}
+              onPress={() => setCurrentImage(null)}
+              activeOpacity={0.7}
+            >
+              <X size={18} color="#5B9BD5" strokeWidth={3} />
+            </TouchableOpacity>
+          </LinearGradient>
+        )}
 
+        {/* Input Bar */}
+        <View style={styles.inputContainer}>
           <View style={styles.inputRow}>
             <TouchableOpacity
               style={styles.imageButton}
               onPress={handleImagePick}
               activeOpacity={0.7}
             >
-              <ImagePlus size={20} color="#6B7280" />
+              <LinearGradient
+                colors={['#5B9BD5', '#667BC6']}
+                style={styles.imageButtonGradient}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+              >
+                <ImagePlus size={20} color="#FFFFFF" />
+              </LinearGradient>
             </TouchableOpacity>
 
             <TextInput
@@ -242,38 +297,45 @@ export default function ParentChatScreen() {
               disabled={!inputText.trim()}
               activeOpacity={0.7}
             >
-              <Send size={20} color="#FFFFFF" />
+              <LinearGradient
+                colors={inputText.trim() ? ['#5B9BD5', '#667BC6'] : ['#E5E7EB', '#E5E7EB']}
+                style={styles.sendButtonGradient}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+              >
+                <Send size={20} color="#FFFFFF" />
+              </LinearGradient>
             </TouchableOpacity>
           </View>
         </View>
-      </LinearGradient>
-    </KeyboardAvoidingView>
-    </SafeAreaView>
+        </KeyboardAvoidingView>
+      </SafeAreaView>
+    </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
+  gradientContainer: {
+    flex: 1,
+  },
   safeArea: {
     flex: 1,
-    backgroundColor: '#EFF6FF',
   },
   container: {
-    flex: 1,
-  },
-  background: {
     flex: 1,
   },
   messagesScroll: {
     flex: 1,
   },
   messagesContent: {
-    padding: spacing.md,
-    paddingTop: spacing.md,
-    paddingBottom: 0,
+    flexGrow: 1,
+    padding: 20,
   },
   emptyState: {
     alignItems: 'center',
-    paddingVertical: spacing.sm,
+    justifyContent: 'center',
+    paddingTop: spacing.lg,
+    paddingBottom: 0,
   },
   emptyIcon: {
     width: 96,
@@ -281,7 +343,7 @@ const styles = StyleSheet.create({
     borderRadius: 48,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: spacing.lg,
+    marginBottom: spacing.md,
   },
   emptyTitle: {
     ...typography.h2,
@@ -292,7 +354,7 @@ const styles = StyleSheet.create({
     ...typography.body1,
     color: '#6B7280',
     textAlign: 'center',
-    marginBottom: spacing.lg,
+    marginBottom: spacing.md,
     paddingHorizontal: spacing.lg,
   },
   suggestedGrid: {
@@ -312,7 +374,7 @@ const styles = StyleSheet.create({
     color: '#374151',
   },
   messageContainer: {
-    marginBottom: spacing.md,
+    marginBottom: 12,
   },
   parentMessageContainer: {
     alignItems: 'flex-end',
@@ -323,25 +385,46 @@ const styles = StyleSheet.create({
   messageBubble: {
     maxWidth: '75%',
     borderRadius: 16,
-    padding: spacing.md,
+    padding: 16,
+    ...shadows.md,
+  },
+  messageBubbleWithImage: {
+    maxWidth: '85%',
+  },
+  imageOnlyBubble: {
+    borderRadius: 16,
+    padding: 4,
+    marginBottom: 4,
+    alignSelf: 'flex-end',
+    ...shadows.md,
   },
   parentBubble: {
-    backgroundColor: '#5B9BD5',
+    // backgroundColor handled by LinearGradient
   },
   aiBubble: {
     backgroundColor: '#FFFFFF',
-    ...shadows.sm,
-    borderWidth: 1,
-    borderColor: '#F3F4F6',
+  },
+  aiHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 8,
+  },
+  aiAvatar: {
+    width: 24,
+    height: 24,
+  },
+  aiName: {
+    fontSize: 14,
+    color: '#6B7280',
   },
   messageImage: {
-    width: '100%',
-    height: 200,
-    borderRadius: borderRadius.md,
-    marginBottom: spacing.sm,
+    width: 200,
+    borderRadius: 12,
+    resizeMode: 'cover',
   },
   messageText: {
-    ...typography.body1,
+    fontSize: 16,
     lineHeight: 24,
   },
   parentMessageText: {
@@ -351,14 +434,14 @@ const styles = StyleSheet.create({
     color: '#1F2937',
   },
   messageTime: {
-    ...typography.caption,
-    marginTop: spacing.xs,
+    fontSize: 12,
+    marginTop: 4,
   },
   parentMessageTime: {
     color: 'rgba(255, 255, 255, 0.7)',
   },
   aiMessageTime: {
-    color: '#6B7280',
+    color: '#9CA3AF',
   },
   loadingContainer: {
     gap: 8,
@@ -373,33 +456,35 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderTopWidth: 1,
     borderTopColor: '#E5E7EB',
-    padding: spacing.md,
+    paddingHorizontal: 16,
+    paddingBottom: 12,
+    paddingTop: 12,
   },
   imagePreviewContainer: {
-    position: 'relative',
-    marginBottom: spacing.sm,
-    alignSelf: 'flex-start',
+    position: 'absolute',
+    bottom: 80,
+    left: 16,
+    zIndex: 200,
+    elevation: 200,
+    borderRadius: 16,
+    padding: 6,
   },
   imagePreview: {
-    width: 96,
-    height: 96,
-    borderRadius: borderRadius.md,
+    width: 120,
+    borderRadius: 12,
+    resizeMode: 'cover',
   },
   removeImageButton: {
     position: 'absolute',
-    top: -8,
-    right: -8,
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: '#EF4444',
+    top: -10,
+    right: -10,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#FFFFFF',
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  removeImageText: {
-    color: '#FFFFFF',
-    fontSize: 12,
-    fontWeight: 'bold',
+    ...shadows.md,
   },
   inputRow: {
     flexDirection: 'row',
@@ -410,29 +495,37 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: '#F3F4F6',
+    overflow: 'hidden',
+  },
+  imageButtonGradient: {
+    width: '100%',
+    height: '100%',
     alignItems: 'center',
     justifyContent: 'center',
   },
   textInput: {
     flex: 1,
-    ...typography.body1,
     borderRadius: 24,
     borderWidth: 2,
     borderColor: '#E5E7EB',
-    paddingVertical: 12,
-    paddingHorizontal: spacing.md,
-    maxHeight: 100,
+    paddingHorizontal: 23,
+    paddingVertical: 10,
+    fontSize: 16,
+    maxHeight: 120,
   },
   sendButton: {
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: '#5B9BD5',
-    alignItems: 'center',
-    justifyContent: 'center',
+    overflow: 'hidden',
   },
   sendButtonDisabled: {
-    backgroundColor: '#D1D5DB',
+    opacity: 0.6,
+  },
+  sendButtonGradient: {
+    width: '100%',
+    height: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });

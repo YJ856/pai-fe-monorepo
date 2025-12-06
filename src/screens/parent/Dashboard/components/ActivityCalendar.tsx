@@ -49,12 +49,14 @@ interface ActivityCalendarProps {
   events: ActivityDay[];
   selectedDate?: string;
   onDateSelect: (date: string) => void;
+  onMonthChange?: (year: number, month: number) => void;
 }
 
 export default function ActivityCalendar({
   events,
   selectedDate,
   onDateSelect,
+  onMonthChange,
 }: ActivityCalendarProps) {
   // events를 markedDates 형식으로 변환
   const markedDates: any = {};
@@ -105,6 +107,11 @@ export default function ActivityCalendar({
         markingType="multi-dot"
         markedDates={markedDates}
         onDayPress={(day) => onDateSelect(day.dateString)}
+        onMonthChange={(date) => {
+          if (onMonthChange) {
+            onMonthChange(date.year, date.month);
+          }
+        }}
         theme={{
           backgroundColor: colors.background,
           calendarBackground: colors.background,
@@ -163,7 +170,7 @@ const styles = StyleSheet.create({
   container: {
     backgroundColor: colors.background,
     borderRadius: borderRadius.lg,
-    padding: spacing.md,
+    padding: spacing.sm,
     borderWidth: 1,
     borderColor: colors.border,
   },
@@ -175,8 +182,8 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     gap: spacing.lg,
-    marginTop: spacing.md,
-    paddingTop: spacing.md,
+    marginTop: spacing.sm,
+    paddingTop: spacing.sm,
     borderTopWidth: 1,
     borderTopColor: colors.border,
   },
