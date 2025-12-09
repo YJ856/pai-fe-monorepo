@@ -4,6 +4,7 @@ import { aiServiceClient } from "./client/axios";
 export interface VqaRequestDto {
   media_id: string;
   question: string;
+  child_name?: string; // 아이 이름 (선택적)
 }
 
 // VQA 응답 타입

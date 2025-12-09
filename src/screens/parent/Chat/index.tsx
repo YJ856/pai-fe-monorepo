@@ -32,7 +32,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Send, ImageIcon as ImagePlus, Sparkles, X } from 'lucide-react-native';
 import { useIsFocused } from '@react-navigation/native';
 import { spacing, typography, borderRadius, shadows } from '../../../design/tokens';
-import { useChatMessages } from '@/hooks/useChatMessages';
+import { useChatMessages } from './hooks/useChatMessages';
 import { useChatImagePicker } from './hooks/useChatImagePicker';
 import { endConversation } from '../../../api/conversations';
 

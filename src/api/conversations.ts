@@ -41,11 +41,15 @@ export const endConversation = async (params: EndConversationPathParam): Promise
 
 // 월별 캘린더용 요약 조회: GET /api/conversations/calendar
 export const getConversationsCalendar = async (params: GetConversationsCalendarQueryParam): Promise<GetConversationsCalendarResponseData> => {
+  console.log('[getConversationsCalendar] params:', params);
+  console.log('[getConversationsCalendar] URL will be: /api/conversations/calendar with params:', JSON.stringify(params));
+
   const response =
     await conversationServiceClient.get<BaseResponse<GetConversationsCalendarResponseData>>(
       '/api/conversations/calendar', {params}
     );
 
+  console.log('[getConversationsCalendar] response.data:', response.data);
   return response.data.data!;
 }
 

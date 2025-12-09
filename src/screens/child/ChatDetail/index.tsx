@@ -67,6 +67,8 @@ export default function ChildChatDetailScreen() {
     handleSend: contextHandleSend,
     conversationSessionId,
     clearChat,
+    playMessageAudio,
+    stopAudio,
   } = useChatContext();
 
   // ChatDetail 전용 로컬 state
@@ -207,8 +209,33 @@ export default function ChildChatDetailScreen() {
     }
   };
 
-  const toggleAudioPlayback = () => {
-    setIsPlayingAudio(!isPlayingAudio);
+  const toggleAudioPlayback = async () => {
+    if (!currentAnswer) {
+      console.log('[ChatDetail] 재생할 답변이 없습니다.');
+      return;
+    }
+
+    console.log('[ChatDetail] 오디오 재생 토글, messageId:', currentAnswer.id);
+
+    if (isPlayingAudio) {
+      // 재생 중이면 정지
+      console.log('[ChatDetail] 오디오 정지 요청');
+      await stopAudio();
+      setIsPlayingAudio(false);
+    } else {
+      // 재생 시작
+      setIsPlayingAudio(true);
+      try {
+        await playMessageAudio(currentAnswer.id, () => {
+          // 재생 완료 콜백
+          console.log('[ChatDetail] 오디오 재생 완료, 버튼 상태 초기화');
+          setIsPlayingAudio(false);
+        });
+      } catch (error) {
+        console.error('[ChatDetail] 오디오 재생 오류:', error);
+        setIsPlayingAudio(false);
+      }
+    }
   };
 
   // 진행률 계산

@@ -24,6 +24,7 @@ import {
   GetProfilesResponseData,
   ProfileType,
   SelectProfileResponseData,
+  SynthesizeVoiceRequestDto,
   UpdateProfileRequestDto,
   UpdateProfileResponseData,
 } from "pai-shared-types";
@@ -148,4 +149,36 @@ export const createProfileVoice = async (
 
   console.log("[VOICE] 음성 등록 응답:", response.data);
   return response.data.data!;
+};
+
+/**
+ * POST /api/profiles/:profileId/voice/synthesize
+ * TTS 음성 합성 (텍스트 → 음성)
+ *
+ * Request:
+ * - text: string (음성으로 변환할 텍스트)
+ *
+ * Response:
+ * - audio/mpeg (MP3 오디오 데이터)
+ *
+ * 사용 예시:
+ * const audioBlob = await synthesizeVoice('6', { text: 'Hello, World!' });
+ * // audioBlob을 Audio 컴포넌트에서 재생
+ */
+export const synthesizeVoice = async (
+  profileId: string,
+  data: SynthesizeVoiceRequestDto
+): Promise<Blob> => {
+  console.log("[TTS] 음성 합성 요청 시작, profileId:", profileId, "text:", data.text);
+
+  const response = await userServiceClient.post(
+    `/api/profiles/${profileId}/voice/synthesize`,
+    data,
+    {
+      responseType: 'blob', // 바이너리 오디오 데이터를 blob으로 받음
+    }
+  );
+
+  console.log("[TTS] 음성 합성 응답 받음, size:", response.data.size);
+  return response.data;
 };

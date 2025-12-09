@@ -8,9 +8,13 @@
  */
 
 import React, { createContext, useContext, useState, useRef } from 'react';
+import * as FileSystem from 'expo-file-system/legacy';
+import { Audio } from 'expo-av';
 import { uploadMedia } from '../api/media';
 import { getVqaAnswer } from '../api/ai';
 import { recordConversation } from '../api/conversations';
+import { synthesizeVoice } from '../api/profiles';
+import { useProfileStore } from '../store/useProfileStore';
 
 export interface Message {
   id: string;
@@ -19,6 +23,7 @@ export interface Message {
   imageUrl?: string;
   imageAspectRatio?: number;
   hasAudio?: boolean;
+  audioUrl?: string; // TTS 생성된 오디오 URL (캐싱용)
   timestamp: Date;
 }
 
@@ -34,6 +39,8 @@ interface ChatContextValue {
   handleSend: (senderType: 'child' | 'parent') => Promise<void>;
   conversationSessionId: string | null;
   clearChat: () => void;
+  playMessageAudio: (messageId: string, onFinish?: () => void) => Promise<void>;
+  stopAudio: () => Promise<void>;
 }
 
 const ChatContext = createContext<ChatContextValue | undefined>(undefined);
@@ -45,6 +52,12 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
   const [currentImageAspectRatio, setCurrentImageAspectRatio] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const conversationSessionIdRef = useRef<string | null>(null);
+
+  // 오디오 객체 관리
+  const soundRef = useRef<Audio.Sound | null>(null);
+
+  // 현재 프로필 정보 가져오기
+  const currentProfile = useProfileStore((state) => state.currentProfile);
 
   const handleSend = async (senderType: 'child' | 'parent') => {
     if (!inputText.trim()) return;
@@ -89,10 +102,27 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       }
 
       // 3. VQA API 호출
-      console.log('[ChatContext] VQA API 호출:', { media_id: mediaId, question: questionText });
+      // 아이일 때만 child_name 전달
+      console.log('[ChatContext] Profile 정보:', {
+        senderType,
+        currentProfile,
+        profileType: currentProfile?.profileType,
+        name: currentProfile?.name
+      });
+
+      const childName = senderType === 'child' && currentProfile?.profileType === 'child'
+        ? currentProfile.name
+        : undefined;
+
+      console.log('[ChatContext] VQA API 호출:', {
+        media_id: mediaId,
+        question: questionText,
+        child_name: childName
+      });
       const vqaResult = await getVqaAnswer({
         media_id: mediaId || '',
         question: questionText,
+        child_name: childName,
       });
       console.log('[ChatContext] VQA 답변:', vqaResult);
 
@@ -147,6 +177,110 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     conversationSessionIdRef.current = null;
   };
 
+  const stopAudio = async () => {
+    if (soundRef.current) {
+      console.log('[ChatContext] 오디오 정지');
+      await soundRef.current.stopAsync();
+      await soundRef.current.unloadAsync();
+      soundRef.current = null;
+    }
+  };
+
+  const playMessageAudio = async (messageId: string, onFinish?: () => void) => {
+    const message = messages.find((m) => m.id === messageId);
+    if (!message || message.sender !== 'ai') {
+      console.warn('[ChatContext] 유효하지 않은 메시지:', messageId);
+      return;
+    }
+
+    try {
+      // 기존 사운드가 있으면 정리
+      if (soundRef.current) {
+        console.log('[ChatContext] 기존 오디오 정리');
+        await soundRef.current.unloadAsync();
+        soundRef.current = null;
+      }
+
+      let fileUri = message.audioUrl;
+
+      // 캐싱된 오디오가 없으면 TTS 요청
+      if (!fileUri) {
+        if (!currentProfile?.profileId) {
+          console.warn('[ChatContext] profileId가 없습니다');
+          return;
+        }
+
+        console.log('[ChatContext] TTS 요청 시작:', message.text);
+        const audioBlob = await synthesizeVoice(
+          currentProfile.profileId.toString(),
+          { text: message.text }
+        );
+
+        // React Native에서는 Blob을 파일로 저장해야 함
+        const reader = new FileReader();
+        reader.readAsDataURL(audioBlob);
+
+        fileUri = await new Promise<string>((resolve, reject) => {
+          reader.onloadend = async () => {
+            try {
+              const base64Audio = (reader.result as string).split(',')[1];
+
+              // 파일로 저장 (캐시 디렉토리)
+              const uri = `${FileSystem.cacheDirectory}tts_${messageId}.mp3`;
+              await FileSystem.writeAsStringAsync(uri, base64Audio, {
+                encoding: FileSystem.EncodingType.Base64,
+              });
+
+              console.log('[ChatContext] TTS 완료, fileUri:', uri);
+
+              // 메시지에 audioUrl 캐싱
+              setMessages((prev) =>
+                prev.map((m) =>
+                  m.id === messageId ? { ...m, audioUrl: uri } : m
+                )
+              );
+
+              resolve(uri);
+            } catch (err) {
+              reject(err);
+            }
+          };
+          reader.onerror = reject;
+        });
+      } else {
+        console.log('[ChatContext] 캐싱된 오디오 재생:', fileUri);
+      }
+
+      // 오디오 재생
+      console.log('[ChatContext] 오디오 로드 및 재생 시작');
+      const { sound } = await Audio.Sound.createAsync(
+        { uri: fileUri },
+        { shouldPlay: true }
+      );
+
+      soundRef.current = sound;
+
+      // 재생 완료 시 정리
+      sound.setOnPlaybackStatusUpdate((status) => {
+        if (status.isLoaded && status.didJustFinish) {
+          console.log('[ChatContext] 오디오 재생 완료');
+          sound.unloadAsync();
+          soundRef.current = null;
+          onFinish?.(); // 콜백 호출
+        }
+      });
+
+      console.log('[ChatContext] 오디오 재생 중...');
+    } catch (error) {
+      console.error('[ChatContext] 오디오 재생 에러:', error);
+      if (soundRef.current) {
+        await soundRef.current.unloadAsync();
+        soundRef.current = null;
+      }
+      onFinish?.(); // 에러 시에도 콜백 호출
+    }
+  };
+
   return (
     <ChatContext.Provider
       value={{
@@ -161,6 +295,8 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
         handleSend,
         conversationSessionId: conversationSessionIdRef.current,
         clearChat,
+        playMessageAudio,
+        stopAudio,
       }}
     >
       {children}

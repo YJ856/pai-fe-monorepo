@@ -28,7 +28,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
-import { ArrowLeft, Send, ImageIcon, X } from 'lucide-react-native';
+import { ArrowLeft, Send, ImageIcon, X, Volume2 } from 'lucide-react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -56,11 +56,30 @@ export default function ChildChatScreen() {
     setCurrentImageAspectRatio,
     isLoading,
     handleSend,
+    playMessageAudio,
+    stopAudio,
   } = useChatContext();
 
   // 이미지 뷰어 상태
   const [showImageViewer, setShowImageViewer] = useState(false);
   const [viewerImage, setViewerImage] = useState<string | null>(null);
+
+  // 오디오 재생 상태
+  const [playingAudioId, setPlayingAudioId] = useState<string | null>(null);
+
+  const handleAudioToggle = async (messageId: string) => {
+    if (playingAudioId === messageId) {
+      // 정지
+      await stopAudio();
+      setPlayingAudioId(null);
+    } else {
+      // 재생
+      setPlayingAudioId(messageId);
+      await playMessageAudio(messageId, () => {
+        setPlayingAudioId(null);
+      });
+    }
+  };
 
   useEffect(() => {
     // Auto scroll to bottom when messages change
@@ -186,6 +205,17 @@ export default function ChildChatScreen() {
                       <View style={styles.aiHeader}>
                         <Image source={mascotImage} style={styles.aiAvatar} />
                         <Text style={styles.aiName}>PAI</Text>
+                        <TouchableOpacity
+                          style={styles.audioButton}
+                          onPress={() => handleAudioToggle(message.id)}
+                          activeOpacity={0.7}
+                        >
+                          <Volume2
+                            size={20}
+                            color={playingAudioId === message.id ? '#FF6B9D' : '#9CA3AF'}
+                            fill={playingAudioId === message.id ? '#FF6B9D' : 'none'}
+                          />
+                        </TouchableOpacity>
                       </View>
                       {message.imageUrl && (
                         <TouchableOpacity
@@ -432,8 +462,14 @@ const styles = StyleSheet.create({
     height: 24,
   },
   aiName: {
+    flex: 1,
     fontSize: 14,
     color: '#6B7280',
+  },
+  audioButton: {
+    padding: 4,
+    borderRadius: 12,
+    backgroundColor: 'transparent',
   },
   messageImage: {
     width: 200,
