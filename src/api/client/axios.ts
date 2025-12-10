@@ -75,8 +75,8 @@ export const aiServiceClient = axios.create({
 const addAuthInterceptor = (client: any) => {
   client.interceptors.request.use(
     async (config: any) => {
-      // 회원가입, 로그인은 토큰 불필요
-      const publicEndpoints = ["/api/auth/signup", "/api/auth/login"];
+      // 회원가입, 로그인, 토큰 갱신은 토큰 불필요
+      const publicEndpoints = ["/api/auth/signup", "/api/auth/login", "/api/auth/refresh"];
       const isPublicEndpoint = publicEndpoints.some((endpoint) =>
         config.url?.includes(endpoint)
       );
