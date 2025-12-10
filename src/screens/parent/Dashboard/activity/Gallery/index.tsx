@@ -75,9 +75,14 @@ export default function GalleryScreen() {
               <Calendar size={18} color={colors.parent.from} />
               <Text style={styles.dateText}>{date}</Text>
             </View>
-            <Text style={styles.headerSubtitle}>
-              {conversations.length}개의 대화
-            </Text>
+            <LinearGradient
+              colors={["#5B9BD5", "#667BC6"]}
+              style={styles.countBadge}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+            >
+              <Text style={styles.countText}>{conversations.length}</Text>
+            </LinearGradient>
           </View>
 
           {/* Loading */}
@@ -101,7 +106,14 @@ export default function GalleryScreen() {
           {/* Gallery Grid */}
           {!isLoading && !isError && (
             <GalleryGrid
-              conversations={conversations}
+              conversations={conversations.map((conv) => ({
+                conversationId: conv.conversationId,
+                childProfileId: Number(childId),
+                childName: conv.title,
+                childAvatar: undefined,
+                firstMediaUrl: conv.firstMediaUrl,
+                questionCount: 0,
+              }))}
               onConversationPress={handleConversationPress}
             />
           )}
@@ -126,7 +138,11 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.xl * 2,
   },
   header: {
-    padding: spacing.lg,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.xs,
     paddingBottom: spacing.md,
   },
   dateBadge: {
@@ -137,13 +153,27 @@ const styles = StyleSheet.create({
     borderRadius: 100,
     paddingVertical: spacing.xs,
     paddingHorizontal: spacing.md,
-    alignSelf: "flex-start",
-    marginBottom: spacing.sm,
   },
   dateText: {
     ...typography.h4,
     fontWeight: "600",
     color: colors.parent.from,
+  },
+  countBadge: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  countText: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#FFFFFF",
+  },
+  subtitleContainer: {
+    paddingHorizontal: spacing.lg,
+    paddingBottom: spacing.md,
   },
   headerSubtitle: {
     ...typography.body2,

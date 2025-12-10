@@ -113,7 +113,7 @@ export default function ActivityTab({ childId, childProfiles, onChildPress }: Ac
                   onPress={() => onChildPress(String(childData.childProfileId), selectedDate || today)}
                 >
                   <LinearGradient
-                    colors={["#5B9BD5", "#4A8BC2"]}
+                    colors={["#5B9BD5", "#667BC6"]}
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 1 }}
                     style={styles.childCardGradient}
@@ -157,29 +157,31 @@ const styles = StyleSheet.create({
     ...shadows.sm,
   },
   cardPadding: {
-    padding: spacing.lg,
+    paddingTop: spacing.md,
+    paddingHorizontal: spacing.lg,
+    paddingBottom: spacing.md,
   },
   dateBadge: {
     flexDirection: "row",
     alignItems: "center",
-    gap: spacing.xs,
+    gap: 4,
     backgroundColor: "rgba(91, 155, 213, 0.15)",
     borderRadius: 100,
-    paddingVertical: spacing.xs,
-    paddingHorizontal: spacing.md,
+    paddingVertical: 4,
+    paddingHorizontal: 8,
     alignSelf: "flex-start",
-    marginTop: spacing.sm,
-    marginBottom: spacing.sm,
+    marginTop: spacing.md,
+    marginBottom: spacing.md,
   },
   dateText: {
-    ...typography.body2,
+    fontSize: 12,
     fontWeight: "600",
     color: colors.parent.from,
   },
   childrenGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: spacing.md,
+    justifyContent: "space-between",
   },
   childCard: {
     width: "48%",
@@ -187,6 +189,7 @@ const styles = StyleSheet.create({
     borderRadius: borderRadius["2xl"],
     overflow: "hidden",
     ...shadows.md,
+    marginBottom: spacing.xs,
   },
   childCardGradient: {
     flex: 1,
@@ -198,21 +201,23 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
+    paddingTop: spacing.md,
   },
   childAvatar: {
     fontSize: 32,
-    marginBottom: spacing.xs / 2,
+    marginBottom: 2,
   },
   childAvatarImage: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    marginBottom: spacing.xs / 2,
+    marginBottom: 2,
   },
   childName: {
     ...typography.h3,
     fontSize: 16,
     color: colors.primaryForeground,
+    marginTop: -4,
   },
   childConversationCount: {
     ...typography.caption,

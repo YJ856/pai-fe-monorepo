@@ -119,6 +119,7 @@ const addDebugInterceptor = (client: any, serviceName: string) => {
         baseURL: config.baseURL,
         fullURL: `${config.baseURL}${config.url}`,
         method: config.method,
+        params: config.params,
         data: config.data,
         headers: config.headers,
       });

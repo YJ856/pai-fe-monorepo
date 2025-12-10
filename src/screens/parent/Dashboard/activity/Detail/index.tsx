@@ -66,6 +66,9 @@ export default function ConversationDetailScreen() {
   const [isImageViewVisible, setIsImageViewVisible] = useState(false);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
 
+  // 이미지 비율 저장 (order -> aspectRatio)
+  const [imageAspectRatios, setImageAspectRatios] = useState<Record<number, number>>({});
+
   // 대화 상세 조회
   const { conversation, messages, isLoading, isError } =
     useConversationDetail(conversationId);
@@ -156,51 +159,71 @@ export default function ConversationDetailScreen() {
           {messages.map((message) => (
             <View key={`${conversationId}-${message.order}`}>
               {/* 자녀 질문 (오른쪽) */}
-              <View style={styles.messageContainer}>
-                <View style={styles.childMessageContainer}>
-                  <View style={styles.childBubble}>
-                    {/* 질문 이미지 (있는 경우) */}
-                    {message.imageUrl ? (
-                      <TouchableOpacity
-                        activeOpacity={0.9}
-                        onPress={() => {
-                          setSelectedImageIndex(message.order - 1);
-                          setIsImageViewVisible(true);
+              <View style={[styles.messageContainer, styles.childMessageContainer]}>
+                {message.imageUrl && (
+                  <LinearGradient
+                    colors={['#5B9BD5', '#667BC6']}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                    style={styles.imageBubble}
+                  >
+                    <TouchableOpacity
+                      activeOpacity={0.9}
+                      onPress={() => {
+                        setSelectedImageIndex(message.order - 1);
+                        setIsImageViewVisible(true);
+                      }}
+                    >
+                      <Image
+                        source={{ uri: message.imageUrl }}
+                        style={[
+                          styles.messageImage,
+                          imageAspectRatios[message.order]
+                            ? { aspectRatio: imageAspectRatios[message.order] }
+                            : null
+                        ]}
+                        onLoad={(e) => {
+                          const { width, height } = e.nativeEvent.source;
+                          if (width && height) {
+                            setImageAspectRatios(prev => ({
+                              ...prev,
+                              [message.order]: width / height
+                            }));
+                          }
                         }}
-                      >
-                        <Image
-                          source={{ uri: message.imageUrl }}
-                          style={styles.messageImage}
-                          resizeMode="cover"
-                        />
-                      </TouchableOpacity>
-                    ) : null}
-                    <Text style={styles.childMessageText}>
-                      {message.questionText}
-                    </Text>
-                  </View>
-                </View>
+                      />
+                    </TouchableOpacity>
+                  </LinearGradient>
+                )}
+                <LinearGradient
+                  colors={['#5B9BD5', '#667BC6']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={styles.childBubble}
+                >
+                  <Text style={styles.childMessageText}>
+                    {message.questionText}
+                  </Text>
+                </LinearGradient>
               </View>
 
               {/* AI 답변 (왼쪽) */}
-              <View style={styles.messageContainer}>
-                <View style={styles.aiMessageContainer}>
-                  <View style={styles.aiBubble}>
-                    {/* AI 마스코트 아이콘 */}
-                    <View style={styles.mascotHeader}>
-                      <Image
-                        source={MASCOT_IMAGE}
-                        style={styles.mascotAvatar}
-                        resizeMode="contain"
-                      />
-                      <Text style={styles.mascotName}>PAI</Text>
-                    </View>
-
-                    {/* 답변 텍스트 */}
-                    <Text style={styles.aiMessageText}>
-                      {message.answerText}
-                    </Text>
+              <View style={[styles.messageContainer, styles.aiMessageContainer]}>
+                <View style={styles.aiBubble}>
+                  {/* AI 마스코트 아이콘 */}
+                  <View style={styles.mascotHeader}>
+                    <Image
+                      source={MASCOT_IMAGE}
+                      style={styles.mascotAvatar}
+                      resizeMode="contain"
+                    />
+                    <Text style={styles.mascotName}>PAI</Text>
                   </View>
+
+                  {/* 답변 텍스트 */}
+                  <Text style={styles.aiMessageText}>
+                    {message.answerText}
+                  </Text>
                 </View>
               </View>
             </View>
@@ -245,8 +268,9 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   content: {
-    padding: spacing.lg,
-    paddingBottom: spacing.xl * 2,
+    paddingTop: spacing.sm,
+    paddingHorizontal: spacing.lg,
+    paddingBottom: spacing.sm,
   },
 
   // Fixed Header
@@ -283,26 +307,35 @@ const styles = StyleSheet.create({
 
   // Messages
   messageContainer: {
-    marginBottom: spacing.lg,
+    marginBottom: 12,
   },
 
   // 자녀 메시지 (오른쪽)
   childMessageContainer: {
     alignItems: "flex-end",
   },
+  imageBubble: {
+    borderRadius: 16,
+    borderBottomRightRadius: 4,
+    padding: 4,
+    marginBottom: 4,
+    alignSelf: "flex-end",
+    overflow: "hidden",
+    ...shadows.md,
+  },
   childBubble: {
-    maxWidth: "70%",
+    maxWidth: "75%",
     backgroundColor: "#5B9BD5",
     borderRadius: 16,
     borderBottomRightRadius: 4,
-    padding: spacing.md,
+    padding: 16,
     overflow: "hidden",
     ...shadows.md,
   },
   childMessageText: {
-    ...typography.body1,
-    color: "#FFFFFF",
+    fontSize: 16,
     lineHeight: 24,
+    color: "#FFFFFF",
   },
 
   // AI 메시지 (왼쪽)
@@ -310,11 +343,11 @@ const styles = StyleSheet.create({
     alignItems: "flex-start",
   },
   aiBubble: {
-    maxWidth: "70%",
+    maxWidth: "75%",
     backgroundColor: "#FFFFFF",
     borderRadius: 16,
     borderBottomLeftRadius: 4,
-    padding: spacing.md,
+    padding: 16,
     ...shadows.md,
   },
   mascotHeader: {
@@ -323,27 +356,22 @@ const styles = StyleSheet.create({
     marginBottom: spacing.sm,
   },
   mascotAvatar: {
-    width: 36,
-    height: 36,
-    marginRight: spacing.xs,
+    width: 24,
+    height: 24,
+    marginRight: 8,
   },
   mascotName: {
-    ...typography.body2,
-    color: "#6B7280",
     fontSize: 14,
+    color: "#6B7280",
   },
   messageImage: {
-    width: "100%",
-    aspectRatio: 1,
-    maxHeight: 150,
-    borderRadius: borderRadius.md,
-    backgroundColor: "#F3F4F6",
-    marginBottom: spacing.sm,
+    width: 200,
+    borderRadius: 12,
   },
   aiMessageText: {
-    ...typography.body1,
-    color: "#1F2937",
+    fontSize: 16,
     lineHeight: 24,
+    color: "#1F2937",
   },
   keywordBadge: {
     alignSelf: "flex-start",

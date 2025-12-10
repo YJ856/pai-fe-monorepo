@@ -14,6 +14,8 @@ import { getConversationsCalendar } from "@/api/conversations";
 import type { GetConversationsCalendarQueryParam, GetConversationsCalendarResponseData } from "pai-shared-types";
 
 export function useConversationsCalendar(params: GetConversationsCalendarQueryParam) {
+  console.log('[useConversationsCalendar] params:', params);
+
   const {
     data,
     isLoading,
