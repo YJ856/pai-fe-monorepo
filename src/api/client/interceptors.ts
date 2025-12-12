@@ -31,9 +31,21 @@ import { authEvents } from '../../utils/authEvents';
 const TOKEN_KEY = 'accessToken';
 const REFRESH_TOKEN_KEY = 'refreshToken';
 const PROFILE_ID_KEY = '@pai:selected_profile_id';
+const DEVICE_ID_KEY = '@pai:device_id';
 
 /**
- * 토큰 관리 유틸리티
+ * 간단한 UUID v4 생성 함수
+ */
+const generateUUID = () => {
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0;
+    const v = c === 'x' ? r : (r & 0x3) | 0x8;
+    return v.toString(16);
+  });
+};
+
+/**
+ * 토큰 및 디바이스 관리 유틸리티
  * React Native AsyncStorage 사용
  */
 export const tokenManager = {
@@ -46,18 +58,33 @@ export const tokenManager = {
   getProfileId: async () => await AsyncStorage.getItem(PROFILE_ID_KEY),
   setProfileId: async (profileId: string) => await AsyncStorage.setItem(PROFILE_ID_KEY, profileId),
 
+  /**
+   * Device ID 가져오기
+   * 없으면 생성 후 저장
+   */
+  getDeviceId: async (): Promise<string> => {
+    let deviceId = await AsyncStorage.getItem(DEVICE_ID_KEY);
+    if (!deviceId) {
+      deviceId = generateUUID();
+      await AsyncStorage.setItem(DEVICE_ID_KEY, deviceId);
+    }
+    return deviceId;
+  },
+
   clearTokens: async () => {
     await AsyncStorage.multiRemove([TOKEN_KEY, REFRESH_TOKEN_KEY, PROFILE_ID_KEY]);
+    // Note: deviceId는 유지 (기기 고유값이므로)
   },
 };
 
 /**
  * 요청 인터셉터
- * 모든 API 요청에 토큰과 프로필 ID 자동 추가
+ * 모든 API 요청에 토큰, 프로필 ID, 디바이스 ID 자동 추가
  */
 const requestInterceptor = async (config: InternalAxiosRequestConfig) => {
   const accessToken = await tokenManager.getAccessToken();
   const profileId = await tokenManager.getProfileId();
+  const deviceId = await tokenManager.getDeviceId();
 
   if (accessToken) {
     config.headers.Authorization = `Bearer ${accessToken}`;
@@ -66,6 +93,9 @@ const requestInterceptor = async (config: InternalAxiosRequestConfig) => {
   if (profileId) {
     config.headers['X-Profile-Id'] = profileId;
   }
+
+  // 모든 요청에 디바이스 ID 추가
+  config.headers['x-device-id'] = deviceId;
 
   return config;
 };
@@ -95,11 +125,16 @@ const setupResponseInterceptor = (client: AxiosInstance) => {
             throw new Error('No refresh token available');
           }
 
+          const deviceId = await tokenManager.getDeviceId();
+
           // pai-service-user의 /api/auth/refresh 호출
           // 인터셉터를 거치지 않도록 직접 호출
           const response = await userServiceClient.post(
             '/api/auth/refresh',
-            { refreshToken },
+            {
+              refreshToken,
+              deviceId,
+            },
             {
               headers: {
                 // refresh 요청에는 Authorization 헤더를 추가하지 않음
