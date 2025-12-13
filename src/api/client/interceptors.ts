@@ -101,15 +101,18 @@ const requestInterceptor = async (config: InternalAxiosRequestConfig) => {
     config.headers['X-Profile-Id'] = profileId;
   }
 
-  // 헤더에 디바이스 ID 추가
-  config.headers['x-device-id'] = deviceId;
+  // deviceId가 필요한 엔드포인트 (토큰 생성/관리)
+  const needsDeviceId = [
+    '/api/auth/login',
+    '/api/auth/signup',
+    '/api/auth/logout',
+    '/api/auth/refresh',
+    '/api/profiles/select'
+  ];
 
-  // POST 요청이고 body가 있는 경우, body에도 deviceId 추가 (서버가 body에서 받는 경우를 위해)
-  if (config.method === 'post' && config.data && typeof config.data === 'object') {
-    // 이미 deviceId가 있으면 덮어쓰지 않음
-    if (!config.data.deviceId) {
-      config.data = { ...config.data, deviceId };
-    }
+  // 해당 엔드포인트에만 헤더로 deviceId 추가
+  if (needsDeviceId.some(endpoint => config.url?.includes(endpoint))) {
+    config.headers['x-device-id'] = deviceId;
   }
 
   return config;
