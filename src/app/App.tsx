@@ -26,13 +26,10 @@ export type RootStackParamList = {
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
-function App() {
-  // 앱 시작 시 인터셉터 설정 (토큰 갱신 로직)
-  useEffect(() => {
-    setupInterceptors();
-    console.log('[App] Axios interceptors initialized');
-  }, []);
+// 앱 초기화 시 인터셉터 설정 (자식 컴포넌트의 API 요청보다 먼저 실행 보장)
+setupInterceptors();
 
+function App() {
   return (
     <SafeAreaProvider>
       <QueryClientProvider>

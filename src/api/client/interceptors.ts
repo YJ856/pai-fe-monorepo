@@ -33,6 +33,22 @@ const REFRESH_TOKEN_KEY = 'refreshToken';
 const PROFILE_ID_KEY = '@pai:selected_profile_id';
 const DEVICE_ID_KEY = '@pai:device_id';
 
+// 토큰 갱신 중복 요청 방지를 위한 변수
+let isRefreshing = false;
+let failedQueue: any[] = [];
+let isInterceptorSetup = false; // 중복 설정 방지 플래그
+
+const processQueue = (error: any, token: string | null = null) => {
+  failedQueue.forEach((prom) => {
+    if (error) {
+      prom.reject(error);
+    } else {
+      prom.resolve(token);
+    }
+  });
+  failedQueue = [];
+};
+
 /**
  * 간단한 UUID v4 생성 함수
  */
@@ -101,17 +117,10 @@ const requestInterceptor = async (config: InternalAxiosRequestConfig) => {
     config.headers['X-Profile-Id'] = profileId;
   }
 
-  // deviceId가 필요한 엔드포인트 (토큰 생성/관리)
-  const needsDeviceId = [
-    '/api/auth/login',
-    '/api/auth/signup',
-    '/api/auth/logout',
-    '/api/auth/refresh',
-    '/api/profiles/select'
-  ];
-
-  // 해당 엔드포인트에만 헤더로 deviceId 추가
-  if (needsDeviceId.some(endpoint => config.url?.includes(endpoint))) {
+  // 모든 요청에 deviceId 헤더 추가
+  // 백엔드에서 토큰 버전 검증 시 deviceId를 기준으로 세션을 조회하거나,
+  // 토큰 탈취 방지를 위해 헤더의 deviceId와 토큰의 deviceId를 비교하는 경우 필수입니다.
+  if (deviceId) {
     config.headers['x-device-id'] = deviceId;
   }
 
@@ -135,7 +144,26 @@ const setupResponseInterceptor = (client: AxiosInstance) => {
 
       // 401 에러이고 아직 재시도하지 않은 경우
       if (error.response?.status === 401 && !originalRequest._retry) {
+        if (isRefreshing) {
+          console.log('[Auth] Token refreshing, queueing request for:', originalRequest.url);
+          return new Promise((resolve, reject) => {
+            failedQueue.push({ resolve, reject });
+          })
+            .then((token) => {
+              // 재시도 플래그 설정 (무한 루프 방지)
+              originalRequest._retry = true;
+              // 헤더 설정
+              originalRequest.headers['Authorization'] = `Bearer ${token}`;
+              return client(originalRequest);
+            })
+            .catch((err) => {
+              return Promise.reject(err);
+            });
+        }
+
         originalRequest._retry = true;
+        isRefreshing = true;
+        console.log('[Auth] Starting token refresh...');
 
         try {
           const refreshToken = await tokenManager.getRefreshToken();
@@ -151,11 +179,11 @@ const setupResponseInterceptor = (client: AxiosInstance) => {
             '/api/auth/refresh',
             {
               refreshToken,
-              deviceId,
             },
             {
               headers: {
                 // refresh 요청에는 Authorization 헤더를 추가하지 않음
+                'x-device-id': deviceId,
               },
               // 재시도 플래그를 설정하여 인터셉터에서 다시 처리하지 않도록 함
               _retry: true,
@@ -168,10 +196,22 @@ const setupResponseInterceptor = (client: AxiosInstance) => {
           await tokenManager.setAccessToken(accessToken);
           await tokenManager.setRefreshToken(newRefreshToken);
 
+          console.log('[Auth] Token refresh successful, retrying queued requests');
+
+          // MSA 환경에서의 데이터 전파 지연을 고려하여 잠시 대기 (500ms)
+          await new Promise((resolve) => setTimeout(resolve, 500));
+
+          // 대기 중이던 요청 처리
+          processQueue(null, accessToken);
+
           // 원래 요청에 새 토큰 추가 후 재시도
-          originalRequest.headers.Authorization = `Bearer ${accessToken}`;
+          originalRequest.headers['Authorization'] = `Bearer ${accessToken}`;
           return client(originalRequest);
         } catch (refreshError) {
+          console.error('[Auth] Token refresh failed', refreshError);
+          // 대기 중이던 요청 에러 처리
+          processQueue(refreshError, null);
+
           // 토큰 갱신 실패 시 로그아웃 처리
           console.log('[AUTH] Refresh token expired - Clearing tokens and redirecting to login');
           await tokenManager.clearTokens();
@@ -183,6 +223,8 @@ const setupResponseInterceptor = (client: AxiosInstance) => {
           reset('Auth');
 
           return Promise.reject(refreshError);
+        } finally {
+          isRefreshing = false;
         }
       }
 
@@ -196,6 +238,11 @@ const setupResponseInterceptor = (client: AxiosInstance) => {
  * App.tsx에서 앱 시작 시 한 번만 호출
  */
 export function setupInterceptors() {
+  if (isInterceptorSetup) {
+    console.log('[Auth] Interceptors already setup, skipping...');
+    return;
+  }
+
   const clients = [
     userServiceClient,
     insightServiceClient,
@@ -208,4 +255,6 @@ export function setupInterceptors() {
     client.interceptors.request.use(requestInterceptor);
     setupResponseInterceptor(client);
   });
+
+  isInterceptorSetup = true;
 }
