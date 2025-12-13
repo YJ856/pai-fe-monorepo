@@ -86,7 +86,14 @@ const requestInterceptor = async (config: InternalAxiosRequestConfig) => {
   const profileId = await tokenManager.getProfileId();
   const deviceId = await tokenManager.getDeviceId();
 
-  if (accessToken) {
+  // 회원가입, 로그인, 토큰 갱신은 토큰 불필요
+  const publicEndpoints = ['/api/auth/signup', '/api/auth/login', '/api/auth/refresh'];
+  const isPublicEndpoint = publicEndpoints.some((endpoint) =>
+    config.url?.includes(endpoint)
+  );
+
+  // Public 엔드포인트가 아닌 경우에만 토큰 추가
+  if (!isPublicEndpoint && accessToken) {
     config.headers.Authorization = `Bearer ${accessToken}`;
   }
 
@@ -94,8 +101,16 @@ const requestInterceptor = async (config: InternalAxiosRequestConfig) => {
     config.headers['X-Profile-Id'] = profileId;
   }
 
-  // 모든 요청에 디바이스 ID 추가
+  // 헤더에 디바이스 ID 추가
   config.headers['x-device-id'] = deviceId;
+
+  // POST 요청이고 body가 있는 경우, body에도 deviceId 추가 (서버가 body에서 받는 경우를 위해)
+  if (config.method === 'post' && config.data && typeof config.data === 'object') {
+    // 이미 deviceId가 있으면 덮어쓰지 않음
+    if (!config.data.deviceId) {
+      config.data = { ...config.data, deviceId };
+    }
+  }
 
   return config;
 };

@@ -24,7 +24,6 @@ import type {
   RefreshTokenResponseData,
   BaseResponse,
 } from './types';
-import { tokenManager } from './client/interceptors';
 
 /**
  * POST /api/auth/check-email
@@ -60,13 +59,11 @@ export const signup = async (data: SignupRequestDto): Promise<BaseResponse<Signu
  * Response:
  * - accessToken: string (JWT)
  * - refreshToken: string
+ *
+ * Note: deviceId는 인터셉터에서 자동으로 추가됨
  */
 export const login = async (data: LoginRequestDto): Promise<LoginResponseData> => {
-  const deviceId = await tokenManager.getDeviceId();
-  const response = await userServiceClient.post<BaseResponse<LoginResponseData>>('/api/auth/login', {
-    ...data,
-    deviceId,
-  });
+  const response = await userServiceClient.post<BaseResponse<LoginResponseData>>('/api/auth/login', data);
   return response.data.data!;
 };
 
@@ -93,12 +90,11 @@ export const logout = async (): Promise<BaseResponse<void>> => {
  * - refreshToken: string (새 Refresh Token)
  *
  * Note: 인터셉터에서 자동으로 호출되므로 직접 호출 불필요
+ * Note: deviceId는 인터셉터에서 자동으로 추가됨
  */
 export const refreshToken = async (refreshToken: string): Promise<RefreshTokenResponseData> => {
-  const deviceId = await tokenManager.getDeviceId();
   const response = await userServiceClient.post<BaseResponse<RefreshTokenResponseData>>('/api/auth/refresh', {
     refreshToken,
-    deviceId,
   });
   return response.data.data!;
 };

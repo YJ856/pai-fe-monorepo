@@ -13,7 +13,6 @@
  */
 
 import axios from "axios";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { SERVICE_URLS } from "./serviceUrls";
 
 // 사용자 서비스 (인증, 프로필)
@@ -71,43 +70,7 @@ export const aiServiceClient = axios.create({
 });
 
 
-// 인증 토큰 인터셉터
-const addAuthInterceptor = (client: any) => {
-  client.interceptors.request.use(
-    async (config: any) => {
-      // 회원가입, 로그인, 토큰 갱신은 토큰 불필요
-      const publicEndpoints = ["/api/auth/signup", "/api/auth/login", "/api/auth/refresh"];
-      const isPublicEndpoint = publicEndpoints.some((endpoint) =>
-        config.url?.includes(endpoint)
-      );
-
-      if (!isPublicEndpoint) {
-        // AsyncStorage에서 토큰 가져오기
-        const accessToken = await AsyncStorage.getItem("accessToken");
-        console.log(
-          "[AUTH-INTERCEPTOR] AccessToken from AsyncStorage:",
-          accessToken ? `${accessToken.substring(0, 20)}...` : "NULL"
-        );
-
-        if (accessToken) {
-          config.headers.Authorization = `Bearer ${accessToken}`;
-          console.log(
-            "[AUTH-INTERCEPTOR] Authorization header set successfully"
-          );
-        } else {
-          console.warn(
-            "[AUTH-INTERCEPTOR] No accessToken found in AsyncStorage!"
-          );
-        }
-      }
-
-      return config;
-    },
-    (error: any) => {
-      return Promise.reject(error);
-    }
-  );
-};
+// 인증 토큰 인터셉터는 interceptors.ts의 setupInterceptors()에서 관리됨
 
 // 디버깅용 인터셉터 (개발 환경)
 const addDebugInterceptor = (client: any, serviceName: string) => {
@@ -164,13 +127,14 @@ const addDebugInterceptor = (client: any, serviceName: string) => {
   );
 };
 
-// 모든 클라이언트에 인증 인터셉터 추가
-addAuthInterceptor(userServiceClient);
-addAuthInterceptor(insightServiceClient);
-addAuthInterceptor(quizServiceClient);
-addAuthInterceptor(conversationServiceClient);
-addAuthInterceptor(mediaServiceClient);
-addAuthInterceptor(aiServiceClient);
+// 인증 인터셉터는 interceptors.ts의 setupInterceptors()에서 설정됨
+// addAuthInterceptor는 중복 적용을 방지하기 위해 주석 처리
+// addAuthInterceptor(userServiceClient);
+// addAuthInterceptor(insightServiceClient);
+// addAuthInterceptor(quizServiceClient);
+// addAuthInterceptor(conversationServiceClient);
+// addAuthInterceptor(mediaServiceClient);
+// addAuthInterceptor(aiServiceClient);
 
 // 모든 클라이언트에 디버깅 인터셉터 추가
 addDebugInterceptor(userServiceClient, "USER");
