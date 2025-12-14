@@ -367,13 +367,6 @@ export default function ParentProfileScreen() {
                     <User size={32} color="#5B9BD5" />
                   </View>
                 )}
-                <TouchableOpacity
-                  style={styles.cameraButton}
-                  onPress={handleChangeProfileImage}
-                  activeOpacity={0.8}
-                >
-                  <Camera size={16} color="#FFFFFF" />
-                </TouchableOpacity>
               </View>
               <View style={styles.profileNameContainer}>
                 <Text style={styles.cardTitle}>
@@ -545,6 +538,29 @@ export default function ParentProfileScreen() {
               </TouchableOpacity>
             </View>
 
+            {/* Avatar Edit */}
+            <View style={styles.modalAvatarContainer}>
+              <View style={styles.modalAvatarWrapper}>
+                {currentProfile?.avatarUrl ? (
+                  <Image
+                    source={{ uri: currentProfile.avatarUrl }}
+                    style={styles.modalAvatarImage}
+                  />
+                ) : (
+                  <View style={styles.modalAvatarPlaceholder}>
+                    <User size={32} color="#5B9BD5" />
+                  </View>
+                )}
+                <TouchableOpacity
+                  style={styles.cameraButton}
+                  onPress={handleChangeProfileImage}
+                  activeOpacity={0.7}
+                >
+                  <Camera size={16} color="#FFFFFF" />
+                </TouchableOpacity>
+              </View>
+            </View>
+
             <View style={styles.modalBody}>
               <View style={styles.inputGroup}>
                 <Text style={styles.inputLabel}>이름</Text>
@@ -629,7 +645,7 @@ const styles = StyleSheet.create({
   cameraButton: {
     position: "absolute",
     bottom: -4,
-    right: "35%",
+    right: -4,
     width: 28,
     height: 28,
     borderRadius: 14,
@@ -867,6 +883,28 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: "bold",
     color: "#111827",
+  },
+  modalAvatarContainer: {
+    alignItems: "center",
+    marginBottom: 20,
+  },
+  modalAvatarWrapper: {
+    position: "relative",
+    width: 80,
+    height: 80,
+  },
+  modalAvatarImage: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+  },
+  modalAvatarPlaceholder: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: "#f3f4f6",
+    alignItems: "center",
+    justifyContent: "center",
   },
   modalBody: {
     gap: 16,
