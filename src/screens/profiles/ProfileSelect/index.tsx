@@ -93,6 +93,14 @@ export default function ProfileSelectScreen() {
   const renderProfileCard = (item: Profile) => {
     const isParent = item.profileType === "parent";
 
+    // 이름 길이에 따라 폰트 크기 조정
+    const getFontSize = (name: string) => {
+      if (name.length <= 4) return 18;
+      if (name.length <= 6) return 16;
+      if (name.length <= 8) return 14;
+      return 12;
+    };
+
     return (
       <TouchableOpacity
         key={String(item.profileId)}
@@ -110,7 +118,13 @@ export default function ProfileSelectScreen() {
             <Text style={styles.lockIcon}>🔒</Text>
           </View>
         )}
-        <Text style={styles.profileName}>{item.name}</Text>
+        <Text
+          style={[styles.profileName, { fontSize: getFontSize(item.name) }]}
+          numberOfLines={2}
+          ellipsizeMode="tail"
+        >
+          {item.name}
+        </Text>
       </TouchableOpacity>
     );
   };
@@ -497,7 +511,9 @@ const styles = StyleSheet.create({
     fontSize: 18,
     color: colors.foreground,
     marginTop: spacing.sm,
-    marginBottom: spacing.xs - 2,
+    textAlign: "center",
+    width: "100%",
+    paddingHorizontal: 4,
   },
 
   createButton: {
