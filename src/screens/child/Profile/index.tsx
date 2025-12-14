@@ -10,7 +10,7 @@
  * 디자인:
  * - 화이트 배경
  * - 그레이 카드 레이아웃
- * - 그린 아이콘 (#10B981)
+ * - 핑크 아이콘 (#FF6B9D)
  */
 
 import React, { useState } from "react";
@@ -212,7 +212,7 @@ export default function ChildProfileScreen() {
           } as any);
 
           const uploadResult = await uploadMedia(formData);
-          newAvatarMediaId = String(uploadResult.mediaId);
+          newAvatarMediaId = BigInt(uploadResult.mediaId);
         } catch (uploadError: any) {
           console.error("이미지 업로드 오류:", uploadError);
           Alert.alert(
@@ -324,7 +324,7 @@ export default function ChildProfileScreen() {
                   onPress={handleEditProfile}
                   activeOpacity={0.7}
                 >
-                  <Edit size={16} color="#10B981" />
+                  <Edit size={16} color="#FF6B9D" />
                   <Text style={styles.editButtonText}>수정</Text>
                 </TouchableOpacity>
               </View>
@@ -352,7 +352,7 @@ export default function ChildProfileScreen() {
           >
             <View style={styles.voiceCardHeader}>
               <View style={styles.iconCircle}>
-                <Volume2 size={20} color="#10B981" />
+                <Volume2 size={20} color="#FF6B9D" />
               </View>
               <View style={styles.voiceCardInfo}>
                 <Text style={styles.cardTitle}>부모님 목소리</Text>
@@ -370,7 +370,7 @@ export default function ChildProfileScreen() {
           <View style={styles.card}>
             <View style={styles.familyCardHeader}>
               <View style={styles.iconCircle}>
-                <Users size={20} color="#10B981" />
+                <Users size={20} color="#FF6B9D" />
               </View>
               <Text style={styles.cardTitle}>우리 가족들</Text>
             </View>
@@ -421,7 +421,7 @@ export default function ChildProfileScreen() {
             onPress={handleLogout}
             activeOpacity={0.7}
           >
-            <LogOut size={20} color="#6B7280" />
+            <LogOut size={20} color="#FF6B9D" />
             <Text style={styles.logoutText}>로그아웃</Text>
           </TouchableOpacity>
         </RefreshableScrollView>
@@ -648,7 +648,7 @@ const styles = StyleSheet.create({
   },
   changeText: {
     fontSize: 13,
-    color: "#10B981",
+    color: "#FF6B9D",
     fontWeight: "600",
     marginLeft: "auto",
   },
@@ -656,7 +656,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: "#f3f4f6",
+    backgroundColor: "#FFF0ED",
     alignItems: "center",
     justifyContent: "center",
   },
@@ -666,13 +666,13 @@ const styles = StyleSheet.create({
     gap: 6,
     paddingHorizontal: 16,
     paddingVertical: 8,
-    backgroundColor: "#f3f4f6",
+    backgroundColor: "#FFF0ED",
     borderRadius: 20,
   },
   editButtonText: {
     fontSize: 13,
     fontWeight: "600",
-    color: "#10B981",
+    color: "#FF6B9D",
   },
   cardTitle: {
     fontSize: 18,
@@ -752,7 +752,7 @@ const styles = StyleSheet.create({
   },
   logoutText: {
     fontSize: 14,
-    color: "#6b7280",
+    color: "#FF6B9D",
     fontWeight: "600",
   },
   centered: {
@@ -856,7 +856,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   cancelButton: {
-    backgroundColor: "#F3F4F6",
+    backgroundColor: "#FFA06B",
   },
   cancelButtonText: {
     fontSize: 15,
@@ -912,7 +912,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: "#F3F4F6",
+    backgroundColor: "#FFA06B",
     alignItems: "center",
     justifyContent: "center",
   },
@@ -941,7 +941,7 @@ const styles = StyleSheet.create({
     width: 20,
     height: 20,
     borderRadius: 10,
-    backgroundColor: "#10B981",
+    backgroundColor: "#FFA06B",
     alignItems: "center",
     justifyContent: "center",
   },
