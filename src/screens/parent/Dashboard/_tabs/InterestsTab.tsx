@@ -32,7 +32,7 @@ import BubbleChart from "../components/BubbleChart";
 import { useInterestsData } from "../hooks/useDashboardData";
 
 interface InterestsTabProps {
-  childId: string;
+  childId: string | undefined;
 }
 
 export default function InterestsTab({ childId }: InterestsTabProps) {

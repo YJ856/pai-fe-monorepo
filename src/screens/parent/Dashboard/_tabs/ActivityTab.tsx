@@ -40,7 +40,7 @@ import { useConversationsCalendar } from "../hooks/activity/useConversationsCale
 import { Profile } from "pai-shared-types";
 
 interface ActivityTabProps {
-  childId: string;
+  childId: string | undefined;
   childProfiles: Profile[];
   onChildPress: (childId: string, date: string) => void;
 }

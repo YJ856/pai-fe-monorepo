@@ -50,7 +50,7 @@ interface Recommendation {
 }
 
 interface RecommendationsTabProps {
-  childId: string;
+  childId: string | undefined;
 }
 
 const categories = [

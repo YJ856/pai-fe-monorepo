@@ -24,7 +24,7 @@ import { useInfiniteQuery } from "@tanstack/react-query";
 import { getRecommendations } from "../../../../api/recommendations";
 
 interface UseRecommendationsParams {
-  childId: string;
+  childId: string | undefined;
   category?: string;
 }
 
@@ -40,11 +40,12 @@ export const useRecommendations = ({ childId, category }: UseRecommendationsPara
   } = useInfiniteQuery({
     queryKey: ["recommendations", childId, category],
     queryFn: ({ pageParam = 1 }) =>
-      getRecommendations(childId, {
+      getRecommendations(childId!, {
         page: pageParam,
         pageSize: 10,
         category,
       }),
+    enabled: !!childId,
     getNextPageParam: (lastPage, allPages) => {
       // hasMore가 true면 다음 페이지 번호 반환
       return lastPage.hasMore ? allPages.length + 1 : undefined;

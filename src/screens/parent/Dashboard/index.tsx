@@ -59,9 +59,12 @@ export default function ParentDashboard() {
 
   // 자녀 선택 state (기본값: 첫 번째 자녀)
   const [selectedChildIndex, setSelectedChildIndex] = useState(0);
-  const selectedChildId = String(
-    childProfiles[selectedChildIndex]?.profileId || childProfiles[0]?.profileId
-  );
+  const selectedChildId =
+    childProfiles[selectedChildIndex]?.profileId
+      ? String(childProfiles[selectedChildIndex].profileId)
+      : childProfiles[0]?.profileId
+        ? String(childProfiles[0].profileId)
+        : undefined;
 
   console.log("[Dashboard] childProfiles:", childProfiles);
   console.log("[Dashboard] selectedChildId:", selectedChildId);

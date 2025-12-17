@@ -15,10 +15,10 @@ import { getRecommendations } from "../../../../api/recommendations";
 /**
  * 관심사 데이터 조회
  */
-export const useInterestsData = (childId: string) => {
+export const useInterestsData = (childId: string | undefined) => {
   return useQuery({
     queryKey: ["interests", childId],
-    queryFn: () => getTopInterests(childId, 20), // 최대 20개
+    queryFn: () => getTopInterests(childId!, 20), // 최대 20개
     enabled: !!childId,
     staleTime: 1000 * 60 * 5, // 5분
   });
