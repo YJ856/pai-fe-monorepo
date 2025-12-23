@@ -60,7 +60,7 @@ export default function ActivityTab({ childId, childProfiles, onChildPress }: Ac
   });
 
   // ActivityCalendar 컴포넌트용 데이터 변환
-  const activities = days.map((day) => ({
+  const activities = days.map((day: any) => ({
     date: day.date,
     count: day.count,
   }));
@@ -69,7 +69,7 @@ export default function ActivityTab({ childId, childProfiles, onChildPress }: Ac
   const today = new Date().toISOString().split("T")[0];
 
   // 선택된 날짜의 대화 자녀 목록
-  const selectedDayData = days.find((day) => day.date === (selectedDate || today));
+  const selectedDayData = days.find((day: any) => day.date === (selectedDate || today));
   const childrenWithConversations = selectedDayData?.children || [];
 
   return (
@@ -99,7 +99,7 @@ export default function ActivityTab({ childId, childProfiles, onChildPress }: Ac
         </View>
         {childrenWithConversations.length > 0 ? (
           <View style={styles.childrenGrid}>
-            {childrenWithConversations.map((childData) => {
+            {childrenWithConversations.map((childData: any) => {
               // childProfiles에서 해당 자녀 찾기 (아바타 URL 사용하기 위해)
               const childProfile = childProfiles.find(
                 (p) => String(p.profileId) === String(childData.childProfileId)
