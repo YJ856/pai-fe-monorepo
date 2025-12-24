@@ -53,6 +53,7 @@ type ChatDetailNavigationProp = NativeStackNavigationProp<ChildStackParamList, '
 
 export default function ChildChatDetailScreen() {
   const navigation = useNavigation<ChatDetailNavigationProp>();
+  const [inputHeight, setInputHeight] = useState(48); // 기본 입력창 높이
 
   // Context에서 공용 데이터 사용
   const {
@@ -410,7 +411,7 @@ export default function ChildChatDetailScreen() {
             colors={['#FF6B9D', '#FFA06B']}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 0 }}
-            style={styles.attachedImagePreview}
+            style={[styles.attachedImagePreview, { bottom: inputHeight + 32 }]}
           >
             <Image
               source={{ uri: currentImage }}
@@ -453,6 +454,11 @@ export default function ChildChatDetailScreen() {
               placeholderTextColor="#999"
               value={inputText}
               onChangeText={setInputText}
+              onContentSizeChange={(e) => {
+                const height = e.nativeEvent.contentSize.height;
+                // maxHeight 120을 넘지 않도록 제한
+                setInputHeight(Math.min(height, 120));
+              }}
               multiline
             />
 
@@ -740,9 +746,12 @@ const styles = StyleSheet.create({
     bottom: 80,
     left: 16,
     zIndex: 200,
-    elevation: 200,
     borderRadius: 16,
     padding: 6,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
   },
   attachedImage: {
     width: 120,

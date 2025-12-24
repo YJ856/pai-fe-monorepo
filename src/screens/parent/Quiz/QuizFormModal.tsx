@@ -257,7 +257,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
-    height: '92%',
+    maxHeight: '92%',
     paddingBottom: spacing.md,
   },
   modalHeader: {
@@ -282,7 +282,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingTop: spacing.md,
-    paddingBottom: spacing.xs,
+    paddingBottom: spacing.sm,
   },
   formGroup: {
     marginBottom: spacing.md,

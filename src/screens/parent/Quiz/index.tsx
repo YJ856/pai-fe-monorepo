@@ -777,12 +777,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     paddingTop: spacing.sm,
     paddingBottom: spacing.xs,
+    gap: spacing.md,
   },
   quizCard: {
     backgroundColor: '#F9FAFB',
     borderRadius: 16,
     padding: spacing.lg,
-    marginBottom: spacing.xs,
+    marginBottom: spacing.md,
     shadowColor: '#000',
     shadowOffset: {
       width: 0,

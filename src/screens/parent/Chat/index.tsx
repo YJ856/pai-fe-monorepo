@@ -15,7 +15,7 @@
  * - 하단 고정 입력창
  */
 
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -25,8 +25,16 @@ import {
   TextInput,
   Image,
   KeyboardAvoidingView,
+  Keyboard,
   Platform,
+  LayoutAnimation,
+  UIManager,
 } from 'react-native';
+
+// Android에서 LayoutAnimation 활성화
+if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Send, ImageIcon as ImagePlus, Sparkles, X } from 'lucide-react-native';
@@ -48,6 +56,8 @@ const SUGGESTED_QUESTIONS = [
 export default function ParentChatScreen() {
   const isFocused = useIsFocused();
   const previousFocusedRef = useRef(isFocused);
+  const [keyboardVisible, setKeyboardVisible] = useState(false);
+  const [inputHeight, setInputHeight] = useState(48); // 기본 입력창 높이
 
   // 메시지 관리 Hook
   const {
@@ -67,6 +77,29 @@ export default function ParentChatScreen() {
 
   // 이미지 선택 Hook
   const { handleImagePick } = useChatImagePicker(setCurrentImage, setCurrentImageAspectRatio);
+
+  // 키보드 이벤트 처리 - 복귀 문제 해결
+  useEffect(() => {
+    const keyboardWillShow = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
+      () => {
+        LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+        setKeyboardVisible(true);
+      }
+    );
+    const keyboardWillHide = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
+      () => {
+        LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+        setKeyboardVisible(false);
+      }
+    );
+
+    return () => {
+      keyboardWillShow.remove();
+      keyboardWillHide.remove();
+    };
+  }, []);
 
   // Chat 탭을 벗어날 때 대화 종료 처리
   useEffect(() => {
@@ -102,6 +135,7 @@ export default function ParentChatScreen() {
           style={styles.container}
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
           keyboardVerticalOffset={0}
+          enabled={true}
         >
         {/* Messages Area */}
         <ScrollView
@@ -244,7 +278,7 @@ export default function ParentChatScreen() {
             colors={['#5B9BD5', '#667BC6']}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 0 }}
-            style={styles.imagePreviewContainer}
+            style={[styles.imagePreviewContainer, { bottom: inputHeight + 32 }]}
           >
             <Image
               source={{ uri: currentImage }}
@@ -287,6 +321,11 @@ export default function ParentChatScreen() {
               placeholderTextColor="#9CA3AF"
               value={inputText}
               onChangeText={setInputText}
+              onContentSizeChange={(e) => {
+                const height = e.nativeEvent.contentSize.height;
+                // maxHeight 120을 넘지 않도록 제한
+                setInputHeight(Math.min(height, 120));
+              }}
               multiline
               maxLength={500}
             />
@@ -332,10 +371,9 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   emptyState: {
+    flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingTop: spacing.lg,
-    paddingBottom: 0,
   },
   emptyIcon: {
     width: 96,
@@ -465,9 +503,12 @@ const styles = StyleSheet.create({
     bottom: 80,
     left: 16,
     zIndex: 200,
-    elevation: 200,
     borderRadius: 16,
     padding: 6,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
   },
   imagePreview: {
     width: 120,
